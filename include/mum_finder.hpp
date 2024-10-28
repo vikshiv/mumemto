@@ -158,8 +158,12 @@ public:
         }
         
         // Opening output file
-        std::string outfile = filename + std::string(".mums");
+        std::string outfile = filename + (col_mum_mode) ? std::string(".fa.col_mums") : std::string(".mums");
         mum_file.open(outfile);
+        if (col_mum_mode) {
+            size_t docs = num_docs;
+            mum_file.write(reinterpret_cast<const char*>(&docs), BWTBYTES);
+        }
     }
 
     void close()
