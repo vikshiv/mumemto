@@ -158,7 +158,7 @@ public:
         }
         
         // Opening output file
-        std::string outfile = filename + (col_mum_mode) ? std::string(".fa.col_mums") : std::string(".mums");
+        std::string outfile = filename + ((col_mum_mode) ? std::string(".fa.col_mums") : std::string(".mums"));
         mum_file.open(outfile);
         if (col_mum_mode) {
             size_t docs = num_docs;
@@ -329,11 +329,11 @@ private:
         int idx;
         size_t mum_length;
         // TODO
-        size_t mum_start = j - num_docs;
+        // size_t mum_start = j - num_docs;
         for (auto data : idxs){
             mum_length = data.second;
             mum_file.write(reinterpret_cast<const char*>(&mum_length), BWTBYTES);
-            mum_file.write(reinterpret_cast<const char*>(&mum_start), SSABYTES);
+            mum_file.write(reinterpret_cast<const char*>(&j), SSABYTES);
             // mum_file.write(reinterpret_cast<const char*>(&sa_window[0]), SSABYTES);
             // mum_file.write(reinterpret_cast<const char*>(&sa_window[num_docs - 1]), SSABYTES);
             count += 1;
