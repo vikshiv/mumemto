@@ -18,6 +18,7 @@
 #include <fstream>
 #include <stdio.h>
 #include <numeric>
+#include <algorithm>
 #include <sdsl/bit_vectors.hpp>
 
 KSEQ_INIT(int, read);
@@ -33,6 +34,12 @@ char comp_tab[] = {
 	 64, 't', 'v', 'g', 'h', 'e', 'f', 'c', 'd', 'i', 'j', 'm', 'l', 'k', 'n', 'o',
 	'p', 'q', 'y', 's', 'a', 'a', 'b', 'w', 'x', 'r', 'z', 123, 124, 125, 126, 127
 };
+
+char process(char c) {
+    c = static_cast<char>(std::toupper(c));
+    if (c == 'N') {c = 'A';}
+    return c;
+}
 
 RefBuilder::RefBuilder(std::string input_data, std::string output_prefix, 
                         bool use_rcomp): input_file(input_data), use_revcomp(use_rcomp) {
@@ -78,7 +85,7 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
         FATAL_ERROR("If you only have one class ID, you should not build a document array.");}
 
     // Declare needed parameters for reading/writing
-    output_ref = output_prefix + ".fna";
+    output_ref = output_prefix + ".fa";
     std::ofstream output_fd (output_ref.data(), std::ofstream::out);
     FILE* fp; kseq_t* seq;
     // std::vector<size_t> seq_lengths;
@@ -97,7 +104,7 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
         while (kseq_read(seq)>=0) {
             // Get forward seq, and write to file
 			for (size_t i = 0; i < seq->seq.l; ++i) {
-				seq->seq.s[i] = static_cast<char>(std::toupper(seq->seq.s[i]));
+				seq->seq.s[i] = process(seq->seq.s[i]);
             }
            
             // Added dollar sign as separator, and added 1 to length

@@ -325,13 +325,13 @@ private:
         int idx;
         size_t mum_length;
         // TODO
-        // j -= num_docs;
+        size_t mum_start = j - num_docs;
         for (auto data : idxs){
             mum_length = data.second;
             mum_file.write(reinterpret_cast<const char*>(&mum_length), BWTBYTES);
-            mum_file.write(reinterpret_cast<const char*>(&j), SSABYTES);
-            mum_file.write(reinterpret_cast<const char*>(&sa_window[0]), SSABYTES);
-            mum_file.write(reinterpret_cast<const char*>(&sa_window[num_docs - 1]), SSABYTES);
+            mum_file.write(reinterpret_cast<const char*>(&mum_start), SSABYTES);
+            // mum_file.write(reinterpret_cast<const char*>(&sa_window[0]), SSABYTES);
+            // mum_file.write(reinterpret_cast<const char*>(&sa_window[num_docs - 1]), SSABYTES);
             count += 1;
         }
         return count;

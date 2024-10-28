@@ -37,7 +37,7 @@ int build_main(int argc, char** argv, bool mum_mode) {
     build_opts.validate();
 
     // determine output path for reference, and print all info
-    build_opts.output_ref.assign(build_opts.output_prefix + ".fna");
+    build_opts.output_ref.assign(build_opts.output_prefix + ".fa");
     print_build_status_info(&build_opts, mum_mode);
 
     if (build_opts.input_list.length() == 0) {build_opts.input_list = make_filelist(build_opts.files, build_opts.output_prefix);}

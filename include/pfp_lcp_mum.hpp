@@ -84,11 +84,11 @@ public:
     {
         // Opening output files
         if (write_thresholds) {
-            std::string outfile = filename + std::string(".fna.thr");
+            std::string outfile = filename + std::string(".fa.thr");
             if ((thr_file = fopen(outfile.c_str(), "w")) == nullptr)
                 error("open() file " + outfile + " failed");
 
-            outfile = filename + std::string(".fna.thr_pos");
+            outfile = filename + std::string(".fa.thr_pos");
             if ((thr_pos_file = fopen(outfile.c_str(), "w")) == nullptr)
                 error("open() file " + outfile + " failed");
         }
@@ -107,19 +107,19 @@ public:
                 error("open() file " + outfile + " failed");
         }
         else if (write_rlbwt) {
-            std::string outfile = filename + std::string(".fna.ssa");
-            if ((ssa_file = fopen(outfile.c_str(), "w")) == nullptr)
-                error("open() file " + outfile + " failed");
+            std::string outfile = filename + std::string(".fa.ssa");
+            // if ((ssa_file = fopen(outfile.c_str(), "w")) == nullptr)
+            //     error("open() file " + outfile + " failed");
 
-            outfile = filename + std::string(".fna.esa");
-            if ((esa_file = fopen(outfile.c_str(), "w")) == nullptr)
-                error("open() file " + outfile + " failed");
+            // outfile = filename + std::string(".fa.esa");
+            // if ((esa_file = fopen(outfile.c_str(), "w")) == nullptr)
+            //     error("open() file " + outfile + " failed");
 
-            outfile = filename + std::string(".fna.bwt.heads");
+            outfile = filename + std::string(".fa.bwt.heads");
             if ((bwt_head_file = fopen(outfile.c_str(), "w")) == nullptr)
                 error("open() file " + outfile + " failed");
 
-            outfile = filename + std::string(".fna.bwt.len");
+            outfile = filename + std::string(".fa.bwt.len");
             if ((bwt_len_file = fopen(outfile.c_str(), "w")) == nullptr)
                 error("open() file " + outfile + " failed");
         }
@@ -134,8 +134,8 @@ public:
             fclose(lcp_file);
         }
         else if (write_rlbwt) {
-            fclose(ssa_file);
-            fclose(esa_file);
+            // fclose(ssa_file);
+            // fclose(esa_file);
             fclose(bwt_head_file);
             fclose(bwt_len_file);
         }
@@ -253,7 +253,7 @@ public:
             print_bwt();
         }
         else if (write_rlbwt) {
-            print_sampled_sa();
+            // print_sampled_sa();
             print_rlbwt();
         }
         printProgress(1.0);
@@ -467,7 +467,7 @@ private:
                 print_bwt();
             }
             else if (write_rlbwt) {
-                print_sampled_sa();
+                // print_sampled_sa();
                 print_rlbwt();
             }
 
