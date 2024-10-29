@@ -85,8 +85,8 @@ public:
         // Opening output files
         if (write_thresholds) {
             std::string outfile = filename + std::string(".fa.thr");
-            if ((thr_file = fopen(outfile.c_str(), "w")) == nullptr)
-                error("open() file " + outfile + " failed");
+            // if ((thr_file = fopen(outfile.c_str(), "w")) == nullptr)
+            //     error("open() file " + outfile + " failed");
 
             outfile = filename + std::string(".fa.thr_pos");
             if ((thr_pos_file = fopen(outfile.c_str(), "w")) == nullptr)
@@ -293,7 +293,7 @@ private:
     FILE *ssa_file;
     FILE *esa_file;
 
-    FILE *thr_file;
+    // FILE *thr_file;
     FILE *thr_pos_file;
 
     inline bool inc(phrase_suffix_t& s)
@@ -503,15 +503,15 @@ private:
 
             // Write a zero so the positions of thresholds and BWT runs are the same
             size_t zero = 0;
-            if (fwrite(&zero, THRBYTES, 1, thr_file) != 1)
-                error("THR write error 1");
+            // if (fwrite(&zero, THRBYTES, 1, thr_file) != 1)
+            //     error("THR write error 1");
             if (fwrite(&zero, THRBYTES, 1, thr_pos_file) != 1)
                 error("THR write error 2");
         }
         else
         {
-            if (fwrite(&thresholds[next_char], THRBYTES, 1, thr_file) != 1)
-                error("THR write error 3");
+            // if (fwrite(&thresholds[next_char], THRBYTES, 1, thr_file) != 1)
+            //     error("THR write error 3");
             if (fwrite(&thresholds_pos[next_char], THRBYTES, 1, thr_pos_file) != 1)
                 error("THR write error 4");
         }

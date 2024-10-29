@@ -302,8 +302,9 @@ void print_build_status_info(BuildOptions* opts, bool mum_mode) {
     else 
         std::fprintf(stderr, "\tPFP window size: %d\n", opts->pfp_w);
     if (opts->arrays_out) {std::fprintf(stderr, "\tWriting LCP, BWT and suffix arrays\n");}
-    if (opts->rlbwt_out) {std::fprintf(stderr, "\tWriting RLBWT and run-sampled suffix arrays\n");}
-    if (opts->thresholds_out) {std::fprintf(stderr, "\tWriting thresholds\n");}
+    // if (opts->rlbwt_out) {std::fprintf(stderr, "\tWriting RLBWT and run-sampled suffix arrays\n");}
+    if (opts->rlbwt_out) {std::fprintf(stderr, "\tWriting RLBWT\n");}
+    if (opts->thresholds_out) {std::fprintf(stderr, "\tWriting threshold positions\n");}
     if (opts->col_mum_mode) {std::fprintf(stderr, "\tFinding col-MUMs, written in byte output\n");}
     else {std::fprintf(stderr, "\tFinding multi-MUMs written in human readable output\n");}
     std::fprintf(stderr, "\tMinimum %s length: %d\n", match_type.data(), opts->min_match_len);

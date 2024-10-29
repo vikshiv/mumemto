@@ -25,6 +25,7 @@
 #ifndef _MUM_HH
 #define _MUM_HH
 
+#include <cassert>
 #include <common.hpp>
 #include <ref_builder.hpp>
 
@@ -162,6 +163,7 @@ public:
         mum_file.open(outfile);
         if (col_mum_mode) {
             size_t docs = num_docs;
+            std::cout << num_docs << std::endl;
             mum_file.write(reinterpret_cast<const char*>(&docs), BWTBYTES);
         }
     }
@@ -322,23 +324,17 @@ private:
         return mum_subset;
     }
 
-    // write the mum to file
+    // write col mum to file (SA range with start and mum length)
     inline size_t write_mum(size_t const j, std::vector<std::pair<int, int>> const &idxs)
     {
-        size_t count = 0;
-        int idx;
-        size_t mum_length;
-        // TODO
-        // size_t mum_start = j - num_docs;
-        for (auto data : idxs){
-            mum_length = data.second;
-            mum_file.write(reinterpret_cast<const char*>(&mum_length), BWTBYTES);
-            mum_file.write(reinterpret_cast<const char*>(&j), SSABYTES);
-            // mum_file.write(reinterpret_cast<const char*>(&sa_window[0]), SSABYTES);
-            // mum_file.write(reinterpret_cast<const char*>(&sa_window[num_docs - 1]), SSABYTES);
-            count += 1;
-        }
-        return count;
+        assert(idx.size() == 1);
+        size_t mum_length = mum_length = idxs[0].second;
+        size_t mum_start = j - num_docs;
+        mum_file.write(reinterpret_cast<const char*>(&mum_length), BWTBYTES);
+        mum_file.write(reinterpret_cast<const char*>(&mum_start), SSABYTES);
+        // mum_file.write(reinterpret_cast<const char*>(&sa_window[0]), SSABYTES);
+        // mum_file.write(reinterpret_cast<const char*>(&sa_window[num_docs - 1]), SSABYTES); 
+        return 1;
     }
 
     // write the mum to file
