@@ -25,7 +25,6 @@
 #ifndef _MUM_HH
 #define _MUM_HH
 
-#include <cassert>
 #include <common.hpp>
 #include <ref_builder.hpp>
 
@@ -163,7 +162,6 @@ public:
         mum_file.open(outfile);
         if (col_mum_mode) {
             size_t docs = num_docs;
-            std::cout << num_docs << std::endl;
             mum_file.write(reinterpret_cast<const char*>(&docs), BWTBYTES);
         }
     }
