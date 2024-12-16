@@ -41,7 +41,8 @@ class dictionary{
 public:
   std::vector<uint8_t> d;
   std::vector<uint_t> saD;
-  sdsl::int_vector<5> isaD;
+  // std::vector<uint_t> isaD;
+  sdsl::int_vector<40> isaD;
   std::vector<int_t> lcpD;
   sdsl::rmq_succinct_sct<> rmq_lcp_D;
   sdsl::bit_vector b_d; // Starting position of each phrase in D
@@ -156,9 +157,7 @@ public:
         }
       }
     );
-
     
-
     verbose("Computing RMQ over LCP of dictionary");
     // Compute the LCP rank of D
     _elapsed_time(

@@ -38,7 +38,8 @@ class parse{
 public:
   std::vector<uint32_t> p;
   std::vector<uint_t> saP;
-  sdsl::int_vector<5> isaP;
+  sdsl::int_vector<40> isaP;
+  // std::vector<uint_t> isaP;
 
   std::vector<int_t> ilist; // Inverted list of phrases of P in BWT_P
   sdsl::bit_vector ilist_s; // The ith 1 is in correspondence of the first occurrence of the ith phrase

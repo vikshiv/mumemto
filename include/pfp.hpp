@@ -106,7 +106,9 @@ public:
     verbose("Computing s_lcp_T");
     _elapsed_time(compute_s_lcp_T());
 
-    sdsl::int_vector<5>().swap(dict.isaD);
+    sdsl::int_vector<40>().swap(dict.isaD);
+    // dict.isaD.clear(); 
+    // dict.isaD.shrink_to_fit();
 
     pars.compute_freq();
     pars.compute_ilist();
@@ -238,7 +240,7 @@ public:
     // Reducing memory tentative
     // pars.isaP.clear(); 
     // pars.isaP.shrink_to_fit();
-    sdsl::int_vector<5>().swap(pars.isaP);
+    sdsl::int_vector<40>().swap(pars.isaP);
 
     pars.saP.clear(); 
     pars.saP.shrink_to_fit();
