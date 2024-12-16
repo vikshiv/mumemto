@@ -4,7 +4,7 @@
 
 Mumemto identifies **maximal unique matches (multi-MUMs)** present across a collection of sequences. Multi-MUMs are defined as maximally matching substrings present in each sequence in a collection *exactly once*. Additionally, this tool can identify **multi-MEMs**, maximal exact matches present across sequences, without the uniqueness property. This method is uses the prefix-free parse (PFP) algorithm for suffix array construction on large, repetitive collections of text.
 
-This tool uses PFP to efficiently identify multi-MUM/MEMs. Note that this applies only to highly repetitive texts (such as a collection of closely related genomes, likely intra-species such as a pangenome). We plan to support multi-MUM/MEM finding in more divergent sequences (inter-species, etc.) soon, however this would be less efficient without the PFP pre-processing step.
+This tool uses PFP to efficiently identify multi-MUM/MEMs. Note that this works best with highly repetitive texts (such as a collection of closely related genomes, likely intra-species such as a pangenome). Mumemto does work for more divergent sequences (inter-species, etc.), however it is less memory efficient and may not scale beyond a few genomes (~100Gbp total).
 
 The base code from this repo was adapted from <a href="https://github.com/maxrossi91/pfp-thresholds">pfp-thresholds</a> repository written by <a href="https://github.com/maxrossi91">Massimiliano Rossi</a> and <a href="https://github.com/oma219/docprofiles">docprofiles</a> repository written by <a href="https://github.com/oma219">Omar Ahmed</a>. 
 
@@ -67,6 +67,19 @@ The multi-MUM properties can be loosened to find different types of matches with
 - `-F` controls the total number of occurences in the collection (e.g. filtering out matches that occur frequently due to low complexity)
 
 `-k` is flexible in input format. The user can specify a positive integer, indicating the minimum number of sequences a match should appear in. Passing a negative integer indicates a subset size relative to N, the number of sequences in the collection (i.e. N - k). For instance, to specify a match must appear in at least all sequences _except_ one, we could pass `-k -1`. Similarly, passing negative values to `-F` specifies limits relative to N. Note: when setting `-F` and `-f` together, the max total limit will be the smaller of `F` and `N * f`.
+
+Here are some example use cases:
+
+```
+	 # Find all strict multi-MUMs across a collection
+     mumemto [OPTIONS] [input_fasta [...]] (equivalently -k 0 -f 1 -F 0)
+	 # Find partial multi-MUMs in all sequences but one
+     mumemto -k -1 [OPTIONS] [input_fasta [...]]
+	 # Find multi-MEMs that appear at most 3 times in each sequence
+     mumemto -f 3 [OPTIONS] [input_fasta [...]]
+	 # Find all MEMs that appear at most 100 times within a collection
+     mumemto -f 0 -k 2 -F 100 [OPTIONS] [input_fasta [...]]
+```
 
 **Format of the \*.mums file:**
 ```sh
