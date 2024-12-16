@@ -134,10 +134,8 @@ public:
       ilist_s[j] = 1;
       freq[i] = 0;
     }
-    std::cerr << "last"<<std::endl;
 
     select_ilist_s = sdsl::bit_vector::select_1_type(&ilist_s);
-    std::cerr << "hi"<<std::endl;
 
     for(size_t i = 0; i < saP.size(); ++i)
     {
@@ -147,7 +145,6 @@ public:
       size_t ilist_p = select_ilist_s(prec_phrase + 1) + freq[prec_phrase]++;
       ilist[ilist_p] = i;
     }
-    std::cerr << "hi"<<std::endl;
     freq.clear();
     freq.shrink_to_fit();
     // sdsl::int_vector<40>().swap(freq);
