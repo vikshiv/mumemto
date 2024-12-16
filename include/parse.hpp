@@ -41,7 +41,7 @@ public:
   sdsl::int_vector<40> isaP;
   // std::vector<uint_t> isaP;
 
-  std::vector<int_t> ilist; // Inverted list of phrases of P in BWT_P
+  sdsl::int_vector<40> ilist; // Inverted list of phrases of P in BWT_P
   sdsl::bit_vector ilist_s; // The ith 1 is in correspondence of the first occurrence of the ith phrase
   sdsl::bit_vector::select_1_type select_ilist_s;
 
@@ -122,10 +122,8 @@ public:
 
   void compute_ilist()
   {
-
-    ilist.resize(p.size(),0);
+    ilist.resize(p.size());
     ilist_s = sdsl::bit_vector(p.size() + 1, 0);
-
     // computing the bucket boundaries
     size_t j = 0;
     ilist_s[j++] = 1; // this is equivalent to set pf.freq[0]=1;
@@ -136,9 +134,10 @@ public:
       ilist_s[j] = 1;
       freq[i] = 0;
     }
+    std::cerr << "last"<<std::endl;
 
     select_ilist_s = sdsl::bit_vector::select_1_type(&ilist_s);
-
+    std::cerr << "hi"<<std::endl;
 
     for(size_t i = 0; i < saP.size(); ++i)
     {
@@ -148,9 +147,10 @@ public:
       size_t ilist_p = select_ilist_s(prec_phrase + 1) + freq[prec_phrase]++;
       ilist[ilist_p] = i;
     }
-
+    std::cerr << "hi"<<std::endl;
     freq.clear();
     freq.shrink_to_fit();
+    // sdsl::int_vector<40>().swap(freq);
   }
 
   void compute_freq()
@@ -159,7 +159,7 @@ public:
     for(size_t i = 1; i < p.size(); ++i)
       max_p = std::max(max_p, p[i]);
 
-    freq.resize(max_p+1,0);
+    freq.resize(max_p+1);
     for(size_t i = 0; i < p.size(); ++i)
       freq[p[i]]++;
 
@@ -174,7 +174,7 @@ public:
     written_bytes += my_serialize(p, out, child, "parse");
     written_bytes += my_serialize(saP, out, child, "saP");
     // written_bytes += my_serialize(isaP, out, child, "isaP");
-    written_bytes += my_serialize(ilist, out, child, "ilist");
+    // written_bytes += my_serialize(ilist, out, child, "ilist");
     written_bytes += ilist_s.serialize(out, child, "ilist_s");
     written_bytes += select_ilist_s.serialize(out, child, "select_ilist_s");
     written_bytes += sdsl::write_member(alphabet_size, out, child, "alphabet_size");
@@ -190,13 +190,14 @@ public:
     my_load(p, in);
     my_load(saP, in);
     // my_load(isaP, in);
-    my_load(ilist, in);
+    // my_load(ilist, in);
     ilist_s.load(in);
     select_ilist_s.load(in);
     sdsl::read_member(alphabet_size, in);
   }
 
 private:
+  // sdsl::int_vector<40> freq;
   std::vector<uint_t> freq;
 };
 
