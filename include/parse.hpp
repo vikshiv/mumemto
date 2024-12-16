@@ -38,7 +38,7 @@ class parse{
 public:
   std::vector<uint32_t> p;
   std::vector<uint_t> saP;
-  std::vector<uint_t> isaP;
+  sdsl::int_vector<5> isaP;
 
   std::vector<int_t> ilist; // Inverted list of phrases of P in BWT_P
   sdsl::bit_vector ilist_s; // The ith 1 is in correspondence of the first occurrence of the ith phrase
@@ -79,7 +79,7 @@ public:
     // read_file(tmp_filename.c_str(), freq);
     // freq.insert(freq.begin(), 1);
 
-    compute_freq();
+    // compute_freq();
 
     build();
 
@@ -98,10 +98,10 @@ public:
 
 
     // inverted list of the parsing.
-    verbose("Computing ilist");
-    _elapsed_time(
-      compute_ilist()
-    );
+    // verbose("Computing ilist");
+    // _elapsed_time(
+    //   compute_ilist()
+    // );
 
 
     // inverse suffix array of the parsing.
@@ -172,7 +172,7 @@ public:
 
     written_bytes += my_serialize(p, out, child, "parse");
     written_bytes += my_serialize(saP, out, child, "saP");
-    written_bytes += my_serialize(isaP, out, child, "isaP");
+    // written_bytes += my_serialize(isaP, out, child, "isaP");
     written_bytes += my_serialize(ilist, out, child, "ilist");
     written_bytes += ilist_s.serialize(out, child, "ilist_s");
     written_bytes += select_ilist_s.serialize(out, child, "select_ilist_s");
@@ -188,7 +188,7 @@ public:
   {
     my_load(p, in);
     my_load(saP, in);
-    my_load(isaP, in);
+    // my_load(isaP, in);
     my_load(ilist, in);
     ilist_s.load(in);
     select_ilist_s.load(in);

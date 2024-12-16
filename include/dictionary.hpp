@@ -41,7 +41,7 @@ class dictionary{
 public:
   std::vector<uint8_t> d;
   std::vector<uint_t> saD;
-  std::vector<uint_t> isaD;
+  sdsl::int_vector<5> isaD;
   std::vector<int_t> lcpD;
   sdsl::rmq_succinct_sct<> rmq_lcp_D;
   sdsl::bit_vector b_d; // Starting position of each phrase in D
@@ -177,7 +177,7 @@ public:
 
     written_bytes += my_serialize(d, out, child, "dictionary");
     written_bytes += my_serialize(saD, out, child, "saD");
-    written_bytes += my_serialize(isaD, out, child, "isaD");
+    // written_bytes += my_serialize(isaD, out, child, "isaD");
     written_bytes += my_serialize(lcpD, out, child, "lcpD");
     written_bytes += rmq_lcp_D.serialize(out, child, "rmq_lcp_D");
     written_bytes += b_d.serialize(out, child, "b_d");
@@ -193,7 +193,7 @@ public:
   {
     my_load(d, in);
     my_load(saD, in);
-    my_load(isaD, in);
+    // my_load(isaD, in);
     my_load(lcpD, in);
     rmq_lcp_D.load(in);
     b_d.load(in);
