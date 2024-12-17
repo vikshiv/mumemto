@@ -23,7 +23,7 @@ singularity pull docker://vshiv123/mumemto:latest
 
 ### Compile from scratch
 For starting out, use the commands below to download the repository and build the executable. After running the make command below,
-the `mumemto` executable will be found in the `build/` folder. The following are dependencies: cmake, g++, gcc, libboost, zlib
+the `mumemto` executable will be found in the `build/` folder. The following are dependencies: cmake, g++, gcc, zlib
 
 ```sh
 git clone https://github.com/vshiv18/mumemto
