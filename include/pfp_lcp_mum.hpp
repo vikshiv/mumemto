@@ -131,12 +131,16 @@ public:
 
                 // Hard case
                 int_t lcp_suffix = compute_lcp_suffix(curr,prev);
-
-                typedef std::pair<int_t *, std::pair<int_t *, uint8_t>> pq_t;
+                
+                // really ugly change, but it let's us use int_vector for ilist instead of vector (i.e we can't do pointer arithmetic)
+                // typedef std::pair<size_t, std::pair<size_t, uint8_t>> pq_t;
+                // type -> ( (idx_start, val_start) , ( (idx_end, val_end), bwt_char) ), replacing the pointer with (idx, val)
+                // occ.first.first = idx_start, occ.first.second = val, occ.second.first = idx_end, occ.second.second = bwt
+                typedef std::pair<std::pair<size_t, size_t>, std::pair<size_t, uint8_t>> pq_t;
 
                 // using lambda to compare elements.
-                auto cmp = [](const pq_t &lhs, const pq_t &rhs) {
-                    return *lhs.first > *rhs.first;
+                auto cmp = [](const pq_t lhs, const pq_t rhs) {
+                    return lhs.first.second > rhs.first.second;
                 };
 
                 std::priority_queue<pq_t, std::vector<pq_t>, decltype(cmp)> pq(cmp);
@@ -144,7 +148,8 @@ public:
                 {
                     size_t begin = pf.pars.select_ilist_s(s.phrase + 1);
                     size_t end = pf.pars.select_ilist_s(s.phrase + 2);
-                    pq.push({&pf.pars.ilist[begin], {&pf.pars.ilist[end], s.bwt_char}});
+                    // pq.push({&pf.pars.ilist[begin], {&pf.pars.ilist[end], s.bwt_char}});
+                    pq.push({{begin, pf.pars.ilist[begin]}, {end, s.bwt_char}});
                 }
 
                 size_t prev_occ;
@@ -155,17 +160,17 @@ public:
                         printProgress((double) j / pf.n);
                     auto curr_occ = pq.top();
                     pq.pop();
-
+                    auto curr_occ_first = curr_occ.first.second;
                     if (!first)
                     {
                         // Compute the minimum s_lcpP of the the current and previous occurrence of the phrase in BWT_P
-                        lcp_suffix = curr.suffix_length + min_s_lcp_T(*curr_occ.first, prev_occ);
+                        lcp_suffix = curr.suffix_length + min_s_lcp_T(curr_occ_first, prev_occ);
                     }
                     first = false;
                     // Update min_s
                     if (write_arrays)
                         print_lcp(lcp_suffix, j);
-                    update_ssa(curr, *curr_occ.first);
+                    update_ssa(curr, curr_occ_first);
                     if (write_arrays) {
                         print_sa(); 
                     }
@@ -182,12 +187,14 @@ public:
 
                     
                     // Update prevs
-                    prev_occ = *curr_occ.first;
+                    prev_occ = curr_occ_first;
 
                     // Update pq
-                    curr_occ.first++;
-                    if (curr_occ.first != curr_occ.second.first)
+                    curr_occ.first.first++;
+                    if (curr_occ.first.first != curr_occ.second.first) {
+                        curr_occ.first.second = pf.pars.ilist[curr_occ.first.first];
                         pq.push(curr_occ);
+                    }
 
                     j += 1;
                 }
