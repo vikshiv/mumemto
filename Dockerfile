@@ -8,7 +8,6 @@ RUN apt-get update && apt-get install -y \
     cmake \
     git \
     zlib1g-dev \
-    libboost-all-dev
 
 # Clone the repository
 RUN git clone https://github.com/vshiv18/mumemto && \
