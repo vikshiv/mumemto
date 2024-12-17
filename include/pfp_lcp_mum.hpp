@@ -191,8 +191,10 @@ public:
 
                     // Update pq
                     curr_occ.first.first++;
-                    if (curr_occ.first.first != curr_occ.second.first)
+                    if (curr_occ.first.first != curr_occ.second.first) {
+                        curr_occ.first.second = pf.pars.ilist[curr_occ.first.first];
                         pq.push(curr_occ);
+                    }
 
                     j += 1;
                 }
