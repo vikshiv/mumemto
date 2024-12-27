@@ -4,6 +4,7 @@ import os
 import argparse
 from tqdm.auto import tqdm
 import numpy as np
+from utils import find_coll_blocks, parse_mums
 
 def parse_arguments():    
     parser = argparse.ArgumentParser(description="Plots a synteny plot of MUMs from mumemto")
@@ -39,51 +40,6 @@ def parse_arguments():
     if not args.filename:
         args.filename = args.prefix
     return args
-
-def find_coll_blocks(args, mums, max_length):
-    if args.max_break == None:
-        bp_per_inch = max_length / (args.dpi * args.size[0])
-        max_break = min(bp_per_inch, 100000)
-    else:
-        max_break = args.max_break
-    if args.verbose:
-        print('max gap within a collinear block:', max_break)
-    starts = np.array([m[1] for m in mums])
-    mum_orders = starts.transpose().argsort()
-    mum_gaps = []
-    flips = set([])
-    for i in range(mum_orders.shape[0]):
-        cur = []
-        for l in range(1, mum_orders.shape[1]):
-            left, right = mum_orders[i][l-1], mum_orders[i][l]
-            if mums[left][2][i] == mums[right][2][i]:
-                if mums[left][2][i] == '+':
-                    cur.append((left, right))
-                else:
-                    cur.append((right, left))
-                    flips.add((right, left))
-        mum_gaps.append(cur)
-    common_gaps = set.intersection(*map(set, mum_gaps))
-    left, right = zip(*common_gaps)
-    left, right = set(list(left)), set(list(right))
-    true_collinear_mums = sorted(list(left.intersection(right)))
-    right_coll_mums = sorted(list(left.difference(set(true_collinear_mums)))) # have a right pair, but not a left
-    left_coll_mums = sorted(list(right.difference(set(true_collinear_mums)))) # have a left pair, but not a right
-    large_blocks = list(zip(right_coll_mums, left_coll_mums))
-    ### find the longest stretches of collinear mums
-    small_blocks = []
-    for l, r in large_blocks:
-        last = l
-        for i in range(l, r):
-            lens = np.full(len(mums[i][1]), mums[i][0])
-            lens[(mums[i+1][1] < mums[i][1])] = mums[i+1][0] 
-            gap_lens = np.abs(mums[i][1] - mums[i+1][1]) - lens
-            if gap_lens.max() > max_break and last < i:
-                small_blocks.append((last, i))
-                last = i + 1
-        if last != r:
-            small_blocks.append((last, r))
-    return large_blocks, small_blocks, mum_gaps
 
 def points_to_poly(points):
     starts, ends = tuple(zip(*points))
@@ -202,7 +158,7 @@ def main(args):
     else:
         genome_names = None
     max_length = max(seq_lengths)
-    mums = list(parse_mums(args, seq_lengths))
+    mums = list(parse_mums(args.mumfile, seq_lengths, lenfilter=args.lenfilter, subsample=args.subsample))
     mums = sorted(mums, key=lambda x: x[1][0])
     if args.verbose:
         print('parsed MUMs')
@@ -213,7 +169,8 @@ def main(args):
         mums = [m for m in mums if (m[1] == -1).sum() == 0] # can only merge full MUMs
         polygons, colors = get_mum_polygons(mums, centering, color=args.mum_color, inv_color=args.inv_color)
     else:
-        _, collinear_blocks, _ = find_coll_blocks(args, mums, max_length)
+        _, collinear_blocks, _ = find_coll_blocks(mums, max_length, dpi=args.dpi, size=args.size, 
+                                                 max_break=args.max_break, verbose=args.verbose)
         if args.verbose:
             print('\t-found %d collinear blocks'%(len(collinear_blocks)))
         polygons, colors = get_block_polygons(collinear_blocks, mums, centering, color=args.mum_color, inv_color=args.inv_color)
@@ -222,17 +179,7 @@ def main(args):
     plot(seq_lengths, polygons, colors, centering, genomes=genome_names, alpha=args.alpha, filename=args.filename, dpi=args.dpi, size=args.size, verbose=args.verbose)
     if args.verbose:
         print('done.')
-def parse_mums(args, seq_lengths):
-    def reverse_strand(l, starts, strands):
-        new_starts = np.array([p if s == '+' or s == '' else seq_lengths[idx] - p - l for idx, (p, s) in enumerate(zip(starts, strands))])
-        return (l, new_starts, strands)
-    count = 0
-    for l in open(args.mumfile, 'r').readlines():
-        if count % args.subsample == 0:
-            l = l.strip().split()
-            if int(l[0]) >= args.lenfilter:
-                yield reverse_strand(int(l[0]), [int(v) if v else -1 for v in l[1].split(',')], tuple(l[2].split(',')))
-        count += 1
+
 if __name__ == "__main__":
     args = parse_arguments()
     main(args)
