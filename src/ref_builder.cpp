@@ -10,7 +10,7 @@
 
 #include <ref_builder.hpp>
 #include <pfp_mum.hpp> 
-#include <zlib.h> 
+// #include <zlib.h> 
 #include <kseq.h>
 #include <iostream>
 #include <string>
