@@ -181,8 +181,11 @@ std::string execute_cmd(const char* cmd) {
         FATAL_ERROR("Error occurred while reading popen() stream.");
     }
 
+    // Correct the usage of pclose and WEXITSTATUS
+    int status = pclose(pipe);
+    size_t exit_code = WEXITSTATUS(status);
+
     // Check if the command failed
-    size_t exit_code = WEXITSTATUS(pclose(pipe));
     if (exit_code != 0) {
         std::cout << "\n";
         FATAL_ERROR("external command failed ... here is the error message:\n%s", output.data());
