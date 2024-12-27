@@ -4,7 +4,10 @@ import os
 import argparse
 from tqdm.auto import tqdm
 import numpy as np
-from utils import find_coll_blocks, parse_mums
+try:
+    from mumemto.utils import find_coll_blocks, parse_mums
+except ImportError:
+    from utils import find_coll_blocks, parse_mums
 
 def parse_arguments():    
     parser = argparse.ArgumentParser(description="Plots a synteny plot of MUMs from mumemto")

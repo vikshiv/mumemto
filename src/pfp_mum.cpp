@@ -319,7 +319,7 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
     
     while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:", long_options, &long_index)) >= 0) {
         switch(c) {
-            case 'h': mumemto_usage(); std::exit(1);
+            case 'h': mumemto_usage(); std::exit(0);
             case 'i': opts->input_list.assign(optarg); break;
             case 'o': opts->output_prefix.assign(optarg); break;
             case 'w': opts->pfp_w = std::atoi(optarg); break;
