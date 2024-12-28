@@ -4,7 +4,8 @@ import os
 import argparse
 from tqdm.auto import tqdm
 import numpy as np
-from utils import find_coll_blocks, parse_mums
+import sys
+from utils import MUMdata, find_coll_blocks
 
 def parse_arguments():    
     parser = argparse.ArgumentParser(description="Plots a synteny plot of MUMs from mumemto")
@@ -33,10 +34,14 @@ def parse_arguments():
     args = parser.parse_args()
     if args.mumfile:
         args.prefix = os.path.splitext(args.mumfile)[0]
-        args.lens = args.prefix + '.lengths'
+        lens = args.prefix + '.lengths'
     else:
         args.mumfile = args.prefix + '.mums'
-        args.lens = args.prefix + '.lengths'
+        lens = args.prefix + '.lengths'
+        
+    if args.lens is None:
+        args.lens = lens
+
     if not args.filename:
         args.filename = args.prefix
     return args
@@ -50,7 +55,7 @@ def get_mum_polygons(mums, centering, color='#00A2FF', inv_color='red'):
     polygons = []
     colors = []    
     for (l, starts, strands) in mums:
-        inverted = strands[0] == '-'
+        inverted = not strands[0]
         points = []
         for idx, (x, strand) in enumerate(zip(starts, strands)):
             if x == None:
@@ -59,7 +64,7 @@ def get_mum_polygons(mums, centering, color='#00A2FF', inv_color='red'):
                     colors.append(color)
                 continue
             points.append(((centering[idx] + x, idx), (centering[idx] + x + l, idx)))
-            if not inverted and strand == '-':
+            if not inverted and not strand:
                 inverted = True
                 if len(points) > 2:
                     polygons.append(points_to_poly(points[:-1]))
@@ -67,7 +72,7 @@ def get_mum_polygons(mums, centering, color='#00A2FF', inv_color='red'):
                 polygons.append(points_to_poly(points[-2:]))
                 colors.append(inv_color)
                 points = [points[-1]]
-            elif inverted and strand == '+':
+            elif inverted and strand:
                 inverted = False
                 if len(points) > 2:
                     polygons.append(points_to_poly(points[:-1]))
@@ -84,13 +89,13 @@ def get_block_polygons(collinear_blocks, mums, centering, color='#00A2FF', inv_c
     polygons = []
     colors = []
     for _, (l, r) in enumerate(collinear_blocks):
-        strands = mums[l][2]
-        inverted = strands[0] == '-'
+        strands = mums[l].strands
+        inverted = not strands[0]
         points = []
-        left, right = mums[l][1], mums[r][1] + mums[r][0]
+        left, right = mums[l].starts, mums[r].starts + mums[r].length
         for idx, strand in enumerate(strands):
             points.append(((centering[idx] + left[idx], idx), (centering[idx] + right[idx], idx)))
-            if not inverted and strand == '-':
+            if not inverted and not strand:
                 inverted = True
                 if len(points) > 2:
                     polygons.append(points_to_poly(points[:-1]))
@@ -98,7 +103,7 @@ def get_block_polygons(collinear_blocks, mums, centering, color='#00A2FF', inv_c
                 polygons.append(points_to_poly(points[-2:]))
                 colors.append(inv_color)
                 points = [points[-1]]
-            elif inverted and strand == '+':
+            elif inverted and strand:
                 inverted = False
                 if len(points) > 2:
                     polygons.append(points_to_poly(points[:-1]))
@@ -119,7 +124,7 @@ def plot(genome_lengths, polygons, colors, centering, alpha=0.5, dpi=500, size=N
         
     ax.add_collection(PolyCollection(polygons, linewidths=0, alpha=alpha, edgecolors=colors, facecolors=colors))
     
-    ax.yaxis.set_ticks(range(len(genome_lengths)))
+    ax.yaxis.set_ticks(list(range(len(genome_lengths))))
     ax.tick_params(axis='y', which='both',length=0)
     if genomes:
         ax.set_yticklabels(genomes)
@@ -158,27 +163,37 @@ def main(args):
     else:
         genome_names = None
     max_length = max(seq_lengths)
-    mums = list(parse_mums(args.mumfile, seq_lengths, lenfilter=args.lenfilter, subsample=args.subsample))
-    mums = sorted(mums, key=lambda x: x[1][0])
+    
+    # Use new MUM class
+    mums = MUMdata(args.mumfile, seq_lengths=seq_lengths, lenfilter=args.lenfilter, subsample=args.subsample, verbose=args.verbose)
     if args.verbose:
-        print('parsed MUMs')
+        print(f'Found {mums.num_mums} MUMs', file=sys.stderr)
+
     centering = [0] * len(seq_lengths)
     if args.center:
         centering = [(max_length - g) / 2 for g in seq_lengths]
+
     if args.no_coll_block:
-        mums = [m for m in mums if (m[1] == -1).sum() == 0] # can only merge full MUMs
         polygons, colors = get_mum_polygons(mums, centering, color=args.mum_color, inv_color=args.inv_color)
     else:
-        _, collinear_blocks, _ = find_coll_blocks(mums, max_length, dpi=args.dpi, size=args.size, 
-                                                 max_break=args.max_break, verbose=args.verbose)
+        ### filter out pmums for collinear blocks
+        mums.filter_pmums()
+        if args.max_break is None:
+            bp_per_inch = max_length / (args.dpi * args.size[0])
+            args.max_break = min(bp_per_inch, 100000)
         if args.verbose:
-            print('\t-found %d collinear blocks'%(len(collinear_blocks)))
+            print(f'Finding collinear blocks (max gap = {args.max_break} bp)...', file=sys.stderr, end=' ')
+        _, collinear_blocks, _ = find_coll_blocks(mums, max_break=args.max_break, verbose=args.verbose)
+
+        if args.verbose:
+            print(f'found {len(collinear_blocks)} collinear blocks', file=sys.stderr)
         polygons, colors = get_block_polygons(collinear_blocks, mums, centering, color=args.mum_color, inv_color=args.inv_color)
+    
     if args.verbose:
-        print('built synteny plot. rendering...')
+        print('Rendering plot...', file=sys.stderr)
     plot(seq_lengths, polygons, colors, centering, genomes=genome_names, alpha=args.alpha, filename=args.filename, dpi=args.dpi, size=args.size, verbose=args.verbose)
     if args.verbose:
-        print('done.')
+        print('Done.', file=sys.stderr)
 
 if __name__ == "__main__":
     args = parse_arguments()
