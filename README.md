@@ -10,7 +10,7 @@ The base code from this repo was adapted from <a href="https://github.com/maxros
 
 ## Installation
 
-### Conda/pip
+### Conda and pip installation (recommended)
 Mumemto is available on `bioconda`, or can be installed with pip:
 ```
 ### conda:
@@ -32,8 +32,8 @@ singularity pull docker://vshiv123/mumemto:latest
 ```
 
 ### Compile from scratch
-For starting out, use the commands below to download the repository and build the executable. After running the make command below,
-the `mumemto` executable will be found in the `build/` folder. The following are dependencies: cmake, g++, gcc, zlib
+To build from scratch, download the source code and use cmake/make. After running the make command below,
+the `mumemto` executable will be found in the `build/` folder. The following are dependencies: cmake, g++, gcc
 
 ```sh
 git clone https://github.com/vshiv18/mumemto
@@ -43,6 +43,8 @@ mkdir build
 cd build && cmake ..
 make install
 ```
+
+When compiling from scratch, the downstream python scripts will not be in the appropriate $PYTHONPATH. For these scripts, run the relevant python script directly from the `mumemto/` directory (you may need to install the python dependencies separately). 
 
 ## Getting started
 
@@ -117,6 +119,8 @@ Mumemto can visualize multi-MUMs in a synteny-like format, highlighting conserva
 
 After running `mumemto` on a collection of FASTAs, you can generate a visualization using:
 ```sh
-/path/to/mumemto_repo/analysis/viz_mums.py (-i PREFIX | -m MUMFILE)
+mumemto viz (-i PREFIX | -m MUMFILE)
 ```
-Use `viz_mums.py -h` to see options for customizability. As of now, only strict and partial multi-MUMs are supported (rare multi-MEM support coming soon), thus a `*.mums` output is required.
+Use `mumemto viz -h` to see options for customizability. As of now, only strict and partial multi-MUMs are supported (rare multi-MEM support coming soon), thus a `*.mums` output is required. An interactive plot (with plotly) can be generated with `mumemto viz --interactive`.
+
+
