@@ -65,6 +65,7 @@ def get_mum_shapes(mums, centering, color='rgba(0, 162, 255, 0.5)', inv_color='g
                         path=make_polygon_path(points[:-1]),
                         fillcolor=color,
                         line_color=color,
+                        line=dict(width=0),
                         opacity=0.5
                     ))
                 shapes.append(dict(
@@ -72,6 +73,7 @@ def get_mum_shapes(mums, centering, color='rgba(0, 162, 255, 0.5)', inv_color='g
                     path=make_polygon_path(points[-2:]),
                     fillcolor=inv_color,
                     line_color=inv_color,
+                    line=dict(width=0),
                     opacity=0.5
                 ))
                 points = [points[-1]]
@@ -83,6 +85,7 @@ def get_mum_shapes(mums, centering, color='rgba(0, 162, 255, 0.5)', inv_color='g
                         path=make_polygon_path(points[:-1]),
                         fillcolor=color,
                         line_color=color,
+                        line=dict(width=0),
                         opacity=0.5
                     ))
                 shapes.append(dict(
@@ -90,6 +93,7 @@ def get_mum_shapes(mums, centering, color='rgba(0, 162, 255, 0.5)', inv_color='g
                     path=make_polygon_path(points[-2:]),
                     fillcolor=inv_color,
                     line_color=inv_color,
+                    line=dict(width=0),
                     opacity=0.5
                 ))
                 points = [points[-1]]
@@ -99,6 +103,7 @@ def get_mum_shapes(mums, centering, color='rgba(0, 162, 255, 0.5)', inv_color='g
                 path=make_polygon_path(points),
                 fillcolor=color,
                 line_color=color,
+                line=dict(width=0),
                 opacity=0.5
             ))
     return shapes
@@ -122,6 +127,7 @@ def get_block_shapes(collinear_blocks, mums, centering, color='rgba(0, 162, 255,
                         path=make_polygon_path(points[:-1]),
                         fillcolor=color,
                         line_color=color,
+                        line=dict(width=0),
                         opacity=0.5
                     ))
                 shapes.append(dict(
@@ -129,6 +135,7 @@ def get_block_shapes(collinear_blocks, mums, centering, color='rgba(0, 162, 255,
                     path=make_polygon_path(points[-2:]),
                     fillcolor=inv_color,
                     line_color=inv_color,
+                    line=dict(width=0),
                     opacity=0.5
                 ))
                 points = [points[-1]]
@@ -140,6 +147,7 @@ def get_block_shapes(collinear_blocks, mums, centering, color='rgba(0, 162, 255,
                         path=make_polygon_path(points[:-1]),
                         fillcolor=color,
                         line_color=color,
+                        line=dict(width=0),
                         opacity=0.5
                     ))
                 shapes.append(dict(
@@ -147,6 +155,7 @@ def get_block_shapes(collinear_blocks, mums, centering, color='rgba(0, 162, 255,
                     path=make_polygon_path(points[-2:]),
                     fillcolor=inv_color,
                     line_color=inv_color,
+                    line=dict(width=0),
                     opacity=0.5
                 ))
                 points = [points[-1]]
@@ -156,6 +165,7 @@ def get_block_shapes(collinear_blocks, mums, centering, color='rgba(0, 162, 255,
                 path=make_polygon_path(points),
                 fillcolor=color,
                 line_color=color,
+                line=dict(width=0),
                 opacity=0.5
             ))
     return shapes
