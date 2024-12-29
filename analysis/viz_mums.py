@@ -1,12 +1,8 @@
-#!/usr/bin/env python3
-
 from matplotlib import pyplot as plt
 from matplotlib.collections import PolyCollection
-import os
+import os, sys
 import argparse
-from tqdm.auto import tqdm
-import numpy as np
-from mumemto.utils import find_coll_blocks, MUMdata
+from mumemto.utils import MUMdata, find_coll_blocks
 
 def parse_arguments():    
     parser = argparse.ArgumentParser(description="Plots a synteny plot of MUMs from mumemto")
