@@ -1,8 +1,10 @@
+#!/usr/bin/env python3
+
 import os
 import sys
 import argparse
 import numpy as np
-from utils import MUMdata, find_coll_blocks, get_block_order
+from mumemto.utils import MUMdata, find_coll_blocks, get_block_order
 from tqdm import tqdm
 
 def parse_arguments():

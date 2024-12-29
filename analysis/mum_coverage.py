@@ -1,10 +1,12 @@
+#!/usr/bin/env python3
+
 import numpy as np
 from tqdm.auto import tqdm
 import argparse
 import os
 import sys
 from numba import njit
-from utils import parse_mums_generator
+from mumemto.utils import parse_mums_generator
 
 def parse_arguments():    
     parser = argparse.ArgumentParser(description="Aggregates MUM coverage from mumemto output.")

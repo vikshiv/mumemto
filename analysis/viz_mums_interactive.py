@@ -1,9 +1,11 @@
+#!/usr/bin/env python3
+
 import plotly.graph_objects as go
 import os
 import argparse
 import numpy as np
 import sys
-from utils import find_coll_blocks, MUMdata
+from mumemto.utils import find_coll_blocks, MUMdata
 
 def parse_arguments():    
     parser = argparse.ArgumentParser(description="Plots an interactive synteny plot of MUMs from mumemto")
