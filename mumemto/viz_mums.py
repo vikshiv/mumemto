@@ -122,7 +122,7 @@ def get_block_polygons(collinear_blocks, mums, centering, color='#00A2FF', inv_c
             colors.append(color)
     return polygons, colors
 
-def plot(genome_lengths, polygons, colors, centering, alpha=0.5, dpi=500, size=None, genomes=None, filename=None, verbose=False):
+def plot(args, genome_lengths, polygons, colors, centering, alpha=0.5, dpi=500, size=None, genomes=None, filename=None, verbose=False):
     fig, ax = plt.subplots()
     max_length = max(genome_lengths)
     for idx, g in enumerate(genome_lengths):
@@ -197,7 +197,7 @@ def main(args):
     
     if args.verbose:
         print('Rendering plot...', file=sys.stderr)
-    plot(seq_lengths, polygons, colors, centering, genomes=genome_names, alpha=args.alpha, filename=args.filename, dpi=args.dpi, size=args.size, verbose=args.verbose)
+    plot(args, seq_lengths, polygons, colors, centering, genomes=genome_names, alpha=args.alpha, filename=args.filename, dpi=args.dpi, size=args.size, verbose=args.verbose)
     if args.verbose:
         print('Done.', file=sys.stderr)
 

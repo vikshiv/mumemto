@@ -28,7 +28,7 @@ def parse_arguments(args=None):
     parser.add_argument('--verbose','-v', dest='verbose', help='verbose mode', action='store_true', default=False)
     parser.add_argument('--no-coll-block','-b', dest='no_coll_block', help='plot only MUMs, not collinear blocks (slower) (default: false)', action='store_true', default=False)
     parser.add_argument('--max-gap-len','-g', dest='max_break', help='maximum break between collinear mums within a collinear block (default: 1000)', default=1000, type=int)
-    parser.add_argument('--interactive','-i', dest='interactive', help='interactive mode', action='store_true', default=True)
+    parser.add_argument('--interactive', dest='interactive', help='interactive mode', action='store_true', default=True)
     if args is None:
         args = parser.parse_args()
     else:
@@ -169,7 +169,7 @@ def make_polygon_path(points):
     path += " Z"
     return path
 
-def plot(genome_lengths, shapes, centering, genomes=None, size=(1000, 600), filename=None):
+def plot(args, genome_lengths, shapes, centering, genomes=None, size=(1000, 600), filename=None):
     max_length = max(genome_lengths)
     
     # Create base lines for genomes
@@ -259,7 +259,7 @@ def main(args):
     
     if args.verbose:
         print('Rendering plot...', file=sys.stderr)
-    plot(seq_lengths, shapes, centering, genomes=genome_names, size=args.size, filename=args.filename)
+    plot(args, seq_lengths, shapes, centering, genomes=genome_names, size=args.size, filename=args.filename)
     
     if args.verbose:
         print('Done.', file=sys.stderr)
