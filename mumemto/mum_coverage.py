@@ -6,7 +6,10 @@ import argparse
 import os
 import sys
 from numba import njit
-from mumemto.utils import parse_mums_generator
+try:
+    from utils import parse_mums_generator
+except ImportError:
+    from mumemto.utils import parse_mums_generator
 
 def parse_arguments():    
     parser = argparse.ArgumentParser(description="Aggregates MUM coverage from mumemto output.")

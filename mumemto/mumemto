@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+
+import sys
+import subprocess
+import os
+from importlib import import_module
+
+def run_mumemto(args):
+    """Run the C++ executable with given args"""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    cmd = [os.path.join(script_dir, 'bin', 'mumemto')] + args
+    subprocess.run(cmd)
+
+def run_viz(args):
+    """Run visualization with given args"""
+    if '--interactive' in args:
+        # Remove --interactive flag and import viz_mums_interactive
+        args.remove('--interactive')
+        viz = import_module('mumemto.viz_mums_interactive')
+    else:
+        viz = import_module('mumemto.viz_mums')
+    
+    parsed_args = viz.parse_arguments()
+    viz.main(parsed_args)
+
+def run_inversions(args):
+    """Run inversion detection"""
+    inversions = import_module('mumemto.find_inversions_with_scaffold')
+    parsed_args = inversions.parse_arguments()
+    inversions.main(parsed_args)
+
+def run_coverage(args):
+    """Run MUM coverage analysis"""
+    coverage = import_module('mumemto.mum_coverage')
+    parsed_args = coverage.parse_arguments()
+    coverage.main(parsed_args)
+
+def main():
+    if len(sys.argv) == 1:
+        print("\nmumemto - find maximal [unique | exact] matches using PFP.\n", file=sys.stderr)
+        print("Usage: mumemto [subcommand] [ARGS]\nUse -h for detailed usage for each subcommand.", file=sys.stderr)
+        print("Commands:\n\t[default]\t\tcompute multi-MUMs and MEMS across a collection of sequences\n\tviz\t\t\tvisualize multi-MUM synteny\n\tcoverage\t\tcompute multi-MUM coverage\n\tinversions\t\tidentify inversion SVs", file=sys.stderr)
+        sys.exit(0)
+
+    command = sys.argv[1]
+    args = sys.argv[2:]
+
+    if command == 'viz':
+        run_viz(args)
+    elif command == 'inversions':
+        run_inversions(args)
+    elif command == 'coverage':
+        run_coverage(args)
+    else:
+        # If no special command, pass all args to mumemto executable
+        run_mumemto(sys.argv[1:])
+
+if __name__ == '__main__':
+    main() 

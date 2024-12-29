@@ -4,7 +4,10 @@ import os
 import sys
 import argparse
 import numpy as np
-from mumemto.utils import MUMdata, find_coll_blocks, get_block_order
+try:
+    from utils import MUMdata, find_coll_blocks, get_block_order
+except ImportError:
+    from mumemto.utils import MUMdata, find_coll_blocks, get_block_order
 from tqdm import tqdm
 
 def parse_arguments():
@@ -119,9 +122,8 @@ def inversion_coords(coll_block_order, mums, blocks, i, s, e):
     ref_end = mums[blocks[last][0]][1][0] + mums[blocks[last][0]][0]
     return (i, seq_start, seq_end, ref_start, ref_end)
 
-def main():
-    args = parse_arguments()
-    
+def main(args):
+
     if args.verbose:
         print("hahaLoading sequence information...", file=sys.stderr)
     
@@ -175,5 +177,6 @@ def main():
             print(f"{hap}\t{start}\t{end}\t{ref_start}\t{ref_end}")
 
 if __name__ == '__main__':
-    main()
+    args = parse_arguments()
+    main(args)
 

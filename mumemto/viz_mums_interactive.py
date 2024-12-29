@@ -5,7 +5,10 @@ import os
 import argparse
 import numpy as np
 import sys
-from mumemto.utils import find_coll_blocks, MUMdata
+try:
+    from utils import find_coll_blocks, MUMdata
+except ImportError:
+    from mumemto.utils import find_coll_blocks, MUMdata
 
 def parse_arguments():    
     parser = argparse.ArgumentParser(description="Plots an interactive synteny plot of MUMs from mumemto")
