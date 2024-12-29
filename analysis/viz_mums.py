@@ -32,15 +32,18 @@ def parse_arguments():
     parser.add_argument('--no-coll-block','-b', dest='no_coll_block', help='plot only MUMs, not collinear blocks (slower) (default: false)', action='store_true', default=False)
     parser.add_argument('--max-gap-len','-g', dest='max_break', help='maximum break between collinear mums within a collinear block (default: <1px)', default=None, type=int)
     args = parser.parse_args()
+    
     if args.mumfile:
         args.prefix = os.path.splitext(args.mumfile)[0]
-        lens = args.prefix + '.lengths'
-    else:
+    elif args.prefix:
+        if args.prefix.endswith('.mums'):
+            args.prefix = args.prefix[:-5]
         args.mumfile = args.prefix + '.mums'
-        lens = args.prefix + '.lengths'
+    else:
+        parser.error("Either --mums or --prefix must be provided")
         
     if args.lens is None:
-        args.lens = lens
+        args.lens = args.prefix + '.lengths'
 
     if not args.filename:
         args.filename = args.prefix

@@ -6,15 +6,17 @@ MUM = namedtuple('MUM', ['length', 'starts', 'strands'])
 
 def find_coll_blocks(mums, max_break=100000, verbose=False):
     starts = mums.starts
+    strands = mums.strands
+    lengths = mums.lengths
     mum_orders = starts.transpose().argsort()
     mum_gaps = []
     flips = set([])
-    for i in range(mum_orders.shape[0]):
+    for i in tqdm(range(mum_orders.shape[0]), desc='Finding collinear blocks', disable=not verbose):
         cur = []
         for l in range(1, mum_orders.shape[1]):
             left, right = mum_orders[i][l-1], mum_orders[i][l]
-            if mums[left].strands[i] == mums[right].strands[i]:
-                if mums[left].strands[i]:
+            if strands[left][i] == strands[right][i]:
+                if strands[left][i]:
                     cur.append((left, right))
                 else:
                     cur.append((right, left))
@@ -32,9 +34,9 @@ def find_coll_blocks(mums, max_break=100000, verbose=False):
     for l, r in large_blocks:
         last = l
         for i in range(l, r):
-            lens = np.full(len(mums[i].starts), mums[i].length)
-            lens[(mums[i+1].starts < mums[i].starts)] = mums[i+1].length 
-            gap_lens = np.abs(mums[i].starts - mums[i+1].starts) - lens
+            lens = np.full(len(starts[i]), lengths[i])
+            lens[(starts[i+1] < starts[i])] = lengths[i+1] 
+            gap_lens = np.abs(starts[i] - starts[i+1]) - lens
             if gap_lens.max() > max_break and last < i:
                 small_blocks.append((last, i))
                 last = i + 1
@@ -54,6 +56,22 @@ def get_block_order(mums, blocks):
         poi = np.argsort(values)
         coll_block_orders.append(np.argsort(poi))
     return coll_block_orders
+
+def parse_mums_generator(mumfile, seq_lengths, lenfilter=0, subsample=1):
+    """Generator that yields MUMs one at a time to avoid loading all data at once"""
+    count = 0
+    with open(mumfile, 'r') as f:
+        for line in f:
+            if subsample == 1 or count % subsample == 0:
+                line = line.strip().split()
+                length = int(line[0])
+                if length >= lenfilter:
+                    # Parse the line
+                    strands = [s == '+' for s in line[2].split(',')]
+                    starts = [int(pos) if pos != '' else -1 for pos in line[1].split(',')]
+                    start_positions = [seq_lengths[idx] - pos - length if not s else pos for idx, (pos, s) in enumerate(zip(starts, strands))]
+                    yield MUM(length, start_positions, strands)
+            count += 1
 
 class MUMdata:
     def __init__(self, mumfile, seq_lengths=None, lenfilter=0, subsample=1, verbose=False):
@@ -87,7 +105,7 @@ class MUMdata:
         
         count = 0
         for l in tqdm(open(mumfile, 'r').readlines(), disable=not verbose, desc='Parsing MUMs'):
-            if count % subsample == 0:
+            if subsample == 1 or count % subsample == 0:
                 l = l.strip().split()
                 length = int(l[0])
                 if length >= lenfilter:
