@@ -8,7 +8,7 @@ from importlib import import_module
 def run_mumemto(args):
     """Run the C++ executable with given args"""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    cmd = [os.path.join(script_dir, 'bin', 'mumemto')] + args
+    cmd = [os.path.join(script_dir, 'mumemto_exec')] + args
     subprocess.run(cmd)
 
 def run_viz(args):

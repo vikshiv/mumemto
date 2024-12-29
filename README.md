@@ -10,6 +10,16 @@ The base code from this repo was adapted from <a href="https://github.com/maxros
 
 ## Installation
 
+### Conda/pip
+Mumemto is available on `bioconda`, or can be installed with pip:
+```
+### conda:
+conda install -c bioconda mumemto
+### pip:
+git clone https://github.com/vshiv18/mumemto -b dev
+pip install .
+```
+
 ### Docker/Singularity
 Mumemto is available on `docker` and `singularity`:
 ```
