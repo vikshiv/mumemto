@@ -20,19 +20,19 @@ def run_viz(args):
     else:
         viz = import_module('mumemto.viz_mums')
     
-    parsed_args = viz.parse_arguments()
+    parsed_args = viz.parse_arguments(args)
     viz.main(parsed_args)
 
 def run_inversions(args):
     """Run inversion detection"""
-    inversions = import_module('mumemto.find_inversions_with_scaffold')
-    parsed_args = inversions.parse_arguments()
+    inversions = import_module('mumemto.find_inversions')
+    parsed_args = inversions.parse_arguments(args)
     inversions.main(parsed_args)
 
 def run_coverage(args):
     """Run MUM coverage analysis"""
     coverage = import_module('mumemto.mum_coverage')
-    parsed_args = coverage.parse_arguments()
+    parsed_args = coverage.parse_arguments(args)
     coverage.main(parsed_args)
 
 def main():

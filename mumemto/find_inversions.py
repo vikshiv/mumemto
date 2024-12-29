@@ -10,7 +10,7 @@ except ImportError:
     from mumemto.utils import MUMdata, find_coll_blocks, get_block_order
 from tqdm import tqdm
 
-def parse_arguments():
+def parse_arguments(args=None):
     parser = argparse.ArgumentParser(description="Detect inversions from MUMs. Optionally checks if inversions are flanked by scaffold breaks when AGP files are provided.")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--input-prefix', '-i', dest='prefix', help='prefix for filelist, mums, and lengths files')
@@ -26,7 +26,10 @@ def parse_arguments():
 
     parser.add_argument('--verbose', '-v', action='store_true', help='Print progress updates')
 
-    args = parser.parse_args()
+    if args is None:
+        args = parser.parse_args()
+    else:
+        args = parser.parse_args(args)
     
     # Validate AGP and chromosome arguments
     if bool(args.agp_filelist) ^ bool(args.chr):

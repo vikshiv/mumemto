@@ -7,7 +7,7 @@ try:
 except ImportError:
     from mumemto.utils import MUMdata, find_coll_blocks
 
-def parse_arguments():    
+def parse_arguments(args=None):    
     parser = argparse.ArgumentParser(description="Plots a synteny plot of MUMs from mumemto")
     # parser.add_argument('--filelist', '-f', dest='filelist', help='path to filelist from mumemto', required=True)
     # parser.add_argument('--mums', '-m', dest='mumfile', help='path to *.mum file from mumemto', required=True)
@@ -31,7 +31,10 @@ def parse_arguments():
     parser.add_argument('--verbose','-v', dest='verbose', help='verbose mode', action='store_true', default=False)
     parser.add_argument('--no-coll-block','-b', dest='no_coll_block', help='plot only MUMs, not collinear blocks (slower) (default: false)', action='store_true', default=False)
     parser.add_argument('--max-gap-len','-g', dest='max_break', help='maximum break between collinear mums within a collinear block (default: <1px)', default=None, type=int)
-    args = parser.parse_args()
+    if args is None:
+        args = parser.parse_args()
+    else:
+        args = parser.parse_args(args)
     
     if args.mumfile:
         args.prefix = os.path.splitext(args.mumfile)[0]

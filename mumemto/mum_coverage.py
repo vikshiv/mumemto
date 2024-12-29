@@ -11,7 +11,7 @@ try:
 except ImportError:
     from mumemto.utils import parse_mums_generator
 
-def parse_arguments():    
+def parse_arguments(args=None):    
     parser = argparse.ArgumentParser(description="Aggregates MUM coverage from mumemto output.")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--input-prefix', '-i', dest='prefix', help='prefix for filelist, mums, and lengths files')
@@ -20,7 +20,10 @@ def parse_arguments():
     parser.add_argument('--lengths','-l', dest='lens', help='lengths file, first column is seq length in order of filelist')
     parser.add_argument('--len-filter','-L', dest='lenfilter', help='only consider MUMs longer than threshold', default=0, type=int)
     parser.add_argument('--verbose','-v', dest='verbose', help='verbose mode', action='store_true', default=False)
-    args = parser.parse_args()
+    if args is None:
+        args = parser.parse_args()
+    else:
+        args = parser.parse_args(args)
     
     if args.mumfile:
         args.prefix = os.path.splitext(args.mumfile)[0]
