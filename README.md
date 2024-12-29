@@ -15,6 +15,7 @@ Mumemto is available on `bioconda`, or can be installed with pip:
 ```
 ### conda ###
 conda install -c bioconda mumemto
+
 ### pip ###
 git clone https://github.com/vshiv18/mumemto -b dev
 pip install .
@@ -26,6 +27,7 @@ Mumemto is available on `docker` and `singularity`:
 ### if using docker ###
 docker pull vshiv123/mumemto:latest
 docker run vshiv123/mumemto:latest mumemto -h
+
 ### if using singularity ###
 singularity pull docker://vshiv123/mumemto:latest
 ./mumemto_latest.sif mumemto -h
