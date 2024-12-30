@@ -144,7 +144,7 @@ If you run into any issues or have any questions, please feel free to reach out 
 
 ## Acknowledgements
 
-Portions of code from this repo were adapted from <a href="https://github.com/maxrossi91/pfp-thresholds">pfp-thresholds</a>, written by <a href="https://github.com/maxrossi91">Massimiliano Rossi</a> and <a href="https://github.com/oma219/docprofiles">docprofiles</a> repository written by <a href="https://github.com/oma219">Omar Ahmed</a>. 
+Portions of code from this repo were adapted from <a href="https://github.com/maxrossi91/pfp-thresholds">pfp-thresholds</a>, written by <a href="https://github.com/maxrossi91">Massimiliano Rossi</a> and <a href="https://github.com/oma219/docprofiles">cliffy</a>, written by <a href="https://github.com/oma219">Omar Ahmed</a>. 
 
 ## Citing Mumemto
 
