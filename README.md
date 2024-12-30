@@ -2,11 +2,9 @@
 
 <img src="img/polaroid_tattoo.png" alt="logo" width="292" align="left"/>
 
-Mumemto identifies **maximal unique matches (multi-MUMs)** present across a collection of sequences. Multi-MUMs are defined as maximally matching substrings present in each sequence in a collection *exactly once*. Additionally, this tool can identify **multi-MEMs**, maximal exact matches present across sequences, without the uniqueness property. This method is uses the prefix-free parse (PFP) algorithm for suffix array construction on large, repetitive collections of text.
+Mumemto is a tool for analyzing pangenome sequence collections. It identifies **maximal unique/exact matches (multi-MUMs and multi-MEMs)** present across a collection of sequences. Mumemto can **visualize** pangenome synteny, **identify misassemblies**, and provide a unifiying structure to a pangenome.
 
-This tool uses PFP to efficiently identify multi-MUM/MEMs. Note that this works best with highly repetitive texts (such as a collection of closely related genomes, likely intra-species such as a pangenome).
-
-The base code from this repo was adapted from <a href="https://github.com/maxrossi91/pfp-thresholds">pfp-thresholds</a> repository written by <a href="https://github.com/maxrossi91">Massimiliano Rossi</a> and <a href="https://github.com/oma219/docprofiles">docprofiles</a> repository written by <a href="https://github.com/oma219">Omar Ahmed</a>. 
+This method is uses the prefix-free parse (PFP) algorithm for suffix array construction on large, repetitive collections of text. The main workflow of `mumemto` is to compute the PFP over a collection of sequences, and identify multi-MUMs while computing the SA/LCP/BWT of the input collection. Note that this works best with highly repetitive texts (such as a collection of closely related genomes, likely intra-species such as a pangenome).
 
 ## Installation
 
@@ -64,8 +62,6 @@ To visualize the synteny across the FASTA files in a directory `assemblies/` (ea
 ```
 
 ## Getting started
-
-The basic workflow with `mumemto` is to compute the PFP over a collection of sequences, and identify multi-MUMs while computing the SA/LCP/BWT of the input collection. 
 
 ### Find multi-MUMs and MEMs
 By default, `mumemto` computes multi-MUMs across a collection, without additional parameters. 
@@ -146,6 +142,10 @@ An interactive plot (with plotly) can be generated with `mumemto viz --interacti
 ## Getting Help
 
 If you run into any issues or have any questions, please feel free to reach out to us either (1) through GitHub Issues or (2) reach out to me at vshivak1 [at] jhu.edu
+
+## Acknowledgements
+
+Portions of code from this repo were adapted from <a href="https://github.com/maxrossi91/pfp-thresholds">pfp-thresholds</a>, written by <a href="https://github.com/maxrossi91">Massimiliano Rossi</a> and <a href="https://github.com/oma219/docprofiles">docprofiles</a> repository written by <a href="https://github.com/oma219">Omar Ahmed</a>. 
 
 ## Citing Mumemto
 
