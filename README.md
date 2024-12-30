@@ -58,7 +58,6 @@ To visualize the synteny across the FASTA files in a directory `assemblies/` (ea
 ```
      mumemto assemblies/*.fa -o pangenome
      mumemto viz -i pangenome
-	
 ```
 
 ## Getting started
