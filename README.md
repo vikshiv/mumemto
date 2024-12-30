@@ -10,7 +10,7 @@ The base code from this repo was adapted from <a href="https://github.com/maxros
 
 ## Installation
 
-### Conda and pip installation (recommended)
+<!-- ### Conda and pip installation (recommended)
 Mumemto is available on `bioconda`, or can be installed with pip:
 ```
 ### conda ###
@@ -19,10 +19,17 @@ conda install -c bioconda mumemto
 ### pip ###
 git clone https://github.com/vshiv18/mumemto -b dev
 pip install .
+``` -->
+
+### pip (recommended)
+Mumemto can be installed with pip:
+```
+git clone https://github.com/vshiv18/mumemto
+pip install .
 ```
 
 ### Docker/Singularity
-Mumemto is available on `docker` and `singularity`:
+Mumemto is available on `docker` and `singularity`. Note: this will only install the main mumemto tool, not the python scripts (which can be run separately from the `mumemto/` directory).
 ```
 ### if using docker ###
 docker pull vshiv123/mumemto:latest
@@ -46,7 +53,15 @@ cd build && cmake ..
 make install
 ```
 
-When compiling from scratch, the downstream python scripts will not be in the appropriate $PYTHONPATH. For these scripts, run the relevant python script directly from the `mumemto/` directory (you may need to install the python dependencies separately). 
+Note: downstream python scripts will not be in the appropriate $PYTHONPATH. For these scripts, run the relevant python script directly from the `mumemto/` directory (you may need to install dependencies separately). 
+
+## Quick start
+To visualize the synteny across the FASTA files in a directory `assemblies/` (each sequence is a separate fasta file):
+```
+     mumemto assemblies/*.fa -o pangenome
+     mumemto viz -i pangenome
+	
+```
 
 ## Getting started
 
@@ -58,19 +73,10 @@ By default, `mumemto` computes multi-MUMs across a collection, without additiona
 mumemto -o <output_prefix> [input_fasta [...]]
 ```
 
-The `mumemto` command takes in a list of fasta files as positional arguments and then generates output files using the output prefix. Alternatively, you can provide a file-list, which specifies a list of fastas and which document/class each file belongs in. Passing in fastas as positional arguments will auto-generate a filelist that defines the order of the sequences in the output.
-
-**Example of file-list file:**
-```sh
-/path/to/ecoli_1.fna 1
-/path/to/salmonella_1.fna 2
-/path/to/bacillus_1.fna 3
-/path/to/staph_2.fna 4
-```
-
+### Command line options
 Use the `-h` flag to list additional options and usage: `mumemto -h`.
 
-Mumemto mode options enable the computation of various different classes of exact matches:
+Mumemto options enable the computation of various different classes of exact matches:
 <p align="center">
 <img src="img/viz_def.png" alt="visual_guide" width="600" align="center"/>
 </p>
@@ -94,8 +100,18 @@ Here are some example use cases:
 	 # Find all MEMs that appear at most 100 times within a collection
      mumemto -f 0 -k 2 -F 100 [OPTIONS] [input_fasta [...]]
 ```
+### I/O format
+The `mumemto` command takes in a list of fasta files as positional arguments and then generates output files using the output prefix. Alternatively, you can provide a file-list, which specifies a list of fastas and which document/class each file belongs in. Passing in fastas as positional arguments will auto-generate a filelist that defines the order of the sequences in the output.
 
-**Format of the \*.mums file:**
+**Example of file-list file:**
+```sh
+/path/to/ecoli_1.fna 1
+/path/to/salmonella_1.fna 2
+/path/to/bacillus_1.fna 3
+/path/to/staph_2.fna 4
+```
+
+**Format of the output \*.mums file:**
 ```sh
 [MUM length] [comma-delimited list of offsets within each sequence, in order of filelist] [comma-delimited strand indicators (one of +/-)]
 ```
@@ -103,7 +119,7 @@ If the maximum number of occurences _per_ sequence is set to 1 (indiciating MUMs
 a comma-delimited list of positions where the match begins in each sequence. An empty entry indicates that the MUM was not found in that sequence (only applicable with *-k* flag). The MUMs are sorted in the output file
 lexicographically based on the match sequence.
 
-**Format of the \*.mems file:**
+**Format of the output \*.mems file:**
 ```sh
 [MEM length] [comma-delimited list of offsets for each occurence] [comma-delimited list of sequence IDs, as defined in the filelist] [comma-delimited strand indicators (one of +/-)]
 ```
