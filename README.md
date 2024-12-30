@@ -4,7 +4,7 @@
 
 Mumemto identifies **maximal unique matches (multi-MUMs)** present across a collection of sequences. Multi-MUMs are defined as maximally matching substrings present in each sequence in a collection *exactly once*. Additionally, this tool can identify **multi-MEMs**, maximal exact matches present across sequences, without the uniqueness property. This method is uses the prefix-free parse (PFP) algorithm for suffix array construction on large, repetitive collections of text.
 
-This tool uses PFP to efficiently identify multi-MUM/MEMs. Note that this works best with highly repetitive texts (such as a collection of closely related genomes, likely intra-species such as a pangenome). Mumemto does work for more divergent sequences (inter-species, etc.), however it is less memory efficient and may not scale beyond a few genomes (~100Gbp total).
+This tool uses PFP to efficiently identify multi-MUM/MEMs. Note that this works best with highly repetitive texts (such as a collection of closely related genomes, likely intra-species such as a pangenome).
 
 The base code from this repo was adapted from <a href="https://github.com/maxrossi91/pfp-thresholds">pfp-thresholds</a> repository written by <a href="https://github.com/maxrossi91">Massimiliano Rossi</a> and <a href="https://github.com/oma219/docprofiles">docprofiles</a> repository written by <a href="https://github.com/oma219">Omar Ahmed</a>. 
 
