@@ -139,6 +139,14 @@ After running `mumemto` on a collection of FASTAs, you can generate a visualizat
 ```sh
 mumemto viz (-i PREFIX | -m MUMFILE)
 ```
-Use `mumemto viz -h` to see options for customizability. As of now, only strict and partial multi-MUMs are supported (rare multi-MEM support coming soon), thus a `*.mums` output is required. An interactive plot (with plotly) can be generated with `mumemto viz --interactive`.
+Use `mumemto viz -h` to see options for customizability. As of now, only strict and partial multi-MUMs are supported (rare multi-MEM support coming soon), thus a `*.mums` output is required. 
 
+An interactive plot (with plotly) can be generated with `mumemto viz --interactive`.
 
+## Getting Help
+
+If you run into any issues or have any questions, please feel free to reach out to us either (1) through GitHub Issues or (2) reach out to me at vshivak1 [at] jhu.edu
+
+## Citing Mumemto
+
+Preprint coming soon!

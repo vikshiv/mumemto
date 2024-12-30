@@ -39,7 +39,7 @@ def main():
     if len(sys.argv) == 1:
         print("\nmumemto - find maximal [unique | exact] matches using PFP.\n", file=sys.stderr)
         print("Usage: mumemto [subcommand] [ARGS]\nUse -h for detailed usage for each subcommand.", file=sys.stderr)
-        print("Commands:\n\t[default]\t\tcompute multi-MUMs and MEMS across a collection of sequences\n\tviz\t\t\tvisualize multi-MUM synteny\n\tcoverage\t\tcompute multi-MUM coverage\n\tinversions\t\tidentify inversion SVs", file=sys.stderr)
+        print("Commands:\n\t[default]\t\tcompute multi-MUMs and MEMS across a collection of sequences\n\tviz\t\t\tvisualize multi-MUM synteny\n\tcoverage\t\tcompute multi-MUM coverage\n\tinversion\t\tidentify inversion SVs", file=sys.stderr)
         sys.exit(0)
 
     command = sys.argv[1]
@@ -47,7 +47,7 @@ def main():
 
     if command == 'viz':
         run_viz(args)
-    elif command == 'inversions':
+    elif command == 'inversion':
         run_inversions(args)
     elif command == 'coverage':
         run_coverage(args)
