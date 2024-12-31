@@ -8,20 +8,13 @@ This method is uses the prefix-free parse (PFP) algorithm for suffix array const
 
 ## Installation
 
-<!-- ### Conda and pip installation (recommended)
+### Conda or pip installation (recommended)
 Mumemto is available on `bioconda`, or can be installed with pip:
 ```
 ### conda ###
 conda install -c bioconda mumemto
 
 ### pip ###
-git clone https://github.com/vshiv18/mumemto -b dev
-pip install .
-``` -->
-
-### pip (recommended)
-Mumemto can be installed with pip:
-```
 git clone https://github.com/vshiv18/mumemto
 pip install .
 ```
