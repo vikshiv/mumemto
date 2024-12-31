@@ -55,6 +55,15 @@ def get_mum_shapes(mums, centering, color='rgba(0, 162, 255, 0.5)', inv_color='g
         points = []
         for idx, (x, strand) in enumerate(zip(mum.starts, mum.strands)):
             if x == -1:
+                if len(points) > 2:
+                    shapes.append(dict(
+                        type="path",
+                        path=make_polygon_path(points[:-1]),
+                        fillcolor=color,
+                        line_color=color,
+                        line=dict(width=0),
+                        opacity=0.5
+                    ))
                 continue
             points.append(((centering[idx] + x, idx), (centering[idx] + x + mum.length, idx)))
             if not inverted and not strand:

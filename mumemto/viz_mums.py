@@ -64,7 +64,7 @@ def get_mum_polygons(mums, centering, color='#00A2FF', inv_color='red'):
         inverted = not strands[0]
         points = []
         for idx, (x, strand) in enumerate(zip(starts, strands)):
-            if x == None:
+            if x == -1:
                 if len(points) > 2:
                     polygons.append(points_to_poly(points[:-1]))
                     colors.append(color)
