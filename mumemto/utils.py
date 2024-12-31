@@ -58,7 +58,7 @@ def get_block_order(mums, blocks):
     return coll_block_orders
 
 def parse_mums_generator(mumfile, seq_lengths, lenfilter=0, subsample=1):
-    """Generator that yields MUMs one at a time to avoid loading all data at once"""
+    """Generator that streams MUMs from mumfile"""
     count = 0
     with open(mumfile, 'r') as f:
         for line in f:
@@ -69,8 +69,7 @@ def parse_mums_generator(mumfile, seq_lengths, lenfilter=0, subsample=1):
                     # Parse the line
                     strands = [s == '+' for s in line[2].split(',')]
                     starts = [int(pos) if pos != '' else -1 for pos in line[1].split(',')]
-                    start_positions = [seq_lengths[idx] - pos - length if not s else pos for idx, (pos, s) in enumerate(zip(starts, strands))]
-                    yield MUM(length, start_positions, strands)
+                    yield MUM(length, starts, strands)
             count += 1
 
 class MUMdata:
@@ -114,9 +113,9 @@ class MUMdata:
                     strand_info = l[2].split(',')
                     
                     # Handle reverse strands
-                    for idx, (pos, strand) in enumerate(zip(start_positions, strand_info)):
-                        if strand == '-':
-                            start_positions[idx] = seq_lengths[idx] - pos - length
+                    # for idx, (pos, strand) in enumerate(zip(start_positions, strand_info)):
+                    #     if strand == '-':
+                    #         start_positions[idx] = seq_lengths[idx] - pos - length
                     
                     lengths.append(length)
                     starts.append(start_positions)
