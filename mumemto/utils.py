@@ -109,9 +109,8 @@ class MUMdata:
                 length = int(l[0])
                 if length >= lenfilter:
                     # Parse the line
-                    start_positions = [int(v) if v else -1 for v in l[1].split(',')]
-                    strand_info = l[2].split(',')
-                    
+                    start_positions = l[1]
+                    strand_info = l[2]
                     # Handle reverse strands
                     # for idx, (pos, strand) in enumerate(zip(start_positions, strand_info)):
                     #     if strand == '-':
@@ -119,14 +118,16 @@ class MUMdata:
                     
                     lengths.append(length)
                     starts.append(start_positions)
-                    strands.append([s == '+' for s in strand_info])
+                    strands.append(strand_info)
             count += 1
-        
+        starts = np.genfromtxt(starts, delimiter=',', dtype=int, filling_values=-1)
+        strands = np.genfromtxt(strands, delimiter=',', dtype=str, filling_values='')
+        strands = strands == '+'
         # Convert to numpy arrays all at once
         return (
             np.array(lengths),
-            np.array(starts),
-            np.array(strands)
+            starts,
+            strands
         )
 
     def filter_pmums(self):
