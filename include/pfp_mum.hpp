@@ -155,21 +155,21 @@ struct HelperPrograms {
   /* Contains paths to run helper programs */
   std::string base_path = "";
   std::string parseNT_bin = "newscanNT.x";
-  std::string parse_fasta_bin = "newscan.x";
-  std::string parse_bin = "pscan.x";
+//   std::string parse_fasta_bin = "newscan.x";
+//   std::string parse_bin = "pscan.x";
   
 public:
   void build_paths(std::string base) {
       /* Takes the base path, and combines it with names to generate executable paths */
       base_path.assign(base);
       parseNT_bin.assign(base_path + parseNT_bin);
-      parse_fasta_bin.assign(base_path + parse_fasta_bin);
-      parse_bin.assign(base_path + parse_bin);
+    //   parse_fasta_bin.assign(base_path + parse_fasta_bin);
+    //   parse_bin.assign(base_path + parse_bin);
   }
 
   void validate() const {
       /* Makes sure that each path for an executable is valid */
-      bool invalid_path = !is_file(parseNT_bin) | !is_file(parse_fasta_bin) | !is_file(parse_bin);
+      bool invalid_path = !is_file(parseNT_bin);
       if (invalid_path) {FATAL_ERROR("One or more of helper program paths are invalid.");}
   }
 };
