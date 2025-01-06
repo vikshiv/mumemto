@@ -58,4 +58,4 @@ install(TARGETS mumemto DESTINATION ${PROJECT_BINARY_DIR})
 #install(TARGETS viz DESTINATION ${PROJECT_BINARY_DIR})
 # install(TARGETS newscanNT.x pscan.x newscan.x 
 #         DESTINATION ${PROJECT_BINARY_DIR}/bin)
-install(TARGETS newscanNT.x DESTINATION ${PROJECT_BINARY_DIR}/bin)
+install(TARGETS newscanNT.x DESTINATION ${PROJECT_BINARY_DIR})

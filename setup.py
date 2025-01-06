@@ -74,7 +74,8 @@ def read_requirements():
         'numpy',
         'tqdm',
         'numba',
-        'plotly'
+        'plotly',
+        'cmake'
     ]
     return requirements
 

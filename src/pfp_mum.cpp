@@ -69,7 +69,7 @@ int build_main(int argc, char** argv) {
     else {
         path = std::filesystem::path(std::string(std::getenv("PFPMUM_BUILD_DIR")));
     }
-    helper_bins.build_paths((path / "bin/").string());
+    helper_bins.build_paths((path / "").string());
     helper_bins.validate();
 
     // just read from files if provided
