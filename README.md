@@ -6,22 +6,17 @@ Mumemto is a tool for analyzing pangenome sequence collections. It identifies **
 
 This method is uses the prefix-free parse (PFP) algorithm for suffix array construction on large, repetitive collections of text. The main workflow of `mumemto` is to compute the PFP over a collection of sequences, and identify multi-MUMs while computing the SA/LCP/BWT of the input collection. Note that this works best with highly repetitive texts (such as a collection of closely related genomes, likely intra-species such as a pangenome).
 
+Preprint available at [https://doi.org/10.1101/2025.01.05.631388](https://doi.org/10.1101/2025.01.05.631388).
+
 ## Installation
 
-<!-- ### Conda and pip installation (recommended)
+### Conda or pip installation (recommended)
 Mumemto is available on `bioconda`, or can be installed with pip:
 ```
 ### conda ###
 conda install -c bioconda mumemto
 
 ### pip ###
-git clone https://github.com/vshiv18/mumemto -b dev
-pip install .
-``` -->
-
-### pip (recommended)
-Mumemto can be installed with pip:
-```
 git clone https://github.com/vshiv18/mumemto
 pip install .
 ```
@@ -148,4 +143,4 @@ Portions of code from this repo were adapted from <a href="https://github.com/ma
 
 ## Citing Mumemto
 
-Preprint coming soon!
+Preprint: [https://doi.org/10.1101/2025.01.05.631388](https://doi.org/10.1101/2025.01.05.631388)
