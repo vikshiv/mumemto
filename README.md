@@ -10,15 +10,11 @@ Preprint available at [https://doi.org/10.1101/2025.01.05.631388](https://doi.or
 
 ## Installation
 
-### Conda or pip installation (recommended)
-Mumemto is available on `bioconda`, or can be installed with pip:
+### Conda installation (recommended)
+Mumemto is available on `bioconda`:
 ```
 ### conda ###
 conda install -c bioconda mumemto
-
-### pip ###
-git clone https://github.com/vshiv18/mumemto
-pip install .
 ```
 
 ### Docker/Singularity
