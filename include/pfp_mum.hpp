@@ -163,8 +163,6 @@ public:
       /* Takes the base path, and combines it with names to generate executable paths */
       base_path.assign(base);
       parseNT_bin.assign(base_path + parseNT_bin);
-    //   parse_fasta_bin.assign(base_path + parse_fasta_bin);
-    //   parse_bin.assign(base_path + parse_bin);
   }
 
   void validate() const {
