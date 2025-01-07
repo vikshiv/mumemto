@@ -11,9 +11,11 @@ Preprint available at [https://doi.org/10.1101/2025.01.05.631388](https://doi.or
 ## Installation
 
 ### Conda installation (recommended)
-Mumemto is available on `bioconda`:
+Mumemto is available on `bioconda`. Note conda installation requires python 3.9+. We recommend using a new environment:
 ```
 ### conda ###
+conda create -n mumemto_env python=3.9 # or higher
+conda activate mumemto_env
 conda install -c bioconda mumemto
 ```
 
@@ -42,7 +44,7 @@ cd build && cmake ..
 make install
 ```
 
-Note: downstream python scripts will not be in the appropriate $PYTHONPATH. For these scripts, run the relevant python script directly from the `mumemto/` directory (you may need to install dependencies separately). 
+Note: For the python scripts, you may need to install dependencies separately. The following are dependencies: matplotlib, numpy, tqdm, plotly (for interactive plots), and numba (for the coverage script).
 
 ## Quick start
 To visualize the synteny across the FASTA files in a directory `assemblies/` (each sequence is a separate fasta file):
