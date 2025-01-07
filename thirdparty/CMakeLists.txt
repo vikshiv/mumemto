@@ -63,7 +63,7 @@ FetchContent_Declare(
 
 FetchContent_GetProperties(gsacak)
 if(NOT gsacak_POPULATED)
-    FetchContent_Populate(gsacak)
+    FetchContent_MakeAvailable(gsacak)
     add_library(gsacak OBJECT ${gsacak_SOURCE_DIR}/gsacak.c ${gsacak_SOURCE_DIR}/gsacak.h)
     target_include_directories(gsacak PUBLIC "${gsacak_SOURCE_DIR}")
     
