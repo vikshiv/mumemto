@@ -3,37 +3,51 @@
 import sys
 import subprocess
 import os
-from importlib import import_module
 
 def run_mumemto(args):
     """Run the C++ executable with given args"""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    cmd = [os.path.join(script_dir, 'mumemto_exec')] + args
-    subprocess.run(cmd)
+    executable = os.path.join(script_dir, 'mumemto_exec')
+    if not os.path.exists(executable):
+        print("Error: mumemto_exec not found. Please install with 'make' first.", file=sys.stderr)
+        sys.exit(1)
+    subprocess.run([executable] + args)
 
 def run_viz(args):
     """Run visualization with given args"""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
     if '--interactive' in args:
-        # Remove --interactive flag and import viz_mums_interactive
+        # Remove --interactive flag and use interactive script
         args.remove('--interactive')
-        viz = import_module('mumemto.viz_mums_interactive')
+        script = os.path.join(script_dir, '_mumemto', 'viz_mums_interactive.py')
     else:
-        viz = import_module('mumemto.viz_mums')
+        script = os.path.join(script_dir, '_mumemto', 'viz_mums.py')
     
-    parsed_args = viz.parse_arguments(args)
-    viz.main(parsed_args)
+    if not os.path.exists(script):
+        if '--interactive' in args:
+            print(f"Error: mumemto not installed. Please run mumemto/viz_mums_interactive.py directly.", file=sys.stderr)
+        else:
+            print(f"Error: mumemto not installed. Please run mumemto/viz_mums.py directly.", file=sys.stderr)
+        sys.exit(1)
+    subprocess.run([sys.executable, script] + args)
 
 def run_inversions(args):
     """Run inversion detection"""
-    inversions = import_module('mumemto.find_inversions')
-    parsed_args = inversions.parse_arguments(args)
-    inversions.main(parsed_args)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    script = os.path.join(script_dir, '_mumemto', 'find_inversions.py')
+    if not os.path.exists(script):
+        print(f"Error: mumemto not installed. Please run mumemto/find_inversions.py directly.", file=sys.stderr)
+        sys.exit(1)
+    subprocess.run([sys.executable, script] + args)
 
 def run_coverage(args):
     """Run MUM coverage analysis"""
-    coverage = import_module('mumemto.mum_coverage')
-    parsed_args = coverage.parse_arguments(args)
-    coverage.main(parsed_args)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    script = os.path.join(script_dir, '_mumemto', 'mum_coverage.py')
+    if not os.path.exists(script):
+        print(f"Error: mumemto not installed. Please run mumemto/mum_coverage.py directly.", file=sys.stderr)
+        sys.exit(1)
+    subprocess.run([sys.executable, script] + args)
 
 def main():
     if len(sys.argv) == 1:
