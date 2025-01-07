@@ -54,8 +54,16 @@ endif()
 add_subdirectory(include)
 add_subdirectory(src)
 
-install(TARGETS mumemto DESTINATION ${PROJECT_BINARY_DIR})
-#install(TARGETS viz DESTINATION ${PROJECT_BINARY_DIR})
-# install(TARGETS newscanNT.x pscan.x newscan.x 
-#         DESTINATION ${PROJECT_BINARY_DIR}/bin)
+install(TARGETS mumemto_exec DESTINATION ${PROJECT_BINARY_DIR})
 install(TARGETS newscanNT.x DESTINATION ${PROJECT_BINARY_DIR})
+
+# Copy mumemto package to build directory as _mumemto
+file(COPY ${CMAKE_SOURCE_DIR}/mumemto/ DESTINATION ${PROJECT_BINARY_DIR}/_mumemto)
+
+# Move the script from _mumemto to build directory and make it executable
+file(RENAME ${PROJECT_BINARY_DIR}/_mumemto/mumemto ${PROJECT_BINARY_DIR}/mumemto)
+file(CHMOD ${PROJECT_BINARY_DIR}/mumemto 
+     PERMISSIONS 
+     OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+     GROUP_READ GROUP_EXECUTE 
+     WORLD_READ WORLD_EXECUTE)
