@@ -16,6 +16,7 @@ Mumemto is available on `bioconda`. Note conda installation requires python 3.9+
 ### conda ###
 conda create -n mumemto_env python=3.9 # or higher
 conda activate mumemto_env
+
 conda install -c bioconda mumemto
 ```
 
