@@ -130,7 +130,7 @@ mumemto viz (-i PREFIX | -m MUMFILE)
 ```
 Use `mumemto viz -h` to see options for customizability. As of now, only strict and partial multi-MUMs are supported (rare multi-MEM support coming soon), thus a `*.mums` output is required. 
 
-An interactive plot (with plotly) can be generated with `mumemto viz --interactive`.
+An interactive plot (with plotly, still experimental) can be generated with `mumemto viz --interactive`.
 
 ## Getting Help
 
