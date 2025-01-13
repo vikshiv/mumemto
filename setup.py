@@ -24,26 +24,28 @@ class CMakeBuild(Command):
         # Create build directory
         os.makedirs(self.build_temp, exist_ok=True)
         
-        # Follow meta.yaml build steps
         subprocess.check_call(['cmake', '-S', '.', '-B', self.build_temp])
         subprocess.check_call(['cmake', '--build', self.build_temp])
         subprocess.check_call(['cmake', '--install', self.build_temp])
         
-        # Get the bin directory (equivalent to $PREFIX/bin in meta.yaml)
+        # Get the bin directory
         bin_dir = self.install_scripts
         pkg_dir = os.path.join(self.build_lib, 'mumemto')
         
         os.makedirs(pkg_dir, exist_ok=True)
         os.makedirs(bin_dir, exist_ok=True)
         
-        # Copy executables to bin directory as per meta.yaml
         shutil.copy2(
-            os.path.join(self.build_temp, 'mumemto'),
+            os.path.join(self.build_temp, 'mumemto_exec'),
             os.path.join(bin_dir, 'mumemto_exec')
         )
         shutil.copy2(
-            os.path.join(self.build_temp, 'bin', 'newscanNT.x'),
+            os.path.join(self.build_temp, 'newscanNT.x'),
             os.path.join(bin_dir, 'newscanNT.x')
+        )
+        shutil.copy2(
+            'mumemto/mumemto',
+            os.path.join(bin_dir, 'mumemto')
         )
         
         # Copy Python files
@@ -68,20 +70,19 @@ class CustomInstall(install):
         super().run()
 
 def read_requirements():
-    """Read the requirements"""
+    """Read the requirements matching meta.yaml"""
     requirements = [
         'matplotlib',
         'numpy',
         'tqdm',
         'numba',
-        'plotly',
-        'cmake'
+        'plotly'
     ]
     return requirements
 
 setup(
     name="mumemto",
-    version="1.1.0",
+    version="1.1.1",
     packages=find_packages(),
     install_requires=read_requirements(),
     scripts=['mumemto/mumemto'],
@@ -97,7 +98,7 @@ setup(
     long_description="Mumemto is a tool for finding a variety of matches across collections of sequences like a pangenome. It includes a visualization tool for visualizing pangenome synteny.",
     author="vikshiv",
     url="https://github.com/vikshiv/mumemto",
-    license="GPL-3.0",
+    license="GPL-3.0-only",
     python_requires='>=3.6',
     classifiers=[
         "Programming Language :: Python :: 3",
