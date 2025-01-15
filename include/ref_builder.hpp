@@ -30,7 +30,6 @@ public:
 
 private:
     std::vector<std::string> input_files;
-    std::vector<size_t> document_ids;
     std::string output_prefix;
 }; // end of RefBuilder class
 

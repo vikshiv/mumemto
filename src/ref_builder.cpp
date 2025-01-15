@@ -62,8 +62,8 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
 
         // Make sure the filelist has at least 2 columns (name and doc_id)
         // ASSERT((word_list.size() >= 2), "Input file-list does not have expected structure.");
-        if (word_list.size() == 1)
-            word_list.push_back(std::to_string(curr_id + 1));
+        // if (word_list.size() == 1)
+        //     word_list.push_back(std::to_string(curr_id + 1));
 
         if (!is_file(word_list[0])) {
             FATAL_ERROR("The following path in the input list is not valid: %s", word_list[0].data());}
@@ -72,28 +72,28 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
         input_files.push_back(word_list[0]);
 
         // Make sure second column is valid integer, and starts at 1
-        if (!is_integer(word_list[1])) 
-            FATAL_ERROR("A document ID in the file_list is not an integer: %s", word_list[1].data());  
-        if (member_num == 0 && std::stoi(word_list[1]) != 1) 
-            FATAL_ERROR("The first ID in file_list must be 1");
+        // if (!is_integer(word_list[1])) 
+        //     FATAL_ERROR("A document ID in the file_list is not an integer: %s", word_list[1].data());  
+        // if (member_num == 0 && std::stoi(word_list[1]) != 1) 
+        //     FATAL_ERROR("The first ID in file_list must be 1");
             
-        if (std::stoi(word_list[1]) ==  static_cast<int>(curr_id) || std::stoi(word_list[1]) == static_cast<int>(curr_id+1)) {
-            if (std::stoi(word_list[1]) == static_cast<int>(curr_id+1)) 
-                {
-                    curr_id+=1;
-                }
-            document_ids.push_back(curr_id);
-        } else
-            FATAL_ERROR("The IDs in the file_list must be staying constant or increasing by 1.");
-        member_num += 1;
+        // if (std::stoi(word_list[1]) ==  static_cast<int>(curr_id) || std::stoi(word_list[1]) == static_cast<int>(curr_id+1)) {
+        //     if (std::stoi(word_list[1]) == static_cast<int>(curr_id+1)) 
+        //         {
+        //             curr_id+=1;
+        //         }
+        //     document_ids.push_back(curr_id);
+        // } else
+        //     FATAL_ERROR("The IDs in the file_list must be staying constant or increasing by 1.");
+        // member_num += 1;
     }
     
     // Make sure we have parsed each line, and it has multiple groups
-    ASSERT((document_ids.size() == input_files.size()), "Issue with file-list parsing occurred.");
-    if (document_ids.back() == 1) {
+    // ASSERT((document_ids.size() == input_files.size()), "Issue with file-list parsing occurred.");
+    if (input_files.size() == 1) {
         FATAL_ERROR("Multiple FASTA inputs required. Perhaps split a multi-FASTA into multiple files?");}
 
-    this->num_docs = curr_id;
+    this->num_docs = input_files.size();
 }
 void RefBuilder::build_input_file() {
     // Declare needed parameters for reading/writing
@@ -129,27 +129,27 @@ void RefBuilder::build_input_file() {
         fclose(fp);
 
         // Check if we are transitioning to a new group OR If it is the last file, output current sequence length
-        if ((iter_index == document_ids.size()-1) || (iter_index < document_ids.size()-1 && document_ids[iter_index] != document_ids[iter_index+1])) {
-            for (auto i = 0; i < seq_vec.size(); ++i) {
-                output_fd << '>' << name_vec.at(i) << '\n' << seq_vec.at(i) << '\n';
-            }
-            // Get reverse complement, and print it
-            // Based on seqtk reverse complement code, that does it 
-            // in place. (https://github.com/lh3/seqtk/blob/master/seqtk.c)
-            if (use_revcomp) {
-                for (auto i = seq_vec.size(); i-- != 0; ) {
-                    rev_comp(seq_vec.at(i));
-                    output_fd << '>' << name_vec.at(i) << "_rev_comp" << '\n' << seq_vec.at(i) << '\n';
-                    curr_id_seq_length += seq_vec.at(i).length();
-                }
-            }
-            // for (auto s = seq_vec.begin(); s != seq_vec.end(); ++s) {
-            //     kseq_destroy(*s);
-            // }
-            seq_lengths.push_back(curr_id_seq_length);
-            curr_id += 1; curr_id_seq_length = 0;
-            name_vec.clear(); seq_vec.clear();
+        // if ((iter_index == document_ids.size()-1) || (iter_index < document_ids.size()-1 && document_ids[iter_index] != document_ids[iter_index+1])) {
+        for (auto i = 0; i < seq_vec.size(); ++i) {
+            output_fd << '>' << name_vec.at(i) << '\n' << seq_vec.at(i) << '\n';
         }
+        // Get reverse complement, and print it
+        // Based on seqtk reverse complement code, that does it 
+        // in place. (https://github.com/lh3/seqtk/blob/master/seqtk.c)
+        if (use_revcomp) {
+            for (auto i = seq_vec.size(); i-- != 0; ) {
+                rev_comp(seq_vec.at(i));
+                output_fd << '>' << name_vec.at(i) << "_rev_comp" << '\n' << seq_vec.at(i) << '\n';
+                curr_id_seq_length += seq_vec.at(i).length();
+            }
+        }
+        // for (auto s = seq_vec.begin(); s != seq_vec.end(); ++s) {
+        //     kseq_destroy(*s);
+        // }
+        seq_lengths.push_back(curr_id_seq_length);
+        curr_id += 1; curr_id_seq_length = 0;
+        name_vec.clear(); seq_vec.clear();
+        // }
     }
     output_fd.close();
 

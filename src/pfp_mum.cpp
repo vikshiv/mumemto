@@ -128,7 +128,7 @@ int build_main(int argc, char** argv) {
     
 
     if (!build_opts.keep_temp && !build_opts.from_parse)
-        remove_temp_files(build_opts.output_ref);
+        remove_temp_files(build_opts.output_prefix);
     std::cerr << "\n";
     
     return 0;
@@ -278,18 +278,17 @@ std::string make_filelist(std::vector<std::string> files, std::string output_pre
     std::string fname = output_prefix + "_filelist.txt";
     std::ofstream outfile(fname);
     for (size_t i = 0; i < files.size(); ++i) {
-        outfile << std::filesystem::absolute(files[i]).string() << " " << i + 1 << std::endl;
+        outfile << std::filesystem::absolute(files[i]).string() << std::endl;
     }
     outfile.close();
     return fname;
 }
 
 void remove_temp_files(std::string filename) {
-    std::vector<std::string> temp_files = {".dict", ".occ", ".parse_old", ".last", ".parse"};
+    std::vector<std::string> temp_files = {".fna", ".fna.dict", ".fna.occ", ".fna.parse_old", ".fna.last", ".fna.parse", "_filelist.txt"};
     for (auto &ext : temp_files) {
         std::filesystem::remove(std::filesystem::path(filename + ext));
     }
-    std::filesystem::remove(std::filesystem::path(filename));
 }
 
 
