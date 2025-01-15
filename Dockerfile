@@ -5,7 +5,10 @@ FROM ubuntu:latest
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
-    python3-venv
+    python3-venv \
+    git \
+    cmake \
+    build-essential
 
 # Create and activate virtual environment
 ENV VIRTUAL_ENV=/opt/venv
