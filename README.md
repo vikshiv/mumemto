@@ -12,7 +12,7 @@ Preprint available at [https://doi.org/10.1101/2025.01.05.631388](https://doi.or
 
 ### Conda installation (recommended)
 Mumemto is available on `bioconda`. Note conda installation requires python 3.9+. We recommend using a new environment:
-```
+```sh
 ### conda ###
 conda create -n mumemto_env python=3.9 # or higher
 conda activate mumemto_env
@@ -22,7 +22,7 @@ conda install -c bioconda mumemto
 
 ### Docker/Singularity
 Mumemto is available on `docker` and `singularity`. Note: this will only install the main mumemto tool, not the python scripts (which can be run separately from the `mumemto/` directory).
-```
+```sh
 ### if using docker ###
 docker pull vshiv123/mumemto:latest
 docker run vshiv123/mumemto:latest -h
@@ -50,7 +50,7 @@ Note: For the python scripts, you may need to install dependencies separately. T
 
 ## Quick start
 To visualize the synteny across the FASTA files in a directory `assemblies/` (each sequence is a separate fasta file):
-```
+```sh
      mumemto assemblies/*.fa -o pangenome
      mumemto viz -i pangenome
 ```
@@ -80,7 +80,7 @@ The multi-MUM properties can be loosened to find different types of matches with
 
 Here are some example use cases:
 
-```
+```sh
 	 # Find all strict multi-MUMs across a collection
      mumemto [OPTIONS] [input_fasta [...]] (equivalently -k 0 -f 1 -F 0)
 	 # Find partial multi-MUMs in all sequences but one
