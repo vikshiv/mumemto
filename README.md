@@ -51,8 +51,8 @@ Note: For the python scripts, you may need to install dependencies separately. T
 ## Quick start
 To visualize the synteny across the FASTA files in a directory `assemblies/` (each sequence is a separate fasta file):
 ```sh
-     mumemto assemblies/*.fa -o pangenome
-     mumemto viz -i pangenome
+mumemto assemblies/*.fa -o pangenome
+mumemto viz -i pangenome
 ```
 
 ## Getting started
