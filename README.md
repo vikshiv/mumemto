@@ -25,11 +25,11 @@ Mumemto is available on `docker` and `singularity`. Note: this will only install
 ```
 ### if using docker ###
 docker pull vshiv123/mumemto:latest
-docker run vshiv123/mumemto:latest mumemto -h
+docker run vshiv123/mumemto:latest -h
 
 ### if using singularity ###
-singularity pull docker://vshiv123/mumemto:latest
-./mumemto_latest.sif mumemto -h
+singularity pull mumemto.sif docker://vshiv123/mumemto:latest
+./mumemto.sif -h # or any subcommand, e.g. ./mumemto.sif viz
 ```
 
 ### Compile from scratch
