@@ -70,7 +70,6 @@ class CustomInstall(install):
         super().run()
 
 def read_requirements():
-    """Read the requirements matching meta.yaml"""
     requirements = [
         'matplotlib',
         'numpy',
