@@ -8,14 +8,13 @@ RUN apt-get update && apt-get install -y \
     cmake \
     git \
     zlib1g-dev \
+    python3 \
+    python3-pip
 
-# Clone the repository
+# Clone the repository and install using pip
 RUN git clone https://github.com/vshiv18/mumemto && \
     cd mumemto && \
-    mkdir build && \
-    cd build && \
-    cmake .. && \
-    make install
+    pip install .
 
-# Add the build directory to the PATH
-ENV PATH="/mumemto/build:${PATH}"
+# Set the entrypoint
+ENTRYPOINT ["mumemto"]
