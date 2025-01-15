@@ -140,6 +140,8 @@ If you run into any issues or have any questions, please feel free to reach out 
 
 Portions of code from this repo were adapted from <a href="https://github.com/maxrossi91/pfp-thresholds">pfp-thresholds</a>, written by <a href="https://github.com/maxrossi91">Massimiliano Rossi</a> and <a href="https://github.com/oma219/docprofiles">cliffy</a>, written by <a href="https://github.com/oma219">Omar Ahmed</a>. 
 
-## Citing Mumemto
+## Citing Mumemto and reproducing results
 
 Preprint: [https://doi.org/10.1101/2025.01.05.631388](https://doi.org/10.1101/2025.01.05.631388)
+
+Scripts to reproduce the results in the preprint are found in this repo: https://github.com/vikshiv/mumemto-reproducibility-scripts
