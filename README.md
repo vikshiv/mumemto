@@ -79,7 +79,7 @@ The multi-MUM properties can be loosened to find different types of matches with
 
 Here are some example use cases:
 
-```
+```sh
 	 # Find all strict multi-MUMs across a collection
      mumemto [OPTIONS] [input_fasta [...]] (equivalently -k 0 -f 1 -F 0)
 	 # Find partial multi-MUMs in all sequences but one
@@ -104,7 +104,7 @@ The `mumemto` command takes in a list of fasta files as positional arguments and
 ```sh
 [MUM length] [comma-delimited list of offsets within each sequence, in order of filelist] [comma-delimited strand indicators (one of +/-)]
 ```
-If the maximum number of occurences _per_ sequence is set to 1 (indiciating MUMs), a `*.mums` file is generated. This contains each MUM as a separate line, where the first value is the match length, and the second is 
+If the maximum number of occurences _per_ sequence is set to 1 (indicating MUMs), a `*.mums` file is generated. This contains each MUM as a separate line, where the first value is the match length, and the second is 
 a comma-delimited list of positions where the match begins in each sequence. An empty entry indicates that the MUM was not found in that sequence (only applicable with *-k* flag). The MUMs are sorted in the output file
 lexicographically based on the match sequence.
 

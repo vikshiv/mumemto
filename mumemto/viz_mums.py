@@ -24,7 +24,8 @@ def parse_arguments(args=None):
     parser.add_argument('--center','-c', dest='center', action='store_true', help='center plot', default=False)
     parser.add_argument('--inversion-color','-ic', dest='inv_color', help='color for inversions', default='green')
     parser.add_argument('--mum-color','-mc', dest='mum_color', help='color as hex (default: #00A2FF)', default='#00A2FF', type=str)
-    parser.add_argument('--alpha','-a', dest='alpha', help='opacity of mums [0-1] (default: 0.5)', default=0.5, type=float)
+    parser.add_argument('--alpha','-a', dest='alpha', help='opacity of mums [0-1] (default: 0.8 for blocks, 0.1 for MUMs)', type=float)
+    parser.add_argument('--linewidth','-lw', dest='linewidth', help='linewidth of mums (default: 0 for blocks, 0.05 for MUMs)', type=float)
     parser.add_argument('--fout','-o', dest='filename', help='plot fname (default: input_prefix)')
     parser.add_argument('--dims', dest='size', help='fig dimensions (inches) (default: 6.4, 4.8)', default=(6.4,4.8), type=float, nargs=2)
     parser.add_argument('--dpi','-d', dest='dpi', help='dpi', default=500, type=int)
@@ -50,6 +51,13 @@ def parse_arguments(args=None):
 
     if not args.filename:
         args.filename = args.prefix
+        
+    # Set defaults based on no_coll_block flag
+    if args.alpha is None:
+        args.alpha = 0.05 if args.no_coll_block else 0.8
+    if args.linewidth is None:
+        args.linewidth = 0.05 if args.no_coll_block else 0
+        
     return args
 
 def points_to_poly(points):
@@ -122,13 +130,13 @@ def get_block_polygons(collinear_blocks, mums, centering, color='#00A2FF', inv_c
             colors.append(color)
     return polygons, colors
 
-def plot(args, genome_lengths, polygons, colors, centering, alpha=0.5, dpi=500, size=None, genomes=None, filename=None, verbose=False):
+def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, genomes=None, filename=None):
     fig, ax = plt.subplots()
     max_length = max(genome_lengths)
     for idx, g in enumerate(genome_lengths):
-        ax.plot([centering[idx] + 0,centering[idx] + g], [idx, idx], alpha=0.2, linewidth=0.75)
+        ax.plot([centering[idx] + 0, centering[idx] + g], [idx, idx], alpha=0.2, linewidth=0.75)
         
-    ax.add_collection(PolyCollection(polygons, linewidths=0, alpha=alpha, edgecolors=colors, facecolors=colors))
+    ax.add_collection(PolyCollection(polygons, linewidths=args.linewidth, alpha=args.alpha, edgecolors=colors, facecolors=colors))
     
     ax.yaxis.set_ticks(list(range(len(genome_lengths))))
     ax.tick_params(axis='y', which='both',length=0)
@@ -197,7 +205,7 @@ def main(args):
     
     if args.verbose:
         print('Rendering plot...', file=sys.stderr)
-    plot(args, seq_lengths, polygons, colors, centering, genomes=genome_names, alpha=args.alpha, filename=args.filename, dpi=args.dpi, size=args.size, verbose=args.verbose)
+    plot(args, seq_lengths, polygons, colors, centering, genomes=genome_names, filename=args.filename, dpi=args.dpi, size=args.size)
     if args.verbose:
         print('Done.', file=sys.stderr)
 
