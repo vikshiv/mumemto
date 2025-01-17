@@ -95,7 +95,7 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
 
     this->num_docs = curr_id;
 }
-void RefBuilder::build_input_file() {
+int RefBuilder::build_input_file() {
     // Declare needed parameters for reading/writing
     output_ref = this->output_prefix + ".fna";
     std::ofstream output_fd (output_ref.data(), std::ofstream::out);
@@ -125,8 +125,14 @@ void RefBuilder::build_input_file() {
             // output_fd << '>' << seq->name.s << '\n' << seq->seq.s << '\n';
             curr_id_seq_length += seq->seq.l;
         }
+
         kseq_destroy(seq);
         fclose(fp);
+        if (seq->seq.l == 0) {
+            output_fd.close();
+            std::cerr << std::endl << "Empty input file found: " + *iter << std::endl;
+            return 1;
+        }
 
         // Check if we are transitioning to a new group OR If it is the last file, output current sequence length
         if ((iter_index == document_ids.size()-1) || (iter_index < document_ids.size()-1 && document_ids[iter_index] != document_ids[iter_index+1])) {
@@ -190,4 +196,5 @@ void RefBuilder::build_input_file() {
         outfile << doc_name << " " << (seq_lengths[seq_lengths.size() - 1] - 1) / includes_rc << std::endl;
         outfile.close();
     }
+    return 0;
 }

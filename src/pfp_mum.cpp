@@ -51,13 +51,14 @@ int build_main(int argc, char** argv) {
     // Build the input reference file, and bitvector labeling the end for each doc
     STATUS_LOG("build_main", "building the reference file based on file-list");
     auto start = std::chrono::system_clock::now();
-    ref_build.build_input_file();
+    int input_file_status = ref_build.build_input_file();
+    if (input_file_status == 1) {
+        remove_temp_files(build_opts.output_prefix);
+        FATAL_ERROR("Please check the input files and ensure that it contains valid FASTA files. Cleaning up...");
+    }
     DONE_LOG((std::chrono::system_clock::now() - start));
 
-    // Make sure that document numbers can be store in 2 bytes
-    // if (ref_build.num_docs >= MAXDOCS)
-    //     FATAL_ERROR("An index cannot be build over %ld documents, "
-    //                 "please reduce to a max of 65,535 docs.", ref_build.num_docs);
+    
 
     // Determine the paths to the BigBWT executables
     HelperPrograms helper_bins;

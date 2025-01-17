@@ -26,7 +26,7 @@ public:
     size_t total_length = 0;
     
     RefBuilder(std::string input_data, std::string output_prefix, bool use_rcomp);
-    void build_input_file();
+    int build_input_file();
 
 private:
     std::vector<std::string> input_files;
