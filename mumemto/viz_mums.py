@@ -184,6 +184,9 @@ def main(args):
     else:
         ### filter out pmums for collinear blocks
         mums.filter_pmums()
+        if len(mums) == 0:
+            print('No strict MUMs found after filtering. Try turning off collinear blocking with --no-coll-block', file=sys.stderr)
+            return
         if args.max_break is None:
             bp_per_inch = max_length / (args.dpi * args.size[0])
             args.max_break = min(bp_per_inch, 100000)
