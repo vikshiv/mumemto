@@ -12,7 +12,7 @@ Preprint available at [https://doi.org/10.1101/2025.01.05.631388](https://doi.or
 
 ### Conda installation (recommended)
 Mumemto is available on `bioconda`. Note conda installation requires python 3.9+. We recommend using a new environment:
-```
+```sh
 ### conda ###
 conda create -n mumemto_env python=3.9 # or higher
 conda activate mumemto_env
@@ -22,14 +22,15 @@ conda install -c bioconda mumemto
 
 ### Docker/Singularity
 Mumemto is available on `docker` and `singularity`. Note: this will only install the main mumemto tool, not the python scripts (which can be run separately from the `mumemto/` directory).
-```
+```sh
 ### if using docker ###
 docker pull vshiv123/mumemto:latest
-docker run vshiv123/mumemto:latest mumemto -h
+docker run vshiv123/mumemto:latest -h
 
 ### if using singularity ###
-singularity pull docker://vshiv123/mumemto:latest
-./mumemto_latest.sif mumemto -h
+singularity pull mumemto.sif docker://vshiv123/mumemto:latest
+./mumemto.sif -h
+ # or any subcommand, e.g. ./mumemto.sif viz
 ```
 
 ### Compile from scratch
@@ -49,9 +50,9 @@ Note: For the python scripts, you may need to install dependencies separately. T
 
 ## Quick start
 To visualize the synteny across the FASTA files in a directory `assemblies/` (each sequence is a separate fasta file):
-```
-     mumemto assemblies/*.fa -o pangenome
-     mumemto viz -i pangenome
+```sh
+mumemto assemblies/*.fa -o pangenome
+mumemto viz -i pangenome
 ```
 
 ## Getting started
@@ -130,7 +131,7 @@ mumemto viz (-i PREFIX | -m MUMFILE)
 ```
 Use `mumemto viz -h` to see options for customizability. As of now, only strict and partial multi-MUMs are supported (rare multi-MEM support coming soon), thus a `*.mums` output is required. 
 
-An interactive plot (with plotly) can be generated with `mumemto viz --interactive`.
+An interactive plot (with plotly, still experimental) can be generated with `mumemto viz --interactive`.
 
 ## Getting Help
 
@@ -140,6 +141,8 @@ If you run into any issues or have any questions, please feel free to reach out 
 
 Portions of code from this repo were adapted from <a href="https://github.com/maxrossi91/pfp-thresholds">pfp-thresholds</a>, written by <a href="https://github.com/maxrossi91">Massimiliano Rossi</a> and <a href="https://github.com/oma219/docprofiles">cliffy</a>, written by <a href="https://github.com/oma219">Omar Ahmed</a>. 
 
-## Citing Mumemto
+## Citing Mumemto and reproducing results
 
 Preprint: [https://doi.org/10.1101/2025.01.05.631388](https://doi.org/10.1101/2025.01.05.631388)
+
+Scripts to reproduce the results in the preprint are found in this repo: https://github.com/vikshiv/mumemto-reproducibility-scripts

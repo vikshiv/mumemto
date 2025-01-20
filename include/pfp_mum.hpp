@@ -95,8 +95,7 @@ struct BuildOptions {
             if (p.parent_path().string().empty() && !p.string().empty())
                 output_prefix = "./" + output_prefix;
             else if (!is_dir(p.parent_path().string()))
-                FATAL_ERROR("Output path prefix is not in a valid directory."); 
-
+                std::filesystem::create_directories(p.parent_path());
             // if (max_mem_freq < -1)
             //     FATAL_ERROR("Maximum MEM frequency cannot be negative (-1 indicates no limit on MEM frequency)"); 
 
