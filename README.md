@@ -8,6 +8,8 @@ This method is uses the prefix-free parse (PFP) algorithm for suffix array const
 
 Preprint available at [https://doi.org/10.1101/2025.01.05.631388](https://doi.org/10.1101/2025.01.05.631388).
 
+### For detailed usage, see the [Mumemto wiki](https://github.com/vikshiv/mumemto/wiki)
+
 ## Installation
 
 ### Conda installation (recommended)
