@@ -125,10 +125,10 @@ int RefBuilder::build_input_file() {
             // output_fd << '>' << seq->name.s << '\n' << seq->seq.s << '\n';
             curr_id_seq_length += seq->seq.l;
         }
-
+        
         kseq_destroy(seq);
         fclose(fp);
-        if (seq->seq.l == 0) {
+        if (curr_id_seq_length == 0) {
             output_fd.close();
             std::cerr << std::endl << "Empty input file found: " + *iter << std::endl;
             return 1;
