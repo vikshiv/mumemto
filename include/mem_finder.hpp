@@ -149,7 +149,7 @@ protected:
             curpos = sa_buffer.at(i - buffer_start) - doc_offsets[curdoc];
             if (revcomp && curpos >= doc_lens[curdoc]) {
                 curstrand = '-';
-                curpos = curpos - doc_lens[curdoc];
+                curpos = doc_lens[curdoc] + doc_lens[curdoc] - curpos - length;
             }
             else
                 curstrand = '+';
