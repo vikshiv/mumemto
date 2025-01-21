@@ -136,18 +136,24 @@ int RefBuilder::build_input_file() {
 
         // Check if we are transitioning to a new group OR If it is the last file, output current sequence length
         // if ((iter_index == document_ids.size()-1) || (iter_index < document_ids.size()-1 && document_ids[iter_index] != document_ids[iter_index+1])) {
-        for (auto i = 0; i < seq_vec.size(); ++i) {
+        for (auto i = 0; i < seq_vec.size() - 1; ++i) {
             output_fd << '>' << name_vec.at(i) << '\n' << seq_vec.at(i) << '\n';
         }
+        output_fd << '>' << name_vec.at(seq_vec.size() - 1) << '\n' << seq_vec.at(seq_vec.size() - 1) << '$' << '\n';
+        curr_id_seq_length += 1;
         // Get reverse complement, and print it
         // Based on seqtk reverse complement code, that does it 
         // in place. (https://github.com/lh3/seqtk/blob/master/seqtk.c)
         if (use_revcomp) {
-            for (auto i = seq_vec.size(); i-- != 0; ) {
+            for (auto i = seq_vec.size(); i-- != 1; ) {
                 rev_comp(seq_vec.at(i));
                 output_fd << '>' << name_vec.at(i) << "_rev_comp" << '\n' << seq_vec.at(i) << '\n';
                 curr_id_seq_length += seq_vec.at(i).length();
             }
+            rev_comp(seq_vec.at(0));
+            output_fd << '>' << name_vec.at(0) << "_rev_comp" << '\n' << seq_vec.at(0) << '$' << '\n';
+            curr_id_seq_length += seq_vec.at(0).length();
+            curr_id_seq_length += 1;
         }
         // for (auto s = seq_vec.begin(); s != seq_vec.end(); ++s) {
         //     kseq_destroy(*s);
@@ -188,12 +194,10 @@ int RefBuilder::build_input_file() {
         std::string lengths_fname = output_prefix + ".lengths";
         std::ofstream outfile(lengths_fname);
         std::string doc_name;
-        for (size_t i = 0; i < seq_lengths.size() - 1; ++i) {
+        for (size_t i = 0; i < seq_lengths.size(); ++i) {
             doc_name = use_input_paths ? std::filesystem::absolute(input_files[i]).string() : ("sequence_" + std::to_string(i + 1));
-            outfile << doc_name << " " << seq_lengths[i] / includes_rc << std::endl;
+            outfile << doc_name << " " << (seq_lengths[i] / includes_rc) - 1 << std::endl;
         }
-        doc_name = use_input_paths ? std::filesystem::absolute(input_files[seq_lengths.size() - 1]).string() : ("sequence_" + std::to_string(seq_lengths.size()));
-        outfile << doc_name << " " << (seq_lengths[seq_lengths.size() - 1] - 1) / includes_rc << std::endl;
         outfile.close();
     }
     return 0;
