@@ -79,7 +79,7 @@ class MUMdata:
             lengths_file = mumfile.replace('.mums', '.lengths')
             try:
                 with open(lengths_file, 'r') as f:
-                    seq_lengths = [int(l.strip()) for l in f.readlines()]
+                    seq_lengths = [int(l.strip().split()[1]) for l in f.readlines()]
             except FileNotFoundError:
                 raise ValueError("Either a *.lengths file or an input seq_lengths array is required")
                 
