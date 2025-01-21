@@ -103,7 +103,7 @@ int RefBuilder::build_input_file() {
     std::vector<std::string> seq_vec;
     std::vector<std::string> name_vec;
     // std::vector<size_t> seq_lengths;
-
+    
     // Start working on building the reference file by reading each file ...
     size_t curr_id = 1;
     size_t curr_id_seq_length = 0;
