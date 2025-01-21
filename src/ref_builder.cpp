@@ -102,12 +102,17 @@ int RefBuilder::build_input_file() {
     FILE* fp; kseq_t* seq;
     std::vector<std::string> seq_vec;
     std::vector<std::string> name_vec;
-    // std::vector<size_t> seq_lengths;
+    std::vector<std::vector<size_t>> multifasta_lengths;
+    std::vector<std::vector<std::string>> multifasta_names;
+    std::vector<size_t> temp_lengths;
+    std::vector<std::string> temp_names;
 
     // Start working on building the reference file by reading each file ...
     size_t curr_id = 1;
     size_t curr_id_seq_length = 0;
     for (auto iter = input_files.begin(); iter != input_files.end(); ++iter) {
+        temp_lengths = std::vector<size_t>();
+        temp_names = std::vector<std::string>();
         fp = fopen((*iter).data(), "r"); 
         if(fp == 0) {std::exit(1);}
 
@@ -124,8 +129,12 @@ int RefBuilder::build_input_file() {
             // Added dollar sign as separator, and added 1 to length
             // output_fd << '>' << seq->name.s << '\n' << seq->seq.s << '\n';
             curr_id_seq_length += seq->seq.l;
+            temp_lengths.push_back(seq->seq.l);
+            temp_names.push_back(seq->name.s);
         }
-        
+        multifasta_lengths.push_back(temp_lengths);
+        multifasta_names.push_back(temp_names);
+
         kseq_destroy(seq);
         fclose(fp);
         if (curr_id_seq_length == 0) {
@@ -200,5 +209,19 @@ int RefBuilder::build_input_file() {
         }
         outfile.close();
     }
+    // write out multifasta length info
+    if (1) {
+        int includes_rc = use_revcomp ? 2 : 1;
+        std::string lengths_fname = output_prefix + ".multilengths";
+        std::ofstream outfile(lengths_fname);
+        for (size_t i = 0; i < multifasta_lengths.size(); ++i) {
+            outfile << std::filesystem::absolute(input_files[i]).string() << " * " << (seq_lengths[i] / includes_rc) - 1 << std::endl;
+            for (size_t j = 0; j < multifasta_lengths[i].size(); ++j) {
+                outfile << std::filesystem::absolute(input_files[i]).string() << " " << multifasta_names[i][j] << " " << multifasta_lengths[i][j] << std::endl;
+            }
+        }
+        outfile.close();
+    }
+
     return 0;
 }

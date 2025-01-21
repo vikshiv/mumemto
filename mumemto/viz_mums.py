@@ -1,6 +1,7 @@
 from matplotlib import pyplot as plt
 from matplotlib.collections import PolyCollection
 import os, sys
+import numpy as np
 import argparse
 try:
     from utils import MUMdata, find_coll_blocks
@@ -17,6 +18,7 @@ def parse_arguments(args=None):
     group.add_argument('--mums', '-m', dest='mumfile', help='path to *.mum file from mumemto')
     
     parser.add_argument('--lengths','-l', dest='lens', help='lengths file, first column is seq length in order of filelist')
+    parser.add_argument('--multilengths','-ml', dest='multilengths', help='multilengths file, first column is seq length in order of filelist')
     
     parser.add_argument('--filelist', '-f', dest='filelist', help='if the filelist is provided, then FASTA filenames are used as labels')
     parser.add_argument('--len-filter','-L', dest='lenfilter', help='only plot MUMs longer than threshold', default=0, type=int)
@@ -133,10 +135,46 @@ def get_block_polygons(collinear_blocks, mums, centering, color='#00A2FF', inv_c
 def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, genomes=None, filename=None):
     fig, ax = plt.subplots()
     max_length = max(genome_lengths)
+    
+    ### adds ticks for multifasta AND colored segments
+    # if args.multilengths:
+    #     idx = -1
+    #     total_length = 0
+    #     prev_length = 0
+    #     contig_idx = 0
+    #     for l in open(args.multilengths, 'r').readlines():
+    #         l = l.strip().split()
+    #         if l[1] == '*':
+    #             idx += 1; total_length = 0; prev_length = 0; contig_idx = 0; continue
+    #         if total_length > 0:
+    #             ax.plot([centering[idx] + total_length, centering[idx] + total_length], [idx - 0.25, idx + 0.25], alpha=0.5, linewidth=0.5, color=cm.tab20(contig_idx % 20))
+    #         prev_length = total_length
+    #         total_length += int(l[2])
+    #         ax.plot([centering[idx] + prev_length, centering[idx] + total_length], [idx, idx], alpha=0.2, linewidth=0.75, color=cm.tab20(contig_idx % 20))
+    #         contig_idx += 1
+    # else:
+    #     for idx, g in enumerate(genome_lengths):
+    #         ax.plot([centering[idx] + 0, centering[idx] + g], [idx, idx], alpha=0.2, linewidth=0.75)
+
+    ### Just plots lines for genomes
     for idx, g in enumerate(genome_lengths):
         ax.plot([centering[idx] + 0, centering[idx] + g], [idx, idx], alpha=0.2, linewidth=0.75)
         
     ax.add_collection(PolyCollection(polygons, linewidths=args.linewidth, alpha=args.alpha, edgecolors=colors, facecolors=colors))
+    
+    ### adds ticks for multifasta
+    # if args.multilengths:
+    #     idx = -1
+    #     total_length = 0
+    #     for l in open(args.multilengths, 'r').readlines():
+    #         l = l.strip().split()
+    #         if l[1] == '*':
+    #             idx += 1; total_length = 0; continue
+    #         if total_length > 0:
+    #             ax.plot([centering[idx] + total_length, centering[idx] + total_length], [idx - 0.25, idx + 0.25], alpha=0.5, linewidth=0.25)
+    #         total_length += int(l[2])
+    # for idx, g in enumerate(genome_lengths):
+    #     ax.plot([centering[idx] + 0, centering[idx] + g], [idx, idx], alpha=0.2, linewidth=0.75)
     
     ax.yaxis.set_ticks(list(range(len(genome_lengths))))
     ax.tick_params(axis='y', which='both',length=0)
@@ -183,6 +221,28 @@ def main(args):
     if args.verbose:
         print(f'Found {mums.num_mums} MUMs', file=sys.stderr)
 
+    if args.multilengths:
+        offset = []
+        cur_offset = []
+        total_length = 0
+        for l in open(args.multilengths, 'r').readlines():
+            l = l.strip().split()
+            if l[1] == '*':
+                if cur_offset:
+                    offset.append(cur_offset)
+                total_length = 0; cur_offset = []
+                continue
+            cur_offset.append(int(l[2]))
+        offset.append(cur_offset)
+        assert [sum(o) for o in offset] == seq_lengths
+        ### offset the mums by the contig locations
+        offset = np.array(offset)
+        breaks = np.cumsum(offset, axis=1)
+        breaks = np.hstack((np.array([[0]*len(seq_lengths)]).transpose(), breaks))
+        contig_idx = np.array([np.searchsorted(breaks[idx], mums.starts[:,idx]) - 1 for idx in range(len(seq_lengths))]).transpose()
+        partial_mask = mums.starts != -1
+        mums.starts = mums.starts + 1000000
+    
     centering = [0] * len(seq_lengths)
     if args.center:
         centering = [(max_length - g) / 2 for g in seq_lengths]
