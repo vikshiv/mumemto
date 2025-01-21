@@ -161,7 +161,7 @@ int RefBuilder::build_input_file() {
 
     // Add 1 to last document for $ and find total length
     size_t total_input_length = 0;
-    seq_lengths[seq_lengths.size()-1] += 1; // for $
+    // seq_lengths[seq_lengths.size()-1] += 1; // for $
     for (auto length: seq_lengths) {
         total_input_length += length;
     }
