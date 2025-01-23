@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from matplotlib import pyplot as plt
+from matplotlib import cm
 from matplotlib.collections import PolyCollection
 import os, sys
 import numpy as np
@@ -20,7 +21,6 @@ def parse_arguments(args=None):
     group.add_argument('--mums', '-m', dest='mumfile', help='path to *.mum file from mumemto')
     
     parser.add_argument('--lengths','-l', dest='lens', help='lengths file, first column is seq length in order of filelist')
-    parser.add_argument('--multilengths','-ml', dest='multilengths', help='multilengths file, first column is seq length in order of filelist')
     
     parser.add_argument('--filelist', '-f', dest='filelist', help='if the filelist is provided, then FASTA filenames are used as labels')
     parser.add_argument('--len-filter','-L', dest='lenfilter', help='only plot MUMs longer than threshold', default=0, type=int)
@@ -36,6 +36,12 @@ def parse_arguments(args=None):
     parser.add_argument('--verbose','-v', dest='verbose', help='verbose mode', action='store_true', default=False)
     parser.add_argument('--no-coll-block','-b', dest='no_coll_block', help='plot only MUMs, not collinear blocks (slower) (default: false)', action='store_true', default=False)
     parser.add_argument('--max-gap-len','-g', dest='max_break', help='maximum break between collinear mums within a collinear block (default: <1px)', default=None, type=int)
+    
+    # handle multi-fasta inputs
+    parser.add_argument('--multilengths','-ml', dest='multilengths', help='multilengths file, first column is seq length in order of filelist')
+    parser.add_argument('--mode', dest='mode', choices=['normal', 'delineated', 'gapped'],
+                       help='Plotting mode for multi-fasta inputs (default: normal)', default='normal')
+
     if args is None:
         args = parser.parse_args()
     else:
@@ -62,6 +68,8 @@ def parse_arguments(args=None):
     if args.linewidth is None:
         args.linewidth = 0.05 if args.no_coll_block else 0
         
+    if (args.mode == 'gapped' or args.mode == 'delineated') and args.multilengths is None:
+        parser.error('multi-lengths file is required for gapped or delineated mode')
     return args
 
 def points_to_poly(points):
@@ -134,49 +142,44 @@ def get_block_polygons(collinear_blocks, mums, centering, color='#00A2FF', inv_c
             colors.append(color)
     return polygons, colors
 
-def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, genomes=None, filename=None):
+def plot(args, genome_lengths, polygons, colors, centering, spacer=100000, dpi=500, size=None, genomes=None, filename=None):
     fig, ax = plt.subplots()
     max_length = max(genome_lengths)
-    
-    ### adds ticks for multifasta AND colored segments
-    # if args.multilengths:
-    #     idx = -1
-    #     total_length = 0
-    #     prev_length = 0
-    #     contig_idx = 0
-    #     for l in open(args.multilengths, 'r').readlines():
-    #         l = l.strip().split()
-    #         if l[1] == '*':
-    #             idx += 1; total_length = 0; prev_length = 0; contig_idx = 0; continue
-    #         if total_length > 0:
-    #             ax.plot([centering[idx] + total_length, centering[idx] + total_length], [idx - 0.25, idx + 0.25], alpha=0.5, linewidth=0.5, color=cm.tab20(contig_idx % 20))
-    #         prev_length = total_length
-    #         total_length += int(l[2])
-    #         ax.plot([centering[idx] + prev_length, centering[idx] + total_length], [idx, idx], alpha=0.2, linewidth=0.75, color=cm.tab20(contig_idx % 20))
-    #         contig_idx += 1
-    # else:
-    #     for idx, g in enumerate(genome_lengths):
-    #         ax.plot([centering[idx] + 0, centering[idx] + g], [idx, idx], alpha=0.2, linewidth=0.75)
+    # Plot genome lines based on mode
+    if args.mode == 'normal':
+        # Just plot simple genome lines
+        for idx, g in enumerate(genome_lengths):
+            ax.plot([centering[idx] + 0, centering[idx] + g], [idx, idx], 
+                    alpha=0.2, linewidth=0.75)
+            
+    elif args.mode == 'delineated':
+        # Plot lines with delineators for multifasta
+        offsets = args.multilengths.cumsum(axis=1)
+        for idx in range(offsets.shape[0]):
+            last_offset = 0
+            for i, offset in enumerate([0] + offsets[idx][:-1].tolist()):
+                ax.plot([centering[idx] + offset, centering[idx] + offset], 
+                        [idx - 0.25, idx + 0.25], alpha=0.5, linewidth=0.25, color=cm.tab20((i+1) % 20))
+                ax.plot([centering[idx] + last_offset, centering[idx] + offset], 
+                        [idx, idx], alpha=0.2, linewidth=0.75, color=cm.tab20(i % 20))
+                last_offset = offset
+                
+    elif args.mode == 'gapped':
+        # Plot with gaps between subsequences
+        offsets = np.array([0] + (args.multilengths.max(axis=0) + spacer).cumsum().tolist()[:-1])
+        for p in offsets:
+            ax.plot([p, p], [0, len(genome_lengths)-1], alpha=0.5, linewidth=0.25, color='black')
+        for idx in range(args.multilengths.shape[0]):
+            for i, offset in enumerate(args.multilengths[idx]):
+                ax.plot([centering[idx] + offsets[i], centering[idx] + offsets[i] + offset], 
+                        [idx, idx], alpha=0.2, linewidth=0.25)
+    else:
+        # Default behavior for non-multifasta inputs, should never be reached
+        for idx, g in enumerate(genome_lengths):
+            ax.plot([centering[idx] + 0, centering[idx] + g], [idx, idx], 
+                   alpha=0.2, linewidth=0.75)
 
-    ### Just plots lines for genomes
-    for idx, g in enumerate(genome_lengths):
-        ax.plot([centering[idx] + 0, centering[idx] + g], [idx, idx], alpha=0.2, linewidth=0.75)
-        
     ax.add_collection(PolyCollection(polygons, linewidths=args.linewidth, alpha=args.alpha, edgecolors=colors, facecolors=colors))
-    
-    ### adds ticks for multifasta
-    # if args.multilengths:
-    #     idx = -1
-    #     total_length = 0
-    #     for l in open(args.multilengths, 'r').readlines():
-    #         l = l.strip().split()
-    #         if l[1] == '*':
-    #             idx += 1; total_length = 0; continue
-    #         if total_length > 0:
-    #             ax.plot([centering[idx] + total_length, centering[idx] + total_length], [idx - 0.25, idx + 0.25], alpha=0.5, linewidth=0.25)
-    #         total_length += int(l[2])
-    # for idx, g in enumerate(genome_lengths):
-    #     ax.plot([centering[idx] + 0, centering[idx] + g], [idx, idx], alpha=0.2, linewidth=0.75)
     
     ax.yaxis.set_ticks(list(range(len(genome_lengths))))
     ax.tick_params(axis='y', which='both',length=0)
@@ -187,7 +190,10 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
     ax.set_xlabel('genomic position')
     ax.set_ylabel('sequences')
     ax.set_ylim(0, len(genome_lengths)-1)
-    ax.set_xlim(0, max_length)
+    if args.mode == 'gapped':
+        ax.set_xlim(0, args.multilengths.max(axis=0).sum() + spacer * (args.multilengths.shape[1] - 1))
+    else:
+        ax.set_xlim(0, max_length)
     ax.invert_yaxis()
     fig.set_tight_layout(True)
     # ax.axis('off')
@@ -210,6 +216,21 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
         fig.savefig(path, dpi=dpi)
     return ax
 
+def offset_mums(args, mums, spacer=100000):
+    offset = args.multilengths
+    NUM_SEQS = len(offset)
+    ### offset the mums by the contig locations
+    offsets = np.cumsum(offset, axis=1)
+    ### label each mum with the contig it belongs to
+    breaks = np.hstack((np.array([[0]*NUM_SEQS]).transpose(), offsets))
+    contig_idx = np.array([np.searchsorted(breaks[idx], mums.starts[:,idx]) - 1 for idx in range(NUM_SEQS)]).transpose()
+    ### get the relative offset of each mum to the start of its contig
+    left_start = np.hstack((np.zeros((offsets.shape[0],1), dtype=int), offsets[:,:-1]))
+    rel_offsets = mums.starts - left_start[np.arange(NUM_SEQS), contig_idx]
+    partial_mask = mums.starts != -1
+    new_starts = np.array([0] + (offset.max(axis=0) + spacer).cumsum().tolist()[:-1])[contig_idx] + rel_offsets
+    mums.starts[partial_mask] = new_starts[partial_mask]
+
 def main(args):
     seq_lengths = [int(l.split()[1]) for l in open(args.lens, 'r').read().splitlines()]
     if args.filelist:
@@ -218,38 +239,37 @@ def main(args):
         genome_names = None
     max_length = max(seq_lengths)
     
-    # Use new MUM class
-    mums = MUMdata(args.mumfile, seq_lengths=seq_lengths, lenfilter=args.lenfilter, subsample=args.subsample, verbose=args.verbose)
-    if args.verbose:
-        print(f'Found {mums.num_mums} MUMs', file=sys.stderr)
-
     if args.multilengths:
         offset = []
         cur_offset = []
-        total_length = 0
         for l in open(args.multilengths, 'r').readlines():
             l = l.strip().split()
             if l[1] == '*':
                 if cur_offset:
                     offset.append(cur_offset)
-                total_length = 0; cur_offset = []
+                cur_offset = []
                 continue
             cur_offset.append(int(l[2]))
         offset.append(cur_offset)
-        assert [sum(o) for o in offset] == seq_lengths
-        ### offset the mums by the contig locations
         offset = np.array(offset)
-        breaks = np.cumsum(offset, axis=1)
-        breaks = np.hstack((np.array([[0]*len(seq_lengths)]).transpose(), breaks))
-        contig_idx = np.array([np.searchsorted(breaks[idx], mums.starts[:,idx]) - 1 for idx in range(len(seq_lengths))]).transpose()
-        partial_mask = mums.starts != -1
-        mums.starts = mums.starts + 1000000
-    
+        assert [sum(o) for o in offset] == seq_lengths
+        args.multilengths = offset
+        if args.mode == 'gapped' and len(set([len(o) for o in offset])) > 1:
+            print('Warning: gapped mode requires the same number of sequences per input FASTA file. Using delineated mode instead.', file=sys.stderr)
+            args.mode = 'delineated'
+        
+    # Use new MUM class
+    mums = MUMdata(args.mumfile, seq_lengths=seq_lengths, lenfilter=args.lenfilter, subsample=args.subsample, verbose=args.verbose)
+    if args.verbose:
+        print(f'Found {mums.num_mums} MUMs', file=sys.stderr)
+
     centering = [0] * len(seq_lengths)
     if args.center:
         centering = [(max_length - g) / 2 for g in seq_lengths]
-
+            
     if args.no_coll_block:
+        if args.mode == 'gapped':
+            offset_mums(args, mums)
         polygons, colors = get_mum_polygons(mums, centering, color=args.mum_color, inv_color=args.inv_color)
     else:
         ### filter out pmums for collinear blocks
@@ -263,7 +283,10 @@ def main(args):
         if args.verbose:
             print(f'Finding collinear blocks (max gap = {args.max_break} bp)...', file=sys.stderr, end=' ')
         _, collinear_blocks, _ = find_coll_blocks(mums, max_break=args.max_break, verbose=args.verbose)
-
+        
+        if args.mode == 'gapped':
+            offset_mums(args, mums)
+            
         if args.verbose:
             print(f'found {len(collinear_blocks)} collinear blocks', file=sys.stderr)
         polygons, colors = get_block_polygons(collinear_blocks, mums, centering, color=args.mum_color, inv_color=args.inv_color)
