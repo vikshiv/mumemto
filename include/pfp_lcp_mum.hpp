@@ -106,6 +106,7 @@ public:
     size_t process(T &match_finder) {
         phrase_suffix_t curr;
         phrase_suffix_t prev;
+        size_t prev_lcp = 0;
         size_t count = 0;
         inc(curr);
         while (curr.i < pf.dict.saD.size())
@@ -182,8 +183,10 @@ public:
                     size_t doc_i = ref_build->doc_ends_rank(ssa);
                     // lcp is in lcp_suffix
 
-                    count += match_finder.update(j, curr_bwt_ch, doc_i, sa_i, lcp_suffix);
+                    count += match_finder.update(j, curr_bwt_ch, doc_i, sa_i, lcp_suffix, prev_lcp);
+                    prev_lcp = lcp_suffix;
                     // End of MUM computation code
+
 
                     
                     // Update prevs

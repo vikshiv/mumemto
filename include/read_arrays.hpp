@@ -82,7 +82,7 @@ public:
             size_t lcp_i = get_LCP_offset();
             size_t doc_i = ref_build->doc_ends_rank(sa_i);
 
-            count += match_finder.update(j, bwt_i, doc_i, sa_i, lcp_i);
+            count += match_finder.update(j, bwt_i, doc_i, sa_i, lcp_i, 0);
             // End of MUM computation code
         }
         printProgress(1.0);

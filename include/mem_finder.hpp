@@ -68,7 +68,7 @@ public:
         }
         this->mummode = (max_doc_freq == 1);
         // Initialize stack
-        current_mems.push_back(std::make_pair(0, 0));
+        current_mems.push_back(std::make_pair(std::make_pair(0, 0), 0));
         
         // Set parameters and limits
         // this->max_freq = num_docs + max_freq;
@@ -85,10 +85,10 @@ public:
     }
 
     // main update function, takes in the current streamed value of each array and write mem if found
-    inline size_t update(size_t j, uint8_t bwt_c, size_t doc, size_t sa_entry, size_t lcp)
+    inline size_t update(size_t j, uint8_t bwt_c, size_t doc, size_t sa_entry, size_t lcp, size_t prev_lcp)
     {   
         // bwt last change checker
-        size_t count = update_mems(j, lcp);
+        size_t count = update_mems(j, lcp, prev_lcp);
         if (bwt_buffer.size() == 0 || bwt_buffer.back() != bwt_c)
             last_bwt_change = j;
         update_buffers(j, bwt_c, sa_entry, lcp, doc);
@@ -107,7 +107,7 @@ protected:
     std::deque<uint8_t> bwt_buffer;
     std::deque<size_t> da_buffer;
 
-    std::vector<std::pair<size_t, size_t>> current_mems; // list of pairs, (start idx in SA, length of mem)
+    std::vector<std::pair<std::pair<size_t, size_t>, size_t>> current_mems; // list of pairs, (start idx in SA, length of mem), prev_lcp
 
     inline bool check_bwt_range(size_t start, size_t end) 
     {
@@ -185,7 +185,7 @@ protected:
         return 1;
     }
 
-    inline size_t write_mum(size_t length, size_t start, size_t end)
+    inline size_t write_mum(size_t length, size_t start, size_t end, size_t next_best)
     {
         std::vector<size_t> offsets(num_docs, -1);
         std::vector<char> strand(num_docs, 0);
@@ -238,44 +238,44 @@ protected:
             pos_string += std::to_string(offsets[num_docs - 1]);
             strand_string += strand[num_docs - 1];
         }
-        mem_file << std::to_string(length) << '\t' << pos_string << '\t' << strand_string << std::endl;
+        mem_file << std::to_string(length) << '\t' << !check_bwt_range(start, end) << '\t' << next_best << '\t' << pos_string << '\t' << strand_string << std::endl;
         return 1;
     }
         
 
 private:    
 
-    inline size_t update_mems(size_t j, size_t lcp)
+    inline size_t update_mems(size_t j, size_t lcp, size_t prev_lcp)
     {
         // three cases for LCP, increase, decrease, or stagnant (nothing changes)
         // j = idx in SA
         size_t count = 0;
         size_t start = j - 1;
+        size_t prev = 0;
         std::pair<size_t, size_t> interval;
-        while (lcp < current_mems.back().second) {
-            interval = current_mems.back();
+        while (lcp < current_mems.back().first.second) {
+            interval = current_mems.back().first;
+            prev = current_mems.back().second;
             current_mems.pop_back();
 
             // check conditions of MEM/MUM
             if (interval.second >= min_mem_length && 
                 j - interval.first >= num_distinct && 
                 (no_max_freq || j - interval.first <= max_freq) &&
-                !check_bwt_range(interval.first, j-1) && 
+                // !check_bwt_range(interval.first, j-1) && 
                 check_doc_range(interval.first, j-1)) 
                 {
-                    if (mummode)
-                        count += write_mum(interval.second, interval.first, j - 1);
-                    else
-                        count += write_mem(interval.second, interval.first, j - 1);
+                    size_t next_best = std::max(prev, lcp);
+                    count += write_mum(interval.second, interval.first, j - 1, next_best);
                 }
             start = interval.first;
+            prev_lcp = prev;
         }
 
-        if (lcp > current_mems.back().second) {
+        if (lcp > current_mems.back().first.second) {
             if (lcp >= min_mem_length)
-                current_mems.push_back(std::make_pair(start, lcp));
+                current_mems.push_back(std::make_pair(std::make_pair(start, lcp), prev_lcp));
         }
-
         return count;
     }
 
@@ -314,9 +314,9 @@ private:
             }
             buffer_start = j;
         }
-        else if (current_mems[1].first > buffer_start) {
-            size_t to_remove = current_mems[1].first - buffer_start;
-            buffer_start = current_mems[1].first;
+        else if (current_mems[1].first.first > buffer_start) {
+            size_t to_remove = current_mems[1].first.first - buffer_start;
+            buffer_start = current_mems[1].first.first;
             sa_buffer.erase(sa_buffer.begin(), sa_buffer.begin() + to_remove);
             bwt_buffer.erase(bwt_buffer.begin(), bwt_buffer.begin() + to_remove);
             da_buffer.erase(da_buffer.begin(), da_buffer.begin() + to_remove);
