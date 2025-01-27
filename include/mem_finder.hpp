@@ -331,7 +331,4 @@ private:
     }
 };
 
-
-
-
 #endif /* end of include guard: _MEM_HH */
