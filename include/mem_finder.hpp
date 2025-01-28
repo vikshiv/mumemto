@@ -400,12 +400,11 @@ private:
                 check_doc_range(interval.first, j-1)) 
                 {
                     next_best = std::min(std::max(prev, lcp), MAX_THRESH); // cap at max uint16
-                    for (size_t i = interval.first; i < j-1; i++) {
+                    for (size_t i = interval.first; i <= j-1; i++) {
                         if (da_buffer[i - buffer_start] == 0) {
                             start_offset = sa_buffer[i - buffer_start] - doc_offsets[0];
                             if (!revcomp || start_offset < doc_lens[0]) {
                                 candidate_thresh[start_offset] = next_best;
-                                std::cout << interval.second << "\t" << !check_bwt_range(interval.first, j-1) << "\t" << next_best << "\t" << start_offset << std::endl;
                             }
                             break;
                         }
