@@ -114,7 +114,7 @@ int build_main(int argc, char** argv) {
 
     STATUS_LOG("build_main", "finding multi-%ss from pfp", mum_mode ? "MUM" : "MEM");
     // std::string filename, RefBuilder& ref_build, size_t min_mem_len, size_t num_distinct, int max_doc_freq, int max_total_freq
-    mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq);
+    mergable_mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq);
     count = lcp.process(match_finder);
     match_finder.close();
     lcp.close();
