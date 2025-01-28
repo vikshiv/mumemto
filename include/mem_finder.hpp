@@ -79,7 +79,7 @@ public:
         mem_file.open(outfile);
     }
 
-    void close()
+    virtual void close()
     {
         mem_file.close();
     }
@@ -270,7 +270,7 @@ protected:
 private:    
 
     std::vector<std::pair<size_t, size_t>> current_mems; // list of pairs, (start idx in SA, length of mem)
-
+    
     inline size_t update_mems(size_t j, size_t lcp)
     {
         // three cases for LCP, increase, decrease, or stagnant (nothing changes)
@@ -336,7 +336,9 @@ private:
 class mergable_mem_finder : public mem_finder {
 public:
     mergable_mem_finder(std::string filename, RefBuilder& ref_build, size_t min_mem_len, size_t num_distinct, int max_doc_freq, int max_total_freq):
-        mem_finder(filename, ref_build, min_mem_len, num_distinct, max_doc_freq, max_total_freq)
+        mem_finder(filename, ref_build, min_mem_len, num_distinct, max_doc_freq, max_total_freq),
+        candidate_thresh(ref_build.seq_lengths[0], 0),
+        filename(filename)
     {
         init_stack();
     }
@@ -351,71 +353,28 @@ public:
         prev_lcp = lcp;
         return count;
     }
+
+    void close() override
+    {
+        mem_file.close();
+
+        std::string thresh_file = filename + ".thresh";
+        std::ofstream thresh_out(thresh_file, std::ios::binary);
+        thresh_out.write(reinterpret_cast<const char*>(candidate_thresh.data()), candidate_thresh.size() * sizeof(uint16_t));
+        thresh_out.close();
+    }
     
 protected:
     size_t prev_lcp = 0;
 
-    // Override write_mum to include next_best parameter
-    inline size_t write_mum(size_t length, size_t start, size_t end, size_t next_best)
-    {
-        std::vector<size_t> offsets(num_docs, -1);
-        std::vector<char> strand(num_docs, 0);
-        size_t curpos;
-        size_t curdoc;
-        char curstrand;
-        std::string pos_string = "";
-        std::string strand_string = "";
-        for (size_t i = start; i <= end; i++)
-        {
-            curdoc = da_buffer.at(i - buffer_start);
-            curpos = sa_buffer.at(i - buffer_start) - doc_offsets[curdoc];
-            if (revcomp && curpos >= doc_lens[curdoc]) {
-                curstrand = '-';
-                curpos = doc_lens[curdoc] + doc_lens[curdoc] - curpos - length - 1;
-            }
-            else
-                curstrand = '+';
-
-            offsets[curdoc] = curpos;    
-            strand[curdoc] = curstrand;
-        }
-        // temporarory fix: only write MUMs where 1st genome is + stranded
-        int i = 0;
-        while (i < num_docs - 1)
-        {
-            if (strand[i] != 0)
-                break;
-            i++;
-        }
-        if (strand[i] == '-')
-            return 0;
-
-        for (int i = 0; i < num_docs - 1; i++)
-        {
-            if (offsets[i] == -1) 
-            {
-                pos_string += ",";
-                strand_string += ",";
-            }
-            else
-            {
-                pos_string += std::to_string(offsets[i]) + ",";
-                strand_string += strand[i];
-                strand_string += ",";
-            }
-        }
-        if (offsets[num_docs - 1] != -1) 
-        {
-            pos_string += std::to_string(offsets[num_docs - 1]);
-            strand_string += strand[num_docs - 1];
-        }
-        mem_file << std::to_string(length) << '\t' << !check_bwt_range(start, end) << '\t' << next_best << '\t' << pos_string << '\t' << strand_string << std::endl;
-        return 1;
-    }
-
 private:
     // Override the data structure for current_mems to include prev_lcp
     std::vector<std::pair<std::pair<size_t, size_t>, size_t>> current_mems;
+
+    // data structure to hold meta data for merging
+    std::vector<uint16_t> candidate_thresh;
+    size_t MAX_THRESH = static_cast<size_t>(UINT16_MAX);
+    std::string filename; // filename for output metadata
 
     // Override update_mems to handle prev_lcp and next_best
     inline size_t update_mems(size_t j, size_t lcp)
@@ -426,11 +385,27 @@ private:
         size_t start = j - 1;
         size_t prev = 0;
         size_t next_best = 0;
+        size_t start_offset = 0;
         std::pair<size_t, size_t> interval;
         while (lcp < current_mems.back().first.second) {
             interval = current_mems.back().first;
             prev = current_mems.back().second;
             current_mems.pop_back();
+
+            // {
+            //     curdoc = da_buffer.at(i - buffer_start);
+            //     curpos = sa_buffer.at(i - buffer_start) - doc_offsets[curdoc];
+            //     if (revcomp && curpos >= doc_lens[curdoc]) {
+            //         curstrand = '-';
+            //         curpos = doc_lens[curdoc] + doc_lens[curdoc] - curpos - length - 1;
+            //     }
+            //     else
+            //         curstrand = '+';
+
+            //     offsets[curdoc] = curpos;    
+            //     strand[curdoc] = curstrand;
+            // }
+
 
             // check conditions of MEM/MUM
             if (interval.second >= min_mem_length && 
@@ -439,8 +414,16 @@ private:
                 // !check_bwt_range(interval.first, j-1) && 
                 check_doc_range(interval.first, j-1)) 
                 {
-                    next_best = std::max(prev, lcp);
-                    count += write_mum(interval.second, interval.first, j - 1, next_best);
+                    next_best = std::min(std::max(prev, lcp), MAX_THRESH); // cap at max uint16
+                    for (size_t i = interval.first; i < j-1; i++) {
+                        if (da_buffer[i - buffer_start] == 0) {
+                            start_offset = sa_buffer[i - buffer_start] - doc_offsets[0];
+                            break;
+                        }
+                    }
+                    candidate_thresh[start_offset] = next_best;
+                    if (!check_bwt_range(interval.first, j-1))
+                        count += write_mum(interval.second, interval.first, j - 1);
                 }
             start = interval.first;
             prev_lcp = prev;
