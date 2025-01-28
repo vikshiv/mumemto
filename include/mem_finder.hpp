@@ -337,10 +337,10 @@ class mergable_mem_finder : public mem_finder {
 public:
     mergable_mem_finder(std::string filename, RefBuilder& ref_build, size_t min_mem_len, size_t num_distinct, int max_doc_freq, int max_total_freq):
         mem_finder(filename, ref_build, min_mem_len, num_distinct, max_doc_freq, max_total_freq),
+        candidate_thresh(doc_lens[0], 0),
         filename(filename)
     {
         init_stack();
-        candidate_thresh = std::vector<uint16_t>(doc_lens[0], 0);
     }
 
     inline size_t update(size_t j, uint8_t bwt_c, size_t doc, size_t sa_entry, size_t lcp)
@@ -392,21 +392,6 @@ private:
             prev = current_mems.back().second;
             current_mems.pop_back();
 
-            // {
-            //     curdoc = da_buffer.at(i - buffer_start);
-            //     curpos = sa_buffer.at(i - buffer_start) - doc_offsets[curdoc];
-            //     if (revcomp && curpos >= doc_lens[curdoc]) {
-            //         curstrand = '-';
-            //         curpos = doc_lens[curdoc] + doc_lens[curdoc] - curpos - length - 1;
-            //     }
-            //     else
-            //         curstrand = '+';
-
-            //     offsets[curdoc] = curpos;    
-            //     strand[curdoc] = curstrand;
-            // }
-
-
             // check conditions of MEM/MUM
             if (interval.second >= min_mem_length && 
                 j - interval.first >= num_distinct && 
@@ -415,9 +400,12 @@ private:
                 check_doc_range(interval.first, j-1)) 
                 {
                     next_best = std::min(std::max(prev, lcp), MAX_THRESH); // cap at max uint16
-                    for (size_t i = interval.first; i <= j-1; i++) {
+                    for (size_t i = interval.first; i < j-1; i++) {
                         if (da_buffer[i - buffer_start] == 0) {
                             start_offset = sa_buffer[i - buffer_start] - doc_offsets[0];
+                            if (revcomp && start_offset >= doc_lens[0]) {
+                                start_offset = doc_lens[0] + doc_lens[0] - start_offset - interval.second - 1;
+                            }
                             break;
                         }
                     }
