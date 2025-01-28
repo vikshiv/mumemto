@@ -403,13 +403,13 @@ private:
                     for (size_t i = interval.first; i < j-1; i++) {
                         if (da_buffer[i - buffer_start] == 0) {
                             start_offset = sa_buffer[i - buffer_start] - doc_offsets[0];
-                            if (revcomp && start_offset >= doc_lens[0]) {
-                                start_offset = doc_lens[0] + doc_lens[0] - start_offset - interval.second - 1;
+                            if (!revcomp || start_offset < doc_lens[0]) {
+                                candidate_thresh[start_offset] = next_best;
+                                std::cout << interval.second << "\t" << !check_bwt_range(interval.first, j-1) << "\t" << next_best << "\t" << start_offset << std::endl;
                             }
                             break;
                         }
                     }
-                    candidate_thresh[start_offset] = next_best;
                     if (!check_bwt_range(interval.first, j-1))
                         count += write_mum(interval.second, interval.first, j - 1);
                 }
