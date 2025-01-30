@@ -39,11 +39,11 @@ int build_main(int argc, char** argv) {
     // determine output path for reference, generate and store filelist
     build_opts.output_ref.assign(build_opts.output_prefix + ".fna");
 
-    if (build_opts.input_list.length() == 0) {build_opts.input_list = make_filelist(build_opts.files, build_opts.output_prefix);}
+    if ((build_opts.input_list.length() == 0) && !(build_opts.from_parse_flag || build_opts.arrays_in_flag)) {build_opts.input_list = make_filelist(build_opts.files, build_opts.output_prefix);}
 
     // Declare ref_build first
-    RefBuilder ref_build = build_opts.from_parse_flag 
-        ? RefBuilder(build_opts.parse_prefix, build_opts.use_rcomp)
+    RefBuilder ref_build = (build_opts.from_parse_flag || build_opts.arrays_in_flag)
+        ? RefBuilder(build_opts.from_parse_flag ? build_opts.parse_prefix : build_opts.arrays_in, build_opts.use_rcomp)
         : RefBuilder(build_opts.input_list, build_opts.output_prefix, build_opts.use_rcomp);
 
     // normalize and reconcile the input parameters
@@ -85,7 +85,7 @@ int build_main(int argc, char** argv) {
         match_finder.close();
         input_lcp.close();
 
-        DONE_LOG((std::chrono::system_clock::now() - start));
+        auto sec = std::chrono::duration<double>((std::chrono::system_clock::now() - start)); std::fprintf(stderr, " done.  (%.3f sec)\n", sec.count());
 
         FORCE_LOG("build_main", "finished computing matches");
         return 0;
@@ -242,7 +242,12 @@ int is_dir(std::string path) {
 void print_build_status_info(BuildOptions& opts, RefBuilder& ref_build, bool mum_mode) {
     /* prints out the information being used in the current run */
     std::fprintf(stderr, "\nOverview of Parameters:\n");
-    if (opts.files.size() > 5) {
+    if (opts.from_parse_flag) {
+        std::fprintf(stderr, "\tUsing pre-computed PFP files with prefix: %s\n", opts.parse_prefix.data());
+    }
+    else if (opts.arrays_in.length() > 0)
+        std::fprintf(stderr, "\tUsing pre-computed LCP/BWT/SA arrays from files with prefix: %s\n", opts.arrays_in.data());
+    else if (opts.files.size() > 5) {
         std::fprintf(stderr, "\tInput files (N = %d): ", ref_build.num_docs);
         std::fprintf(stderr, "%s,", opts.files.at(0).data());
         std::fprintf(stderr, "%s,", opts.files.at(1).data());
@@ -263,9 +268,7 @@ void print_build_status_info(BuildOptions& opts, RefBuilder& ref_build, bool mum
 
     std::string match_type = mum_mode ? "MUM" : "MEM";
     std::fprintf(stderr, "\tOutput path: %s\n", opts.output_prefix.data());
-    if (opts.arrays_in.length() > 0)
-        std::fprintf(stderr, "\tUsing pre-computed LCP/BWT/SA arrays from files with prefix: %s\n", opts.arrays_in.data());
-    else 
+    if (!opts.from_parse_flag && !opts.arrays_in_flag)
         std::fprintf(stderr, "\tPFP window size: %d\n", opts.pfp_w);
     if (opts.arrays_out) {std::fprintf(stderr, "\tWriting LCP, BWT and suffix arrays\n");}
     std::fprintf(stderr, "\tMinimum %s length: %d\n", match_type.data(), opts.min_match_len);
