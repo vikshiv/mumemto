@@ -95,75 +95,99 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
 
     this->num_docs = input_files.size();
 }
-int RefBuilder::build_input_file() {
-    // Declare needed parameters for reading/writing
-    output_ref = this->output_prefix + ".fna";
-    std::ofstream output_fd (output_ref.data(), std::ofstream::out);
-    FILE* fp; kseq_t* seq;
-    std::vector<std::string> seq_vec;
-    std::vector<std::string> name_vec;
-    // std::vector<size_t> seq_lengths;
-    
-    // Start working on building the reference file by reading each file ...
-    size_t curr_id = 1;
-    size_t curr_id_seq_length = 0;
-    for (auto iter = input_files.begin(); iter != input_files.end(); ++iter) {
-        fp = fopen((*iter).data(), "r"); 
-        if(fp == 0) {std::exit(1);}
 
-        seq = kseq_init(fileno(fp));
-        size_t iter_index = static_cast<size_t>(iter-input_files.begin());
+RefBuilder::RefBuilder(std::string output_prefix, bool use_rcomp): use_revcomp(use_rcomp), output_prefix(output_prefix) {
+    /* Alternative constructor for running from the lengths file */
+    from_parse = true;
 
-        while (kseq_read(seq)>=0) {
-            // Get forward seq, and write to file
-			for (size_t i = 0; i < seq->seq.l; ++i) {
-				seq->seq.s[i] = static_cast<char>(std::toupper(seq->seq.s[i]));
-            }
-            seq_vec.push_back(seq->seq.s);
-            name_vec.push_back(seq->name.s);
-            // Added dollar sign as separator, and added 1 to length
-            // output_fd << '>' << seq->name.s << '\n' << seq->seq.s << '\n';
-            curr_id_seq_length += seq->seq.l;
-        }
-        
-        kseq_destroy(seq);
-        fclose(fp);
-        if (curr_id_seq_length == 0) {
-            output_fd.close();
-            std::cerr << std::endl << "Empty input file found: " + *iter << std::endl;
-            return 1;
-        }
-
-        // Check if we are transitioning to a new group OR If it is the last file, output current sequence length
-        // if ((iter_index == document_ids.size()-1) || (iter_index < document_ids.size()-1 && document_ids[iter_index] != document_ids[iter_index+1])) {
-        for (auto i = 0; i < seq_vec.size() - 1; ++i) {
-            output_fd << '>' << name_vec.at(i) << '\n' << seq_vec.at(i) << '\n';
-        }
-        output_fd << '>' << name_vec.at(seq_vec.size() - 1) << '\n' << seq_vec.at(seq_vec.size() - 1) << '$' << '\n';
-        curr_id_seq_length += 1;
-        // Get reverse complement, and print it
-        // Based on seqtk reverse complement code, that does it 
-        // in place. (https://github.com/lh3/seqtk/blob/master/seqtk.c)
+    std::string lengths_fname = output_prefix + ".lengths";
+    std::ifstream lengths_fd(lengths_fname.data(), std::ifstream::in);
+    std::string line;
+    size_t cur_length = 0;
+    while (std::getline(lengths_fd, line)) {
+        auto word_list = split(line, ' ');
+        input_files.push_back(word_list[0]);
+        cur_length = std::stoi(word_list[1]);
         if (use_revcomp) {
-            for (auto i = seq_vec.size(); i-- != 1; ) {
-                rev_comp(seq_vec.at(i));
-                output_fd << '>' << name_vec.at(i) << "_rev_comp" << '\n' << seq_vec.at(i) << '\n';
-                curr_id_seq_length += seq_vec.at(i).length();
-            }
-            rev_comp(seq_vec.at(0));
-            output_fd << '>' << name_vec.at(0) << "_rev_comp" << '\n' << seq_vec.at(0) << '$' << '\n';
-            curr_id_seq_length += seq_vec.at(0).length();
-            curr_id_seq_length += 1;
+            cur_length *= 2;
         }
-        // for (auto s = seq_vec.begin(); s != seq_vec.end(); ++s) {
-        //     kseq_destroy(*s);
-        // }
-        seq_lengths.push_back(curr_id_seq_length);
-        curr_id += 1; curr_id_seq_length = 0;
-        name_vec.clear(); seq_vec.clear();
-        // }
+        seq_lengths.push_back(cur_length + 1);
     }
-    output_fd.close();
+
+    this->num_docs = input_files.size();
+}
+
+int RefBuilder::build_input_file() {
+    if (!from_parse) {
+        // Declare needed parameters for reading/writing
+        output_ref = this->output_prefix + ".fna";
+        std::ofstream output_fd (output_ref.data(), std::ofstream::out);
+        FILE* fp; kseq_t* seq;
+        std::vector<std::string> seq_vec;
+        std::vector<std::string> name_vec;
+        // std::vector<size_t> seq_lengths;
+        
+        // Start working on building the reference file by reading each file ...
+        size_t curr_id = 1;
+        size_t curr_id_seq_length = 0;
+        for (auto iter = input_files.begin(); iter != input_files.end(); ++iter) {
+            fp = fopen((*iter).data(), "r"); 
+            if(fp == 0) {std::exit(1);}
+
+            seq = kseq_init(fileno(fp));
+            size_t iter_index = static_cast<size_t>(iter-input_files.begin());
+
+            while (kseq_read(seq)>=0) {
+                // Get forward seq, and write to file
+                for (size_t i = 0; i < seq->seq.l; ++i) {
+                    seq->seq.s[i] = static_cast<char>(std::toupper(seq->seq.s[i]));
+                }
+                seq_vec.push_back(seq->seq.s);
+                name_vec.push_back(seq->name.s);
+                // Added dollar sign as separator, and added 1 to length
+                // output_fd << '>' << seq->name.s << '\n' << seq->seq.s << '\n';
+                curr_id_seq_length += seq->seq.l;
+            }
+            
+            kseq_destroy(seq);
+            fclose(fp);
+            if (curr_id_seq_length == 0) {
+                output_fd.close();
+                std::cerr << std::endl << "Empty input file found: " + *iter << std::endl;
+                return 1;
+            }
+
+            // Check if we are transitioning to a new group OR If it is the last file, output current sequence length
+            // if ((iter_index == document_ids.size()-1) || (iter_index < document_ids.size()-1 && document_ids[iter_index] != document_ids[iter_index+1])) {
+            for (auto i = 0; i < seq_vec.size() - 1; ++i) {
+                output_fd << '>' << name_vec.at(i) << '\n' << seq_vec.at(i) << '\n';
+            }
+            output_fd << '>' << name_vec.at(seq_vec.size() - 1) << '\n' << seq_vec.at(seq_vec.size() - 1) << '$' << '\n';
+            curr_id_seq_length += 1;
+            // Get reverse complement, and print it
+            // Based on seqtk reverse complement code, that does it 
+            // in place. (https://github.com/lh3/seqtk/blob/master/seqtk.c)
+            if (use_revcomp) {
+                for (auto i = seq_vec.size(); i-- != 1; ) {
+                    rev_comp(seq_vec.at(i));
+                    output_fd << '>' << name_vec.at(i) << "_rev_comp" << '\n' << seq_vec.at(i) << '\n';
+                    curr_id_seq_length += seq_vec.at(i).length();
+                }
+                rev_comp(seq_vec.at(0));
+                output_fd << '>' << name_vec.at(0) << "_rev_comp" << '\n' << seq_vec.at(0) << '$' << '\n';
+                curr_id_seq_length += seq_vec.at(0).length();
+                curr_id_seq_length += 1;
+            }
+            // for (auto s = seq_vec.begin(); s != seq_vec.end(); ++s) {
+            //     kseq_destroy(*s);
+            // }
+            seq_lengths.push_back(curr_id_seq_length);
+            curr_id += 1; curr_id_seq_length = 0;
+            name_vec.clear(); seq_vec.clear();
+            // }
+        }
+        output_fd.close();
+    }
 
     // Add 1 to last document for $ and find total length
     size_t total_input_length = 0;
@@ -188,7 +212,7 @@ int RefBuilder::build_input_file() {
     doc_ends_rank = sdsl::rank_support_v<1> (&doc_ends); 
 
     // Write out lengths file
-    if (1) {
+    if (!from_parse) {
         bool use_input_paths = input_files.size() == seq_lengths.size();
         int includes_rc = use_revcomp ? 2 : 1;
         std::string lengths_fname = output_prefix + ".lengths";

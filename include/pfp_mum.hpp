@@ -52,7 +52,6 @@ bool is_integer(const std::string& str);
 bool endsWith(const std::string& str, const std::string& suffix);
 std::string execute_cmd(const char* cmd);
 
-
 struct BuildOptions {
     public:
         std::string input_list = "";
@@ -69,7 +68,7 @@ struct BuildOptions {
         bool keep_temp = false;
         int num_distinct_docs = 0;
         bool overlap = true;
-        bool from_parse = false;
+        std::string from_parse = "";
         size_t min_match_len = 20;
         int max_mem_freq = 0;
         int rare_freq = 1;
@@ -83,7 +82,7 @@ struct BuildOptions {
                 FORCE_LOG("build_main", "Using filelist, ignoring positional args");
                 files.clear();
             }
-            else if (input_list.length() == 0 && (files.size() == 0))
+            else if (input_list.length() == 0 && (files.size() == 0) && (!from_parse.length() && !arrays_in.length()))
                 FATAL_ERROR("Need to provide a file-list or files as positional args for processing.");
             
             for (auto f : files) {

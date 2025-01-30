@@ -41,7 +41,11 @@ int build_main(int argc, char** argv) {
 
     if (build_opts.input_list.length() == 0) {build_opts.input_list = make_filelist(build_opts.files, build_opts.output_prefix);}
 
-    RefBuilder ref_build(build_opts.input_list, build_opts.output_prefix, build_opts.use_rcomp);
+    // Declare ref_build first
+    RefBuilder ref_build = build_opts.from_parse.length() 
+        ? RefBuilder(build_opts.output_prefix, build_opts.use_rcomp)
+        : RefBuilder(build_opts.input_list, build_opts.output_prefix, build_opts.use_rcomp);
+
     // normalize and reconcile the input parameters
     build_opts.set_parameters(ref_build.num_docs, mum_mode);
 
@@ -89,7 +93,7 @@ int build_main(int argc, char** argv) {
         return 0;
     }
 
-    if (!build_opts.from_parse){
+    if (!build_opts.from_parse.length()){
         // Parse the input text with BigBWT, and load it into pf object
         STATUS_LOG("build_main", "generating the prefix-free parse for given reference");
         start = std::chrono::system_clock::now();
@@ -99,8 +103,11 @@ int build_main(int argc, char** argv) {
     }
     STATUS_LOG("build_main", "building the parse and dictionary objects");
     start = std::chrono::system_clock::now();
-
-    pf_parsing pf(build_opts.output_ref, build_opts.pfp_w);
+    pf_parsing pf;
+    if (build_opts.from_parse.length())
+        pf = pf_parsing(build_opts.from_parse, build_opts.pfp_w);
+    else
+        pf = pf_parsing(build_opts.output_ref, build_opts.pfp_w);
     DONE_LOG((std::chrono::system_clock::now() - start));
 
     std::cerr << "\n";
@@ -128,7 +135,7 @@ int build_main(int argc, char** argv) {
 
     
 
-    if (!build_opts.keep_temp && !build_opts.from_parse)
+    if (!build_opts.keep_temp && !build_opts.from_parse.length())
         remove_temp_files(build_opts.output_prefix);
     std::cerr << "\n";
     
@@ -317,7 +324,7 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
     int c = 0;
     int long_index = 0;
     
-    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:pm:f:", long_options, &long_index)) >= 0) {
+    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:", long_options, &long_index)) >= 0) {
         switch(c) {
             case 'h': mumemto_usage(); std::exit(0);
             case 'i': opts->input_list.assign(optarg); break;
@@ -327,7 +334,7 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
             case 's': opts->overlap = false; break;
             case 'k': opts->num_distinct_docs = std::atoi(optarg); break;
             case 'm': opts->hash_mod = std::atoi(optarg); break;
-            case 'p': opts->from_parse = true; break;
+            case 'p': opts->from_parse.assign(optarg); break;
             case 'l': opts->min_match_len = std::atoi(optarg); break;
             case 'F': opts->max_mem_freq = std::atoi(optarg); break;
             case 'A': opts->arrays_out = true; break;
