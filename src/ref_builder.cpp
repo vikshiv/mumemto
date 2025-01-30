@@ -90,7 +90,7 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
     
     // Make sure we have parsed each line, and it has multiple groups
     // ASSERT((document_ids.size() == input_files.size()), "Issue with file-list parsing occurred.");
-    if (input_files.size() == 1) {
+    if (input_files.size() <= 1) {
         FATAL_ERROR("Multiple FASTA inputs required. Perhaps split a multi-FASTA into multiple files?");}
 
     this->num_docs = input_files.size();
@@ -99,19 +99,20 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
 RefBuilder::RefBuilder(std::string output_prefix, bool use_rcomp): use_revcomp(use_rcomp), output_prefix(output_prefix) {
     /* Alternative constructor for running from the lengths file */
     from_parse = true;
-
-    std::string lengths_fname = output_prefix + ".lengths";
+    std::string lengths_fname = output_prefix.substr(0, output_prefix.length() - 4) + ".lengths";
+    if (!is_file(lengths_fname)) {
+        FATAL_ERROR("Lengths file required for using intermediate PFP files. File should match parse prefix: %s", lengths_fname.data());}
     std::ifstream lengths_fd(lengths_fname.data(), std::ifstream::in);
     std::string line;
     size_t cur_length = 0;
     while (std::getline(lengths_fd, line)) {
         auto word_list = split(line, ' ');
         input_files.push_back(word_list[0]);
-        cur_length = std::stoi(word_list[1]);
+        cur_length = std::stoi(word_list[1]) + 1;
         if (use_revcomp) {
             cur_length *= 2;
         }
-        seq_lengths.push_back(cur_length + 1);
+        seq_lengths.push_back(cur_length);
     }
 
     this->num_docs = input_files.size();

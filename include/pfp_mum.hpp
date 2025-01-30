@@ -97,6 +97,9 @@ struct BuildOptions {
                 output_prefix = "./" + output_prefix;
             else if (!is_dir(p.parent_path().string()))
                 std::filesystem::create_directories(p.parent_path());
+
+            if (from_parse_flag)
+                parse_prefix = parse_prefix + ".fna";
             // if (max_mem_freq < -1)
             //     FATAL_ERROR("Maximum MEM frequency cannot be negative (-1 indicates no limit on MEM frequency)"); 
 
