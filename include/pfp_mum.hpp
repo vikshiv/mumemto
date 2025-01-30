@@ -65,10 +65,12 @@ struct BuildOptions {
         bool is_fasta = true;
         bool arrays_out = false;
         std::string  arrays_in = "";
+        bool arrays_in_flag = false;
         bool keep_temp = false;
         int num_distinct_docs = 0;
         bool overlap = true;
-        std::string from_parse = "";
+        std::string parse_prefix = "";
+        bool from_parse_flag = false;
         size_t min_match_len = 20;
         int max_mem_freq = 0;
         int rare_freq = 1;
@@ -82,7 +84,7 @@ struct BuildOptions {
                 FORCE_LOG("build_main", "Using filelist, ignoring positional args");
                 files.clear();
             }
-            else if (input_list.length() == 0 && (files.size() == 0) && (!from_parse.length() && !arrays_in.length()))
+            else if (input_list.length() == 0 && (files.size() == 0) && (!from_parse_flag && !arrays_in_flag))
                 FATAL_ERROR("Need to provide a file-list or files as positional args for processing.");
             
             for (auto f : files) {

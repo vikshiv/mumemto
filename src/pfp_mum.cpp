@@ -42,8 +42,8 @@ int build_main(int argc, char** argv) {
     if (build_opts.input_list.length() == 0) {build_opts.input_list = make_filelist(build_opts.files, build_opts.output_prefix);}
 
     // Declare ref_build first
-    RefBuilder ref_build = build_opts.from_parse.length() 
-        ? RefBuilder(build_opts.output_prefix, build_opts.use_rcomp)
+    RefBuilder ref_build = build_opts.from_parse_flag 
+        ? RefBuilder(build_opts.parse_prefix, build_opts.use_rcomp)
         : RefBuilder(build_opts.input_list, build_opts.output_prefix, build_opts.use_rcomp);
 
     // normalize and reconcile the input parameters
@@ -78,7 +78,7 @@ int build_main(int argc, char** argv) {
     helper_bins.validate();
 
     // just read from files if provided
-    if (build_opts.arrays_in.length() > 0) {
+    if (build_opts.arrays_in_flag) {
         file_lcp input_lcp(build_opts.arrays_in, &ref_build);
         start = std::chrono::system_clock::now();
         STATUS_LOG("build_main", "finding multi-%ss from pfp", mum_mode ? "MUM" : "MEM");
@@ -93,7 +93,7 @@ int build_main(int argc, char** argv) {
         return 0;
     }
 
-    if (!build_opts.from_parse.length()){
+    if (!build_opts.from_parse_flag){
         // Parse the input text with BigBWT, and load it into pf object
         STATUS_LOG("build_main", "generating the prefix-free parse for given reference");
         start = std::chrono::system_clock::now();
@@ -104,8 +104,8 @@ int build_main(int argc, char** argv) {
     STATUS_LOG("build_main", "building the parse and dictionary objects");
     start = std::chrono::system_clock::now();
     pf_parsing pf;
-    if (build_opts.from_parse.length())
-        pf = pf_parsing(build_opts.from_parse, build_opts.pfp_w);
+    if (build_opts.from_parse_flag)
+        pf = pf_parsing(build_opts.parse_prefix, build_opts.pfp_w);
     else
         pf = pf_parsing(build_opts.output_ref, build_opts.pfp_w);
     DONE_LOG((std::chrono::system_clock::now() - start));
@@ -135,7 +135,7 @@ int build_main(int argc, char** argv) {
 
     
 
-    if (!build_opts.keep_temp && !build_opts.from_parse.length())
+    if (!build_opts.keep_temp && !build_opts.from_parse_flag)
         remove_temp_files(build_opts.output_prefix);
     std::cerr << "\n";
     
@@ -334,11 +334,11 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
             case 's': opts->overlap = false; break;
             case 'k': opts->num_distinct_docs = std::atoi(optarg); break;
             case 'm': opts->hash_mod = std::atoi(optarg); break;
-            case 'p': opts->from_parse.assign(optarg); break;
+            case 'p': opts->parse_prefix.assign(optarg); opts->from_parse_flag = true; break;
             case 'l': opts->min_match_len = std::atoi(optarg); break;
             case 'F': opts->max_mem_freq = std::atoi(optarg); break;
             case 'A': opts->arrays_out = true; break;
-            case 'a': opts->arrays_in.assign(optarg); break;
+            case 'a': opts->arrays_in.assign(optarg); opts->arrays_in_flag = true; break;
             case 'K': opts->keep_temp = true; break;
             case 'f': opts->rare_freq = std::atoi(optarg); break;
             default: mumemto_usage(); std::exit(1);
