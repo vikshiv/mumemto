@@ -106,6 +106,7 @@ int RefBuilder::build_input_file() {
     std::vector<std::vector<std::string>> multifasta_names;
     std::vector<size_t> temp_lengths;
     std::vector<std::string> temp_names;
+    bool multi = false;
 
     // Start working on building the reference file by reading each file ...
     size_t curr_id = 1;
@@ -131,6 +132,9 @@ int RefBuilder::build_input_file() {
             curr_id_seq_length += seq->seq.l;
             temp_lengths.push_back(seq->seq.l);
             temp_names.push_back(seq->name.s);
+        }
+        if (temp_lengths.size() > 1) {
+            multi = true;
         }
         multifasta_lengths.push_back(temp_lengths);
         multifasta_names.push_back(temp_names);
@@ -197,31 +201,27 @@ int RefBuilder::build_input_file() {
     doc_ends_rank = sdsl::rank_support_v<1> (&doc_ends); 
 
     // Write out lengths file
-    if (1) {
-        bool use_input_paths = input_files.size() == seq_lengths.size();
-        int includes_rc = use_revcomp ? 2 : 1;
-        std::string lengths_fname = output_prefix + ".lengths";
-        std::ofstream outfile(lengths_fname);
-        std::string doc_name;
-        for (size_t i = 0; i < seq_lengths.size(); ++i) {
-            doc_name = use_input_paths ? std::filesystem::absolute(input_files[i]).string() : ("sequence_" + std::to_string(i + 1));
-            outfile << doc_name << " " << (seq_lengths[i] / includes_rc) - 1 << std::endl;
-        }
-        outfile.close();
-    }
-    // write out multifasta length info
-    if (1) {
-        int includes_rc = use_revcomp ? 2 : 1;
-        std::string lengths_fname = output_prefix + ".multilengths";
-        std::ofstream outfile(lengths_fname);
+    std::string lengths_fname = output_prefix + ".lengths";
+    std::ofstream outfile(lengths_fname);
+    int includes_rc = use_revcomp ? 2 : 1;
+    if (multi) {
+        size_t total_file_length = 0;
         for (size_t i = 0; i < multifasta_lengths.size(); ++i) {
-            outfile << std::filesystem::absolute(input_files[i]).string() << " * " << (seq_lengths[i] / includes_rc) - 1 << std::endl;
-            for (size_t j = 0; j < multifasta_lengths[i].size(); ++j) {
-                outfile << std::filesystem::absolute(input_files[i]).string() << " " << multifasta_names[i][j] << " " << multifasta_lengths[i][j] << std::endl;
+            total_file_length = 0;
+            for (auto n : multifasta_lengths[i]) {
+                total_file_length += n;
+            }
+            outfile << std::filesystem::absolute(input_files[i]).string() << " * " << (total_file_length / includes_rc) - 1 << std::endl;
+            for (auto idx = 0; idx < multifasta_lengths[i].size(); ++idx) {
+                outfile << std::filesystem::absolute(input_files[i]).string() << " " << multifasta_names[i][idx] << " " << (multifasta_lengths[i][idx] / includes_rc) - 1 << std::endl;
             }
         }
-        outfile.close();
+    } else {
+        for (size_t i = 0; i < multifasta_lengths.size(); ++i) {
+            outfile << std::filesystem::absolute(input_files[i]).string() << " " << (multifasta_lengths[i][0] / includes_rc) - 1 << std::endl;
+        }
     }
-
+    outfile.close();
+    
     return 0;
 }
