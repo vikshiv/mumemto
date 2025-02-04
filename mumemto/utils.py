@@ -72,20 +72,43 @@ def parse_mums_generator(mumfile, seq_lengths, lenfilter=0, subsample=1):
                     yield MUM(length, starts, strands)
             count += 1
 
+def get_sequence_lengths(lengths_file, multilengths=False):
+    def get_lengths(lengths_file):
+        return [int(l.split()[1]) for l in open(lengths_file, 'r').read().splitlines()]
+    def get_multilengths(lengths_file): 
+        offset = []
+        cur_offset = []
+        for l in open(lengths_file, 'r').readlines():
+            l = l.strip().split()
+            if l[1] == '*':
+                if cur_offset:
+                    offset.append(cur_offset)
+                cur_offset = []
+                continue
+            cur_offset.append(int(l[2]))
+        offset.append(cur_offset)
+        offset = np.array(offset)
+        return offset
+    simple = True
+    try:
+        with open(lengths_file, 'r') as f:
+            first_line = f.readline().strip().split()
+            if len(first_line) > 1 and first_line[1] == '*':
+                simple = False
+    except FileNotFoundError:
+        raise ValueError("Either a *.lengths file or an input seq_lengths array is required")
+    if simple and multilengths:
+        raise ValueError("Multi-FASTA lengths not available in ", lengths_file)
+    if not simple:
+        offsets = get_multilengths(lengths_file)
+        return offsets if multilengths else offsets.sum(axis=1).tolist()
+    else:
+        return get_lengths(lengths_file)
+
 class MUMdata:
-    def __init__(self, mumfile, seq_lengths=None, lenfilter=0, subsample=1, verbose=False):
-        # If seq_lengths not provided, try to load from .lengths file
-        if seq_lengths is None:
-            lengths_file = mumfile.replace('.mums', '.lengths')
-            try:
-                with open(lengths_file, 'r') as f:
-                    seq_lengths = [int(l.strip().split()[1]) for l in f.readlines()]
-            except FileNotFoundError:
-                raise ValueError("Either a *.lengths file or an input seq_lengths array is required")
-                
+    def __init__(self, mumfile, lenfilter=0, subsample=1, verbose=False):            
         self.lengths, self.starts, self.strands = self.parse_mums(
             mumfile, 
-            seq_lengths, 
             lenfilter, 
             subsample,
             verbose
@@ -99,29 +122,50 @@ class MUMdata:
         self.strands = self.strands[order]
         
     @staticmethod
-    def parse_mums(mumfile, seq_lengths, lenfilter=0, subsample=1, verbose=False):
+    def parse_mums(mumfile, lenfilter=0, subsample=1, verbose=False):
+        def conv(x: str):
+            conv.event_counter += 1
+            if conv.event_counter % 1000000 == 0:
+                conv.pbar.update(1000000)
+            return x
         lengths, starts, strands = [], [], []
         
         count = 0
-        for l in tqdm(open(mumfile, 'r').readlines(), disable=not verbose, desc='Parsing MUMs'):
-            if subsample == 1 or count % subsample == 0:
-                l = l.strip().split()
-                length = int(l[0])
-                if length >= lenfilter:
-                    # Parse the line
-                    start_positions = l[1]
-                    strand_info = l[2]
-                    # Handle reverse strands
-                    # for idx, (pos, strand) in enumerate(zip(start_positions, strand_info)):
-                    #     if strand == '-':
-                    #         start_positions[idx] = seq_lengths[idx] - pos - length
-                    
-                    lengths.append(length)
-                    starts.append(start_positions)
-                    strands.append(strand_info)
-            count += 1
-        starts = np.genfromtxt(starts, delimiter=',', dtype=int, filling_values=-1)
-        strands = np.genfromtxt(strands, delimiter=',', dtype=str, filling_values='')
+        with open(mumfile, 'r') as f:
+            for l in tqdm(f, disable=not verbose, desc='Reading MUMs'):
+                if subsample == 1 or count % subsample == 0:
+                    l = l.strip().split()
+                    length = int(l[0])
+                    if length >= lenfilter:
+                        # Parse the line
+                        start_positions = l[1]
+                        strand_info = l[2]
+                        # Handle reverse strands
+                        # for idx, (pos, strand) in enumerate(zip(start_positions, strand_info)):
+                        #     if strand == '-':
+                        #         start_positions[idx] = seq_lengths[idx] - pos - length
+                        
+                        lengths.append(length)
+                        starts.append(start_positions)
+                        strands.append(strand_info)
+                count += 1
+        
+        if verbose and len(starts) > 1000000:
+            conv.event_counter = 0
+            conv.pbar = tqdm(total = len(starts), desc='Parsing offsets')
+            starts = np.genfromtxt(starts, delimiter=',', dtype=int, filling_values=-1, converters={0: conv})
+            conv.pbar.close()
+        else:
+            starts = np.genfromtxt(starts, delimiter=',', dtype=int, filling_values=-1)
+        
+        if verbose and len(strands) > 1000000:
+            conv.event_counter = 0
+            conv.pbar = tqdm(total = len(strands), desc='Parsing strands')
+            strands = np.genfromtxt(strands, delimiter=',', dtype='U1', filling_values='', converters={0: conv})
+            conv.pbar.close()
+        else:
+            strands = np.genfromtxt(strands, delimiter=',', dtype='U1', filling_values='')
+
         strands = strands == '+'
         # Convert to numpy arrays all at once
         return (
@@ -129,6 +173,7 @@ class MUMdata:
             starts,
             strands
         )
+        
 
     def filter_pmums(self):
         """Remove any MUMs that have -1 in their start positions"""
@@ -151,3 +196,8 @@ class MUMdata:
     def __len__(self):
         """Return number of MUMs"""
         return self.num_mums
+    
+    def write_mums(self, filename):
+        with open(filename, 'w') as f:
+            for i in range(self.num_mums):
+                f.write(f"{self.lengths[i]} {','.join(self.starts[i])} {','.join(self.strands[i])}\n")

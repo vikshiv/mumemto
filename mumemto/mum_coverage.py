@@ -7,9 +7,9 @@ import os
 import sys
 from numba import njit
 try:
-    from utils import parse_mums_generator
+    from utils import parse_mums_generator, get_sequence_lengths
 except ImportError:
-    from mumemto.utils import parse_mums_generator
+    from mumemto.utils import parse_mums_generator, get_sequence_lengths
 
 def parse_arguments(args=None):    
     parser = argparse.ArgumentParser(description="Aggregates MUM coverage from mumemto output.")
@@ -53,7 +53,7 @@ def update_coverage(coverage, mum_gen, verbose=False):
 
 def main(args):
     # Read sequence lengths
-    seq_lengths = [int(l.split()[1]) for l in open(args.lens, 'r').read().splitlines()]
+    seq_lengths = get_sequence_lengths(args.lens)
     
     # Initialize coverage array
     max_len = max(seq_lengths)
