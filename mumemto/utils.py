@@ -11,7 +11,7 @@ def find_coll_blocks(mums, max_break=100000, verbose=False):
     mum_orders = starts.transpose().argsort()
     mum_gaps = []
     flips = set([])
-    for i in tqdm(range(mum_orders.shape[0]), desc='Finding collinear blocks', disable=not verbose):
+    for i in tqdm(range(mum_orders.shape[0]), desc=f'Finding collinear blocks (max gap = {max_break} bp)...', disable=not verbose):
         cur = []
         for l in range(1, mum_orders.shape[1]):
             left, right = mum_orders[i][l-1], mum_orders[i][l]
@@ -154,6 +154,7 @@ class MUMdata:
             conv.event_counter = 0
             conv.pbar = tqdm(total = len(starts), desc='Parsing offsets')
             starts = np.genfromtxt(starts, delimiter=',', dtype=int, filling_values=-1, converters={0: conv})
+            conv.pbar.n = len(strands); conv.pbar.refresh()
             conv.pbar.close()
         else:
             starts = np.genfromtxt(starts, delimiter=',', dtype=int, filling_values=-1)
@@ -162,6 +163,7 @@ class MUMdata:
             conv.event_counter = 0
             conv.pbar = tqdm(total = len(strands), desc='Parsing strands')
             strands = np.genfromtxt(strands, delimiter=',', dtype='U1', filling_values='', converters={0: conv})
+            conv.pbar.n = len(strands); conv.pbar.refresh()
             conv.pbar.close()
         else:
             strands = np.genfromtxt(strands, delimiter=',', dtype='U1', filling_values='')
