@@ -197,7 +197,14 @@ class MUMdata:
         """Return number of MUMs"""
         return self.num_mums
     
-    def write_mums(self, filename):
+    def write_mums(self, filename, blocks=None):
         with open(filename, 'w') as f:
-            for i in range(self.num_mums):
-                f.write(f"{self.lengths[i]} {','.join(self.starts[i])} {','.join(self.strands[i])}\n")
+            if blocks is None:
+                for i in range(self.num_mums):
+                    strands_str = ['+' if s else '-' for s in self.strands[i]]
+                    f.write(f"{self.lengths[i]}\t{','.join(map(str, self.starts[i]))}\t{','.join(strands_str)}\n")
+            else:
+                for idx, (l, r) in enumerate(blocks):
+                    for i in range(l, r + 1):
+                        strands_str = ['+' if s else '-' for s in self.strands[i]]
+                        f.write(f"{self.lengths[i]}\t{','.join(map(str, self.starts[i]))}\t{','.join(strands_str)}\t{idx}\n")
