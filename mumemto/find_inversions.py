@@ -1,13 +1,13 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
 import sys
 import argparse
 import numpy as np
 try:
-    from utils import MUMdata, find_coll_blocks, get_block_order
+    from utils import MUMdata, find_coll_blocks, get_block_order, get_sequence_lengths
 except ImportError:
-    from mumemto.utils import MUMdata, find_coll_blocks, get_block_order
+    from mumemto.utils import MUMdata, find_coll_blocks, get_block_order, get_sequence_lengths
 from tqdm import tqdm
 
 def parse_arguments(args=None):
@@ -55,7 +55,7 @@ def parse_arguments(args=None):
 
 def get_sequence_info(args):
     """Load sequence lengths and names"""
-    seq_lengths = np.array([int(l.split()[1]) for l in open(args.lens).readlines()])
+    seq_lengths = get_sequence_lengths(args.lens)
     
     if args.filelist:
         if args.chr:
