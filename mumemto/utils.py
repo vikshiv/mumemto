@@ -128,8 +128,11 @@ class MUMdata:
             if conv.event_counter % 1000000 == 0:
                 conv.pbar.update(1000000)
             return x
-        lengths, starts, strands = [], [], []
         
+        if mumfile.endswith('.bums'):
+            return parse_bums(mumfile, lenfilter, subsample, verbose)
+        
+        lengths, starts, strands = [], [], []
         count = 0
         with open(mumfile, 'r') as f:
             for l in tqdm(f, disable=not verbose, desc='Reading MUMs'):
@@ -176,6 +179,25 @@ class MUMdata:
             strands
         )
         
+    @staticmethod
+    def parse_bums(bumfile, lenfilter=0, subsample=1):
+        with open(bumfile, 'rb') as f:
+            n_seqs, n_mums = np.fromfile(f, count = 2, dtype=np.uint64)
+            mum_lengths = np.fromfile(f, count = n_mums, dtype=np.uint64)
+            mum_starts = np.fromfile(f, count = n_seqs * n_mums, dtype=np.int64).reshape(n_mums, n_seqs)
+            mum_strands = np.fromfile(f, dtype=np.uint8)
+            mum_strands = np.unpackbits(mum_strands, count=n_mums * n_seqs).reshape(n_mums, n_seqs).astype(bool)
+        
+        # Create boolean mask for subsampling
+        mask = np.zeros(n_mums, dtype=bool)
+        if subsample == 1:
+            mask[:] = True
+        else:
+            mask[::subsample] = True            
+
+        mask &= mum_lengths >= lenfilter
+            
+        return mum_lengths[mask], mum_starts[mask], mum_strands[mask]
 
     def filter_pmums(self):
         """Remove any MUMs that have -1 in their start positions"""
