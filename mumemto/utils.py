@@ -120,7 +120,24 @@ class MUMdata:
         self.lengths = self.lengths[order]
         self.starts = self.starts[order]
         self.strands = self.strands[order]
+    
+    @classmethod
+    def from_arrays(cls, lengths, starts, strands):
+        """Create a MUMdata object directly from arrays.
         
+        Args:
+            lengths: Array of MUM lengths
+            starts: 2D array of start positions (num_mums x num_seqs)
+            strands: 2D array of strand information (num_mums x num_seqs)
+        """
+        instance = cls.__new__(cls)
+        instance.lengths = lengths
+        instance.starts = starts 
+        instance.strands = strands
+        instance.num_mums = len(lengths)
+        instance.num_seqs = starts.shape[1] if instance.num_mums > 0 else 0
+        return instance
+    
     @staticmethod
     def parse_mums(mumfile, lenfilter=0, subsample=1, verbose=False):
         def conv(x: str):
