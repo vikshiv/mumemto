@@ -57,11 +57,11 @@ def get_block_order(mums, blocks):
         coll_block_orders.append(np.argsort(poi))
     return coll_block_orders
 
-def parse_mums_generator(mumfile, seq_lengths, lenfilter=0, subsample=1):
+def parse_mums_generator(mumfile, lenfilter=0, subsample=1, verbose=False):
     """Generator that streams MUMs from mumfile"""
     count = 0
     with open(mumfile, 'r') as f:
-        for line in f:
+        for line in tqdm(f, desc='parsing MUM file', disable=not verbose):
             if subsample == 1 or count % subsample == 0:
                 line = line.strip().split()
                 length = int(line[0])
