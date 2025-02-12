@@ -128,7 +128,7 @@ def inversion_coords(coll_block_order, mums, blocks, i, s, e):
 def main(args):
 
     if args.verbose:
-        print("hahaLoading sequence information...", file=sys.stderr)
+        print("Loading sequence information...", file=sys.stderr)
     
     # Load data
     seq_lengths, hap_ids = get_sequence_info(args)
