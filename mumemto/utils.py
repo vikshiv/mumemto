@@ -105,14 +105,37 @@ def get_sequence_lengths(lengths_file, multilengths=False):
     else:
         return get_lengths(lengths_file)
 
+def unpack_flags(flags):
+    """
+    Unpack flags from a single uint8 value
+    """
+    flag_labels = ['64bit', 'partial', 'coll_blocks', 'merge']
+    flags = np.unpackbits(np.array([flags], dtype=np.uint8))[-len(flag_labels):]
+    return {f : bool(b) for f, b in zip(flag_labels, flags)}
+
+def pack_flags(flags):
+    """
+    Pack flags into a single uint8 value
+    """
+    flag_labels = ['64bit', 'partial', 'coll_blocks', 'merge']
+    flags = ([0] * (8 - len(flag_labels))) + [int(flags[f]) for f in flag_labels]
+    return np.packbits(flags)
+
 class MUMdata:
-    def __init__(self, mumfile, lenfilter=0, subsample=1, verbose=False):            
-        self.lengths, self.starts, self.strands = self.parse_mums(
-            mumfile, 
-            lenfilter, 
-            subsample,
-            verbose
-        )
+    def __init__(self, mumfile, lenfilter=0, subsample=1, verbose=False):
+        if mumfile.endswith('.bums'):
+            self.lengths, self.starts, self.strands = self.parse_bums(
+                mumfile, 
+                lenfilter, 
+                subsample
+            )
+        else:
+            self.lengths, self.starts, self.strands = self.parse_mums(
+                mumfile, 
+                lenfilter, 
+                subsample,
+                verbose
+            )
         self.num_mums = len(self.lengths)
         self.num_seqs = self.starts.shape[1] if self.num_mums > 0 else 0
         # sort by reference offset position
@@ -199,9 +222,11 @@ class MUMdata:
     @staticmethod
     def parse_bums(bumfile, lenfilter=0, subsample=1):
         with open(bumfile, 'rb') as f:
-            n_seqs, n_mums = np.fromfile(f, count = 2, dtype=np.uint64)
-            mum_lengths = np.fromfile(f, count = n_mums, dtype=np.uint64)
-            mum_starts = np.fromfile(f, count = n_seqs * n_mums, dtype=np.int64).reshape(n_mums, n_seqs)
+            flags, n_seqs, n_mums = np.fromfile(f, count = 3, dtype=np.uint64)
+            flags = unpack_flags(flags)
+            start_dtype = np.uint64 if flags['64bit'] else np.uint32
+            mum_lengths = np.fromfile(f, count = n_mums, dtype=np.uint16)
+            mum_starts = np.fromfile(f, count = n_seqs * n_mums, dtype=start_dtype).reshape(n_mums, n_seqs)
             mum_strands = np.fromfile(f, dtype=np.uint8)
             mum_strands = np.unpackbits(mum_strands, count=n_mums * n_seqs).reshape(n_mums, n_seqs).astype(bool)
         
