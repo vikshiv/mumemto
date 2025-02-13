@@ -141,8 +141,7 @@ def main(args):
     mums = MUMdata(args.mumfile, seq_lengths=seq_lengths, verbose=args.verbose)
     
     # Find collinear blocks and inversions
-    _, small_blocks, _ = find_coll_blocks(mums, max_break=args.max_block_gap, verbose=args.verbose)
-    block_orders = get_block_order(mums, small_blocks)
+    small_blocks, block_orders = find_coll_blocks(mums, max_break=args.max_block_gap, verbose=args.verbose, return_order=True)
     if args.verbose:
         print("Finding inversions...", file=sys.stderr)
     

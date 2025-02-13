@@ -286,7 +286,7 @@ def main(args):
             args.max_break = min(bp_per_inch, 100000)
         if args.verbose:
             print(f'Finding collinear blocks (max gap = {args.max_break} bp)...', file=sys.stderr, end=' ')
-        _, collinear_blocks, _ = find_coll_blocks(mums, max_break=args.max_break, verbose=args.verbose)
+        collinear_blocks = find_coll_blocks(mums, max_break=args.max_break, verbose=args.verbose)
         if args.verbose:
             print(f'found {len(collinear_blocks)} collinear blocks', file=sys.stderr)
         
