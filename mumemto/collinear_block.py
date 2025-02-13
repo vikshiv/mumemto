@@ -58,7 +58,7 @@ def main(args):
     if len(mums) == 0:
         print('No strict MUMs found after filtering partial MUMs.', file=sys.stderr)
         return
-    _, collinear_blocks, _ = find_coll_blocks(mums, max_break=args.max_break, verbose=args.verbose)
+    collinear_blocks = find_coll_blocks(mums, max_break=args.max_break, verbose=args.verbose)
     if args.verbose:
         print(f'found {len(collinear_blocks)} collinear blocks', file=sys.stderr)
     

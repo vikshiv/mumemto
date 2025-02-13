@@ -4,58 +4,49 @@ from collections import namedtuple
 
 MUM = namedtuple('MUM', ['length', 'starts', 'strands'])
 
-def find_coll_blocks(mums, max_break=100000, verbose=False):
+def find_coll_blocks(mums, max_break=0, verbose=False, return_order=False):
+    def find_blocks(coll_mums):
+        diffs = np.diff(np.concatenate(([False], coll_mums, [False])).astype(int))
+        starts = np.where(diffs == 1)[0]
+        ends = np.where(diffs == -1)[0]
+        blocks = list(zip(starts, ends))
+        return blocks
+    """
+    The output bool array (quick_coll) is True in position i if mum[i] and mum[i+1] are collinear
+    This function works by finding the ranks of each mum, then identifying consecutive MUMs with consecutive ranks.
+    The strand orientiation of collinear MUMs must be identical, and MUMs in - strands should be reversed in rank.
+    """
     starts = mums.starts
     strands = mums.strands
     lengths = mums.lengths
     mum_orders = starts.transpose().argsort()
-    mum_gaps = []
-    flips = set([])
-    for i in tqdm(range(mum_orders.shape[0]), desc=f'Finding collinear blocks (max gap = {max_break} bp)...', disable=not verbose):
-        cur = []
-        for l in range(1, mum_orders.shape[1]):
-            left, right = mum_orders[i][l-1], mum_orders[i][l]
-            if strands[left][i] == strands[right][i]:
-                if strands[left][i]:
-                    cur.append((left, right))
-                else:
-                    cur.append((right, left))
-                    flips.add((right, left))
-        mum_gaps.append(cur)
-    common_gaps = set.intersection(*map(set, mum_gaps))
-    left, right = zip(*common_gaps)
-    left, right = set(list(left)), set(list(right))
-    true_collinear_mums = sorted(list(left.intersection(right)))
-    right_coll_mums = sorted(list(left.difference(set(true_collinear_mums)))) # have a right pair, but not a left
-    left_coll_mums = sorted(list(right.difference(set(true_collinear_mums)))) # have a left pair, but not a right
-    large_blocks = list(zip(right_coll_mums, left_coll_mums))
-    ### find the longest stretches of collinear mums
-    small_blocks = []
-    for l, r in large_blocks:
-        last = l
-        for i in range(l, r):
-            lens = np.full(len(starts[i]), lengths[i])
-            lens[(starts[i+1] < starts[i])] = lengths[i+1] 
-            gap_lens = np.abs(starts[i] - starts[i+1]) - lens
-            if gap_lens.max() > max_break and last < i:
-                small_blocks.append((last, i))
-                last = i + 1
-        if last != r:
-            small_blocks.append((last, r))
-    return large_blocks, small_blocks, mum_gaps
-
-def get_block_order(mums, blocks):
-    starts = mums.starts
-    mum_orders = starts.transpose().argsort()
-    ### get coll_block order
-    coll_block_starts = [b[0] for b in blocks]
-    coll_block_orders = []
-    for i in range(mum_orders.shape[0]):
-        poi = np.where(np.isin(mum_orders[i], coll_block_starts))[0]
-        values = mum_orders[i][poi]
-        poi = np.argsort(values)
-        coll_block_orders.append(np.argsort(poi))
-    return coll_block_orders
+    strand_changes = (~np.diff(strands, axis=0)).all(axis=1)
+    strand_change_diff = np.where(strands, 1, -1)
+    mum_order_pos = np.argsort(mum_orders, axis=1)
+    quick_coll = (strand_change_diff.T[:, :-1] == np.diff(mum_order_pos, axis=1)).all(axis=0)
+    np.logical_and(quick_coll, strand_changes, out = quick_coll)
+    large_blocks = find_blocks(quick_coll)
+    if max_break > 0:
+        small_blocks = []
+        for l, r in tqdm(large_blocks, desc='Truncating blocks (max gap length > {})'.format(max_break), disable=not verbose):
+            last = l
+            for i in range(l, r):
+                lens = np.full(len(starts[i]), lengths[i])
+                lens[(starts[i+1] < starts[i])] = lengths[i+1] 
+                gap_lens = np.abs(starts[i] - starts[i+1]) - lens
+                if (gap_lens.max() > max_break):
+                    if last < i:
+                        small_blocks.append((last, i))
+                    last = i + 1
+            if last != r:
+                small_blocks.append((last, r))
+        blocks = small_blocks
+    else:
+        blocks = large_blocks
+    if return_order:
+        order = mum_order_pos[:,[b[0] for b in blocks]].argsort(axis=1)
+        return blocks, order
+    return blocks
 
 def parse_mums_generator(mumfile, lenfilter=0, subsample=1, verbose=False):
     """Generator that streams MUMs from mumfile"""
