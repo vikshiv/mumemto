@@ -74,6 +74,7 @@ struct BuildOptions {
         size_t min_match_len = 20;
         int max_mem_freq = 0;
         int rare_freq = 1;
+        bool binary = false;
 
         bool validate() {
             /* checks the arguments and make sure they are valid 
@@ -105,6 +106,11 @@ struct BuildOptions {
 
             if (rare_freq < 0)
                 FATAL_ERROR("Per-sequence MEM frequency must be > 0 (or 0 for no limit)."); 
+
+            if (binary && rare_freq != 1) {
+                FORCE_LOG("build_main", "binary output is not supported for multi-MEMs, ignoring flag");
+                binary = false;
+            }
 
             return (rare_freq == 1);
         }
