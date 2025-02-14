@@ -52,7 +52,7 @@ def parse_arguments(args=None):
 
 def mum_to_bum(mumfile, outfile, verbose=False, bit64=False):
     length_dtype = np.uint16
-    start_dtype = np.uint64 if bit64 else np.uint32
+    start_dtype = np.int64
     
     parser = parse_mums_generator(mumfile, verbose=verbose)
     mum_count = 0
@@ -70,9 +70,7 @@ def mum_to_bum(mumfile, outfile, verbose=False, bit64=False):
         # Write starts as packed int64 array
         # Convert -1 to max value for the start_dtype
         starts = np.array(starts)
-        mask = starts == -1
-        starts[mask] = np.iinfo(start_dtype).max
-        if mask.any():
+        if not is_partial and -1 in starts:
             is_partial = True
         starts_out.write(starts.astype(start_dtype).tobytes())
         
@@ -89,7 +87,7 @@ def mum_to_bum(mumfile, outfile, verbose=False, bit64=False):
     starts_out.close()
     strands_out.close()
     
-    flags = pack_flags({'64bit': bit64, 'partial': is_partial, 'coll_blocks': False, 'merge': False})
+    flags = pack_flags({'partial': is_partial, 'coll_blocks': False, 'merge': False})
     
     with open(outfile, 'wb') as out:
         out.write(flags.tobytes())
@@ -119,8 +117,8 @@ def bum_to_mum(bumfile, outfile, verbose=False, chunk_size=8):
             # Read first byte and unpack into 8 bools
             flags = int.from_bytes(f.read(8), byteorder='little')
             flags = unpack_flags(flags)
-            start_size = 8 if flags['64bit'] else 4
-            start_dtype = np.uint64 if flags['64bit'] else np.uint32
+            start_size = 8
+            start_dtype = np.int64
             # Read num_seqs (1 byte) and num_mums (1 byte)
             num_seqs = int.from_bytes(f.read(8), byteorder='little')
             num_mums = int.from_bytes(f.read(8), byteorder='little')

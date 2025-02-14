@@ -66,7 +66,7 @@ public:
         for (size_t i = 0; i < num_docs - 1; i++) {
             curr_sum += doc_lens[i];
             doc_offsets[i + 1] = curr_sum;
-            if (doc_lens[i] > UINT32_MAX - 1)
+            if (doc_lens[i] > UINT32_MAX - 2) // 2**32 - 1 is reserved for -1
                 use64Bit = true;
         }
         if (revcomp) {
@@ -361,6 +361,7 @@ private:
         sa_buffer.push_back(sa_pos);
         da_buffer.push_back(docid);
     }
+
     inline uint64_t get_flags() {
         uint64_t flags = 0;
         if (use64Bit)
@@ -369,6 +370,7 @@ private:
             flags |= 1 << 2; 
         return flags;
     }
+
     inline void write_bums() {
         size_t num_mems = bums_strands_vec.size();
         size_t num_seqs = bums_strands_vec[0].size();
