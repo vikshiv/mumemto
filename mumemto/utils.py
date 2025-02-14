@@ -136,6 +136,7 @@ class MUMdata:
                 subsample,
                 verbose
             )
+        self.seq_lengths = get_sequence_lengths(mumfile[:-4] + '.lengths')
         self.num_mums = len(self.lengths)
         self.num_seqs = self.starts.shape[1] if self.num_mums > 0 else 0
         # sort by reference offset position
