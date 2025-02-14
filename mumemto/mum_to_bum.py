@@ -17,7 +17,6 @@ def parse_arguments(args=None):
     parser.add_argument('--fout','-o', dest='out', help='output fname')
     parser.add_argument('--verbose','-v', dest='verbose', help='verbose mode', action='store_true', default=False)
     parser.add_argument('--chunk-size','-c', dest='chunk_size', help='chunk size for writing output MUM file', default=8, type=int)
-    parser.add_argument('--64bit', dest='bit64', help='use 64-bit integers for start positions', action='store_true', default=False)
     
     if args is None:
         args = parser.parse_args()
@@ -50,7 +49,7 @@ def parse_arguments(args=None):
             parser.error("MUM file does not exist")            
     return args
 
-def mum_to_bum(mumfile, outfile, verbose=False, bit64=False):
+def mum_to_bum(mumfile, outfile, verbose=False):
     length_dtype = np.uint16
     start_dtype = np.int64
     
@@ -156,7 +155,7 @@ def bum_to_mum(bumfile, outfile, verbose=False, chunk_size=8):
 
 def main(args): 
     if args.to_bum:
-        mum_to_bum(args.mumfile, args.out, verbose=args.verbose, bit64=args.bit64)
+        mum_to_bum(args.mumfile, args.out, verbose=args.verbose)
     else:
         bum_to_mum(args.bumfile, args.out, verbose=args.verbose, chunk_size=args.chunk_size)
     
