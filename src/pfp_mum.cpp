@@ -326,7 +326,7 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
     int c = 0;
     int long_index = 0;
     
-    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:", long_options, &long_index)) >= 0) {
+    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:b", long_options, &long_index)) >= 0) {
         switch(c) {
             case 'h': mumemto_usage(); std::exit(0);
             case 'i': opts->input_list.assign(optarg); break;

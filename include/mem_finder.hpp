@@ -119,7 +119,7 @@ protected:
     std::ofstream bums_starts;
     std::ofstream bums_strands;
     std::vector<std::vector<char>> bums_strands_vec;
-
+    
     // Helper functions and variables to compute MEMs
     
     // Speed up checking BWT property by storing the last change position
@@ -281,7 +281,6 @@ protected:
         
 
 private:    
-
     inline size_t update_mems(size_t j, size_t lcp)
     {
         // three cases for LCP, increase, decrease, or stagnant (nothing changes)
@@ -362,18 +361,25 @@ private:
         sa_buffer.push_back(sa_pos);
         da_buffer.push_back(docid);
     }
-
+    inline uint64_t get_flags() {
+        uint64_t flags = 0;
+        if (use64Bit)
+            flags |= 1 << 3;
+        if (num_distinct < num_docs)
+            flags |= 1 << 2; 
+        return flags;
+    }
     inline void write_bums() {
-        size_t rows = bums_strands_vec.size();
-        size_t cols = bums_strands_vec[0].size();
+        size_t num_mems = bums_strands_vec.size();
+        size_t num_seqs = bums_strands_vec[0].size();
         // Prepare packed data buffer
-        std::vector<uint8_t> buffer((rows * cols + 7) / 8, 0);
+        std::vector<uint8_t> buffer((num_mems * num_seqs + 7) / 8, 0);
         // Pack bits into bytes
-        for (size_t i = 0; i < rows; ++i) {
-            for (size_t j = 0; j < cols; ++j) {
-                size_t bitIndex = i * cols + j;
+        for (size_t i = 0; i < num_mems; ++i) {
+            for (size_t j = 0; j < num_seqs; ++j) {
+                size_t bitIndex = i * num_seqs + j;
                 if (bums_strands_vec[i][j] == '+') {
-                    buffer[bitIndex / 8] |= (1 << (bitIndex % 8)); // Set bit for '+'
+                    buffer[bitIndex / 8] |= (1 << (7 - (bitIndex % 8))); // Set bit for '+'
                 }
             }
         }
@@ -382,26 +388,21 @@ private:
         bums_strands.close();
         bums_lengths.close();
         bums_starts.close();
-        mem_file.open(filename + std::string(".bums"));
+        mem_file.open(filename + std::string(".bums"), std::ios::binary);
         // Combine intermediate files into a single output file
         if (mem_file.is_open()) {
-            // Read and write lengths
-            std::ifstream len_file(filename + std::string(".bums.lengths"), std::ios::binary);
-            mem_file << len_file.rdbuf();
-            len_file.close();
-
-            // Read and write starts
-            std::ifstream starts_file(filename + std::string(".bums.starts"), std::ios::binary);
-            mem_file << starts_file.rdbuf();
-            starts_file.close();
-
-            // Read and write strands
-            std::ifstream strands_file(filename + std::string(".bums.strands"), std::ios::binary);
-            mem_file << strands_file.rdbuf();
-            strands_file.close();
-
+            uint64_t flags = get_flags();
+            mem_file.write(reinterpret_cast<const char*>(&flags), sizeof(flags));
+            mem_file.write(reinterpret_cast<const char*>(&num_seqs), sizeof(uint64_t));
+            mem_file.write(reinterpret_cast<const char*>(&num_mems), sizeof(uint64_t));
             mem_file.close();
         }
+
+        std::string command = "cat " + filename + std::string(".bums.lengths") + " "  + 
+                                        filename + std::string(".bums.starts") + " " + 
+                                        filename + std::string(".bums.strands") + 
+                                        " >> " + filename + std::string(".bums");
+        system(command.c_str());
 
         // Optionally, remove the intermediate files
         std::filesystem::remove(filename + std::string(".bums.lengths"));

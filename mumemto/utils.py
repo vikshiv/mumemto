@@ -107,7 +107,7 @@ def get_sequence_lengths(lengths_file, multilengths=False):
 
 def unpack_flags(flags):
     """
-    Unpack flags from a single uint8 value
+    Unpack flags from a single uint64 value
     """
     flag_labels = ['64bit', 'partial', 'coll_blocks', 'merge']
     flags = np.unpackbits(np.array([flags], dtype=np.uint8))[-len(flag_labels):]
@@ -115,10 +115,10 @@ def unpack_flags(flags):
 
 def pack_flags(flags):
     """
-    Pack flags into a single uint8 value
+    Pack flags into a single uint64 value
     """
     flag_labels = ['64bit', 'partial', 'coll_blocks', 'merge']
-    flags = ([0] * (8 - len(flag_labels))) + [int(flags[f]) for f in flag_labels]
+    flags = ([0] * (64 - len(flag_labels))) + [int(flags[f]) for f in flag_labels]
     return np.packbits(flags)
 
 class MUMdata:
