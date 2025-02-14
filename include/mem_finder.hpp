@@ -46,7 +46,6 @@ public:
     bool revcomp;
     bool mummode;
     bool binary;
-    bool use64Bit;
     std::string filename;
 
     mem_finder(std::string filename, RefBuilder& ref_build, size_t min_mem_len, size_t num_distinct, int max_doc_freq, int max_total_freq, bool binary): 
@@ -66,8 +65,6 @@ public:
         for (size_t i = 0; i < num_docs - 1; i++) {
             curr_sum += doc_lens[i];
             doc_offsets[i + 1] = curr_sum;
-            if (doc_lens[i] > UINT32_MAX - 2) // 2**32 - 1 is reserved for -1
-                use64Bit = true;
         }
         if (revcomp) {
             for (auto i = 0; i < doc_lens.size(); i++) {
@@ -364,8 +361,6 @@ private:
 
     inline uint64_t get_flags() {
         uint64_t flags = 0;
-        if (use64Bit)
-            flags |= 1 << 3;
         if (num_distinct < num_docs)
             flags |= 1 << 2; 
         return flags;
