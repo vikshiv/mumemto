@@ -80,7 +80,7 @@ int build_main(int argc, char** argv) {
         file_lcp input_lcp(build_opts.arrays_in, &ref_build);
         start = std::chrono::system_clock::now();
         STATUS_LOG("build_main", "finding multi-%ss from pfp", mum_mode ? "MUM" : "MEM");
-        mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq);
+        mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary);
         input_lcp.process(match_finder);
         match_finder.close();
         input_lcp.close();
@@ -119,7 +119,7 @@ int build_main(int argc, char** argv) {
 
     STATUS_LOG("build_main", "finding multi-%ss from pfp", mum_mode ? "MUM" : "MEM");
     // std::string filename, RefBuilder& ref_build, size_t min_mem_len, size_t num_distinct, int max_doc_freq, int max_total_freq
-    mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq);
+    mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary);
     count = lcp.process(match_finder);
     match_finder.close();
     lcp.close();
@@ -320,12 +320,13 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
         {"keep-temp-files",   no_argument, NULL,  'K'},
         {"window",   required_argument, NULL,  'w'},
         {"rare",   required_argument, NULL,  'f'},
+        {"binary",   no_argument, NULL,  'b'},
         {0, 0, 0,  0}
     };
     int c = 0;
     int long_index = 0;
     
-    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:", long_options, &long_index)) >= 0) {
+    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:b", long_options, &long_index)) >= 0) {
         switch(c) {
             case 'h': mumemto_usage(); std::exit(0);
             case 'i': opts->input_list.assign(optarg); break;
@@ -342,6 +343,7 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
             case 'a': opts->arrays_in.assign(optarg); opts->arrays_in_flag = true; break;
             case 'K': opts->keep_temp = true; break;
             case 'f': opts->rare_freq = std::atoi(optarg); break;
+            case 'b': opts->binary = true; break;
             default: mumemto_usage(); std::exit(1);
         }
     }
@@ -361,7 +363,8 @@ int mumemto_usage() {
     std::fprintf(stderr, "\t%-22s%-10spath to a file-list of genomes to use (overrides positional args)\n", "-i, --input", "[FILE]");
     std::fprintf(stderr, "\t%-22s%-10soutput prefix path\n", "-o, --output", "[arg]");
     std::fprintf(stderr, "\t%-32sinclude the reverse complement of the sequences (default: true)\n\n", "-r, --no-revcomp");
-    
+    std::fprintf(stderr, "\t%-32soutput binary format (multi-MUMs only)\n\n", "-b, --binary");
+
     std::fprintf(stderr, "\t%-32swrite LCP, BWT, and SA to file\n", "-A, --arrays-out");
     std::fprintf(stderr, "\t%-22s%-10scompute matches from precomputed LCP, BWT, SA (with shared PREFIX.bwt/sa/lcp)\n\n", "-a, --arrays-in", "[PREFIX]");
 

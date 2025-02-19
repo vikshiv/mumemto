@@ -96,14 +96,37 @@ def get_sequence_lengths(lengths_file, multilengths=False):
     else:
         return get_lengths(lengths_file)
 
+def unpack_flags(flags):
+    """
+    Unpack flags from a single uint64 value
+    """
+    flag_labels = ['partial', 'coll_blocks', 'merge']
+    flags = np.unpackbits(np.array([flags], dtype=np.uint8))[-len(flag_labels):]
+    return {f : bool(b) for f, b in zip(flag_labels, flags)}
+
+def pack_flags(flags):
+    """
+    Pack flags into a single uint64 value
+    """
+    flag_labels = ['partial', 'coll_blocks', 'merge']
+    flags = ([0] * (64 - len(flag_labels))) + [int(flags[f]) for f in flag_labels]
+    return np.packbits(flags)
+
 class MUMdata:
-    def __init__(self, mumfile, lenfilter=0, subsample=1, verbose=False):            
-        self.lengths, self.starts, self.strands = self.parse_mums(
-            mumfile, 
-            lenfilter, 
-            subsample,
-            verbose
-        )
+    def __init__(self, mumfile, lenfilter=0, subsample=1, verbose=False):
+        if mumfile.endswith('.bums'):
+            self.lengths, self.starts, self.strands = self.parse_bums(
+                mumfile, 
+                lenfilter, 
+                subsample
+            )
+        else:
+            self.lengths, self.starts, self.strands = self.parse_mums(
+                mumfile, 
+                lenfilter, 
+                subsample,
+                verbose
+            )
         self.num_mums = len(self.lengths)
         self.num_seqs = self.starts.shape[1] if self.num_mums > 0 else 0
         # sort by reference offset position
@@ -111,6 +134,7 @@ class MUMdata:
         self.lengths = self.lengths[order]
         self.starts = self.starts[order]
         self.strands = self.strands[order]
+        self.partial = -1 in self.starts
     
     @classmethod
     def from_arrays(cls, lengths, starts, strands):
@@ -129,70 +153,100 @@ class MUMdata:
         instance.num_seqs = starts.shape[1] if instance.num_mums > 0 else 0
         return instance
     
+    # @staticmethod
+    # def parse_mums(mumfile, lenfilter=0, subsample=1, verbose=False):
+    #     def conv(x: str):
+    #         conv.event_counter += 1
+    #         if conv.event_counter % 1000000 == 0:
+    #             conv.pbar.update(1000000)
+    #         return x
+        
+    #     if mumfile.endswith('.bums'):
+    #         return parse_bums(mumfile, lenfilter, subsample, verbose)
+        
+    #     lengths, starts, strands = [], [], []
+    #     count = 0
+    #     with open(mumfile, 'r') as f:
+    #         for l in tqdm(f, disable=not verbose, desc='Reading MUMs'):
+    #             if subsample == 1 or count % subsample == 0:
+    #                 l = l.strip().split()
+    #                 length = int(l[0])
+    #                 if length >= lenfilter:
+    #                     # Parse the line
+    #                     start_positions = l[1]
+    #                     strand_info = l[2]
+    #                     # Handle reverse strands
+    #                     # for idx, (pos, strand) in enumerate(zip(start_positions, strand_info)):
+    #                     #     if strand == '-':
+    #                     #         start_positions[idx] = seq_lengths[idx] - pos - length
+                        
+    #                     lengths.append(length)
+    #                     starts.append(start_positions)
+    #                     strands.append(strand_info)
+    #             count += 1
+        
+    #     if verbose and len(starts) > 1000000:
+    #         conv.event_counter = 0
+    #         conv.pbar = tqdm(total = len(starts), desc='Parsing offsets')
+    #         starts = np.genfromtxt(starts, delimiter=',', dtype=int, filling_values=-1, converters={0: conv})
+    #         conv.pbar.n = len(strands); conv.pbar.refresh()
+    #         conv.pbar.close()
+    #     else:
+    #         starts = np.genfromtxt(starts, delimiter=',', dtype=int, filling_values=-1)
+        
+    #     if verbose and len(strands) > 1000000:
+    #         conv.event_counter = 0
+    #         conv.pbar = tqdm(total = len(strands), desc='Parsing strands')
+    #         strands = np.genfromtxt(strands, delimiter=',', dtype='U1', filling_values='', converters={0: conv})
+    #         conv.pbar.n = len(strands); conv.pbar.refresh()
+    #         conv.pbar.close()
+    #     else:
+    #         strands = np.genfromtxt(strands, delimiter=',', dtype='U1', filling_values='')
+
+    #     strands = strands == '+'
+    #     # Convert to numpy arrays all at once
+    #     return (
+    #         np.array(lengths),
+    #         starts,
+    #         strands
+    #     )
+        
     @staticmethod
     def parse_mums(mumfile, lenfilter=0, subsample=1, verbose=False):
-        def conv(x: str):
-            conv.event_counter += 1
-            if conv.event_counter % 1000000 == 0:
-                conv.pbar.update(1000000)
-            return x
-        
-        if mumfile.endswith('.bums'):
-            return parse_bums(mumfile, lenfilter, subsample, verbose)
-        
-        lengths, starts, strands = [], [], []
         count = 0
+        lengths, starts, strands = [], [], []
         with open(mumfile, 'r') as f:
-            for l in tqdm(f, disable=not verbose, desc='Reading MUMs'):
+            for line in tqdm(f, desc='parsing MUM file', disable=not verbose):
                 if subsample == 1 or count % subsample == 0:
-                    l = l.strip().split()
-                    length = int(l[0])
+                    line = line.strip().split()
+                    length = int(line[0])
                     if length >= lenfilter:
                         # Parse the line
-                        start_positions = l[1]
-                        strand_info = l[2]
-                        # Handle reverse strands
-                        # for idx, (pos, strand) in enumerate(zip(start_positions, strand_info)):
-                        #     if strand == '-':
-                        #         start_positions[idx] = seq_lengths[idx] - pos - length
-                        
+                        strand = [s == '+' for s in line[2].split(',')]
+                        start = [int(pos) if pos != '' else -1 for pos in line[1].split(',')]
+                        starts.append(start)
+                        strands.append(strand)
                         lengths.append(length)
-                        starts.append(start_positions)
-                        strands.append(strand_info)
                 count += 1
+        try:
+            lengths = np.array(lengths, dtype=np.uint16)
+        except OverflowError:
+            raise ValueError("MUM length must be less than 65,535bp")
+        try:
+            starts = np.array(starts, dtype=np.int64)
+        except OverflowError:
+            raise ValueError("MUM start position must be less than 2^63")
         
-        if verbose and len(starts) > 1000000:
-            conv.event_counter = 0
-            conv.pbar = tqdm(total = len(starts), desc='Parsing offsets')
-            starts = np.genfromtxt(starts, delimiter=',', dtype=int, filling_values=-1, converters={0: conv})
-            conv.pbar.n = len(strands); conv.pbar.refresh()
-            conv.pbar.close()
-        else:
-            starts = np.genfromtxt(starts, delimiter=',', dtype=int, filling_values=-1)
-        
-        if verbose and len(strands) > 1000000:
-            conv.event_counter = 0
-            conv.pbar = tqdm(total = len(strands), desc='Parsing strands')
-            strands = np.genfromtxt(strands, delimiter=',', dtype='U1', filling_values='', converters={0: conv})
-            conv.pbar.n = len(strands); conv.pbar.refresh()
-            conv.pbar.close()
-        else:
-            strands = np.genfromtxt(strands, delimiter=',', dtype='U1', filling_values='')
-
-        strands = strands == '+'
-        # Convert to numpy arrays all at once
-        return (
-            np.array(lengths),
-            starts,
-            strands
-        )
+        return lengths, starts, np.array(strands, dtype=bool)
         
     @staticmethod
     def parse_bums(bumfile, lenfilter=0, subsample=1):
         with open(bumfile, 'rb') as f:
-            n_seqs, n_mums = np.fromfile(f, count = 2, dtype=np.uint64)
-            mum_lengths = np.fromfile(f, count = n_mums, dtype=np.uint64)
-            mum_starts = np.fromfile(f, count = n_seqs * n_mums, dtype=np.int64).reshape(n_mums, n_seqs)
+            flags, n_seqs, n_mums = np.fromfile(f, count = 3, dtype=np.uint64)
+            flags = unpack_flags(flags)
+            start_dtype = np.int64
+            mum_lengths = np.fromfile(f, count = n_mums, dtype=np.uint16)
+            mum_starts = np.fromfile(f, count = n_seqs * n_mums, dtype=start_dtype).reshape(n_mums, n_seqs)
             mum_strands = np.fromfile(f, dtype=np.uint8)
             mum_strands = np.unpackbits(mum_strands, count=n_mums * n_seqs).reshape(n_mums, n_seqs).astype(bool)
         
@@ -209,11 +263,12 @@ class MUMdata:
 
     def filter_pmums(self):
         """Remove any MUMs that have -1 in their start positions"""
-        valid_rows = ~np.any(self.starts == -1, axis=1)
-        self.lengths = self.lengths[valid_rows]
-        self.starts = self.starts[valid_rows]
-        self.strands = self.strands[valid_rows]
-        self.num_mums = len(self.lengths)
+        if self.partial:
+            valid_rows = ~np.any(self.starts == -1, axis=1)
+            self.lengths = self.lengths[valid_rows]
+            self.starts = self.starts[valid_rows]
+            self.strands = self.strands[valid_rows]
+            self.num_mums = len(self.lengths)
         return self
 
     def __iter__(self):
@@ -240,3 +295,21 @@ class MUMdata:
                     for i in range(l, r + 1):
                         strands_str = ['+' if s else '-' for s in self.strands[i]]
                         f.write(f"{self.lengths[i]}\t{','.join(map(str, self.starts[i]))}\t{','.join(strands_str)}\t{idx}\n")
+    
+    def write_bums(self, filename, blocks=None):
+        if blocks:
+            block_idx = [x for l,r in blocks for x in range(l, r + 1)]
+            self.lengths = self.lengths[block_idx]
+            self.starts = self.starts[block_idx]
+            self.strands = self.strands[block_idx]
+            self.num_mums = len(self.lengths)
+        with open(filename, 'wb') as f:
+            f.write(pack_flags({'partial': self.partial, 'coll_blocks': False, 'merge': False}).tobytes())
+            f.write(np.uint64(self.num_seqs).tobytes())
+            f.write(np.uint64(self.num_mums).tobytes())
+            f.write(self.lengths.tobytes())
+            f.write(self.starts.tobytes())
+            f.write(self.strands.tobytes())
+            if blocks:
+                block_idx = np.array([idx for idx, (l,r) in enumerate(blocks) for _ in range(l, r + 1)], dtype=np.uint32)
+                f.write(block_idx.tobytes())
