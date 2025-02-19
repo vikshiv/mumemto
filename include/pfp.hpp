@@ -106,7 +106,7 @@ public:
     verbose("Computing s_lcp_T");
     _elapsed_time(compute_s_lcp_T());
 
-    sdsl::int_vector<40>().swap(dict.isaD);
+    sdsl::int_vector<40>().swap(dict.phrase_to_rank);
     // dict.isaD.clear(); 
     // dict.isaD.shrink_to_fit();
 
@@ -136,7 +136,7 @@ public:
     verbose("Dictionary");
     verbose("Size of dict.d: ", dict.d.size() * sizeof(dict.d[0]));
     verbose("Size of dict.saD: ", dict.saD.size() * sizeof(dict.saD[0]));
-    verbose("Size of dict.isaD: ", dict.isaD.size() * sizeof(dict.isaD[0]));
+    // verbose("Size of dict.isaD: ", dict.isaD.size() * sizeof(dict.isaD[0]));
     verbose("Size of dict.lcpD: ", dict.lcpD.size() * sizeof(dict.lcpD[0]));
     verbose("Size of dict.rmq_lcp_D: ", sdsl::size_in_bytes(dict.rmq_lcp_D));
 
