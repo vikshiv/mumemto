@@ -15,6 +15,9 @@ def parse_arguments():
     args = parser.parse_args()
     if args.filelist == None:
         args.filelist = os.path.splitext(args.mumfile)[0] + '.lengths'
+        
+    if not args.output.endswith('.fa') and not args.output.endswith('.fasta'):
+        args.output += '.fa'
     return args
 
 def from_bums(bumsfile):
@@ -28,8 +31,6 @@ def from_bums(bumsfile):
 
 def main():
     args = parse_arguments()
-    if args.filelist == None:
-        args.filelist = args.mumfile.replace('.bums', '.lengths')
     line = open(args.filelist, 'r').read().splitlines()[args.index]
     file = line.split()[0]
     print(file)
