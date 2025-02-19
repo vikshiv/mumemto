@@ -242,13 +242,8 @@ protected:
         if (binary) {
             uint16_t length_uint16 = static_cast<uint16_t>(length);
             bums_lengths.write(reinterpret_cast<const char*>(&length_uint16), sizeof(length_uint16));
-            if (this->use64Bit) {
-                std::vector<uint64_t> converted(offsets.begin(), offsets.end());
-                bums_starts.write(reinterpret_cast<const char*>(converted.data()), sizeof(uint64_t) * offsets.size());
-            } else {
-                std::vector<uint32_t> converted(offsets.begin(), offsets.end());
-                bums_starts.write(reinterpret_cast<const char*>(converted.data()), sizeof(uint32_t) * offsets.size());
-            }
+            std::vector<uint64_t> converted(offsets.begin(), offsets.end());
+            bums_starts.write(reinterpret_cast<const char*>(converted.data()), sizeof(uint64_t) * offsets.size());
             bums_strands_vec.push_back(strand);
         }
         else {
