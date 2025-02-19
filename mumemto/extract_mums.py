@@ -41,6 +41,7 @@ def main():
     with open(args.output, 'w') as out:
         outlines = []
         for i in tqdm(range(len(mum_lengths))):
+            outlines.append(f'>{i}')
             cur = seq[mum_starts[i, args.index] : mum_starts[i, args.index] + mum_lengths[i]]  
             if mum_strands[i, args.index]:
                 outlines.append(str(cur))
