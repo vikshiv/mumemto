@@ -226,11 +226,16 @@ int main(int argc, char* argv[]) {
         }
         output_file << "\t";
         for (size_t i = 0; i < mum.strands.size(); ++i) {
-            output_file << mum.strands[i];
+            output_file << (mum.strands[i] ? "+" : "-");
             if (i < mum.strands.size() - 1) output_file << ",";
         }
         output_file << "\n";
     }
+
+    string thresh_path = output_prefix + ".thresh";
+    ofstream thresh_file(thresh_path, ios::binary);
+    const vector<uint16_t>& new_nb = std::get<2>(left_mums);
+    thresh_file.write(reinterpret_cast<const char*>(new_nb.data()), new_nb.size() * sizeof(uint16_t));
 
     return 0;
 }
