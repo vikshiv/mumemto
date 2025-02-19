@@ -21,14 +21,19 @@ def parse_arguments():
     return args
 
 def from_bums(bumsfile):
+    def unpack_flags(flags):
+        flag_labels = ['partial', 'coll_blocks', 'merge']
+        flags = np.unpackbits(np.array([flags], dtype=np.uint8))[-len(flag_labels):]
+        return {f : bool(b) for f, b in zip(flag_labels, flags)}
     with open(bumsfile, 'rb') as f:
-        n_seqs, n_mums = np.fromfile(f, count = 2, dtype=np.uint64)
-        mum_lengths = np.fromfile(f, count = n_mums, dtype=np.int64)
-        mum_starts = np.fromfile(f, count = n_seqs * n_mums, dtype=np.int64).reshape(n_mums, n_seqs)
+        flags, n_seqs, n_mums = np.fromfile(f, count = 3, dtype=np.uint64)
+        flags = unpack_flags(flags)
+        start_dtype = np.int64
+        mum_lengths = np.fromfile(f, count = n_mums, dtype=np.uint16)
+        mum_starts = np.fromfile(f, count = n_seqs * n_mums, dtype=start_dtype).reshape(n_mums, n_seqs)
         mum_strands = np.fromfile(f, dtype=np.uint8)
         mum_strands = np.unpackbits(mum_strands, count=n_mums * n_seqs).reshape(n_mums, n_seqs).astype(bool)
     return mum_lengths, mum_starts, mum_strands
-
 def main():
     args = parse_arguments()
     line = open(args.filelist, 'r').read().splitlines()[args.index]
