@@ -392,14 +392,18 @@ private:
             mem_file.write(reinterpret_cast<const char*>(&flags), sizeof(flags));
             mem_file.write(reinterpret_cast<const char*>(&num_seqs), sizeof(uint64_t));
             mem_file.write(reinterpret_cast<const char*>(&num_mems), sizeof(uint64_t));
+
+            // Read and write the contents of the intermediate files
+            std::ifstream lengths_file(filename + std::string(".bums.lengths"), std::ios::binary);
+            std::ifstream starts_file(filename + std::string(".bums.starts"), std::ios::binary);
+            std::ifstream strands_file(filename + std::string(".bums.strands"), std::ios::binary);
+
+            mem_file << lengths_file.rdbuf();
+            mem_file << starts_file.rdbuf();
+            mem_file << strands_file.rdbuf();
+
             mem_file.close();
         }
-
-        std::string command = "cat " + filename + std::string(".bums.lengths") + " "  + 
-                                        filename + std::string(".bums.starts") + " " + 
-                                        filename + std::string(".bums.strands") + 
-                                        " >> " + filename + std::string(".bums");
-        system(command.c_str());
 
         // Optionally, remove the intermediate files
         std::filesystem::remove(filename + std::string(".bums.lengths"));
