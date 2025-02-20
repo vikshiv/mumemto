@@ -152,64 +152,6 @@ class MUMdata:
         instance.num_mums = len(lengths)
         instance.num_seqs = starts.shape[1] if instance.num_mums > 0 else 0
         return instance
-    
-    # @staticmethod
-    # def parse_mums(mumfile, lenfilter=0, subsample=1, verbose=False):
-    #     def conv(x: str):
-    #         conv.event_counter += 1
-    #         if conv.event_counter % 1000000 == 0:
-    #             conv.pbar.update(1000000)
-    #         return x
-        
-    #     if mumfile.endswith('.bums'):
-    #         return parse_bums(mumfile, lenfilter, subsample, verbose)
-        
-    #     lengths, starts, strands = [], [], []
-    #     count = 0
-    #     with open(mumfile, 'r') as f:
-    #         for l in tqdm(f, disable=not verbose, desc='Reading MUMs'):
-    #             if subsample == 1 or count % subsample == 0:
-    #                 l = l.strip().split()
-    #                 length = int(l[0])
-    #                 if length >= lenfilter:
-    #                     # Parse the line
-    #                     start_positions = l[1]
-    #                     strand_info = l[2]
-    #                     # Handle reverse strands
-    #                     # for idx, (pos, strand) in enumerate(zip(start_positions, strand_info)):
-    #                     #     if strand == '-':
-    #                     #         start_positions[idx] = seq_lengths[idx] - pos - length
-                        
-    #                     lengths.append(length)
-    #                     starts.append(start_positions)
-    #                     strands.append(strand_info)
-    #             count += 1
-        
-    #     if verbose and len(starts) > 1000000:
-    #         conv.event_counter = 0
-    #         conv.pbar = tqdm(total = len(starts), desc='Parsing offsets')
-    #         starts = np.genfromtxt(starts, delimiter=',', dtype=int, filling_values=-1, converters={0: conv})
-    #         conv.pbar.n = len(strands); conv.pbar.refresh()
-    #         conv.pbar.close()
-    #     else:
-    #         starts = np.genfromtxt(starts, delimiter=',', dtype=int, filling_values=-1)
-        
-    #     if verbose and len(strands) > 1000000:
-    #         conv.event_counter = 0
-    #         conv.pbar = tqdm(total = len(strands), desc='Parsing strands')
-    #         strands = np.genfromtxt(strands, delimiter=',', dtype='U1', filling_values='', converters={0: conv})
-    #         conv.pbar.n = len(strands); conv.pbar.refresh()
-    #         conv.pbar.close()
-    #     else:
-    #         strands = np.genfromtxt(strands, delimiter=',', dtype='U1', filling_values='')
-
-    #     strands = strands == '+'
-    #     # Convert to numpy arrays all at once
-    #     return (
-    #         np.array(lengths),
-    #         starts,
-    #         strands
-    #     )
         
     @staticmethod
     def parse_mums(mumfile, lenfilter=0, subsample=1, verbose=False):
