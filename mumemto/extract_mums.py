@@ -5,6 +5,11 @@ import numpy as np
 from tqdm.auto import tqdm
 import os
 
+try:
+    from utils import MUMdata
+except ImportError:
+    from mumemto.utils import MUMdata
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Extract the MUM sequences')
     parser.add_argument('-m', '--mumfile', type=str, help='bumfile to process')
@@ -15,6 +20,8 @@ def parse_arguments():
     args = parser.parse_args()
     if args.filelist == None:
         args.filelist = os.path.splitext(args.mumfile)[0] + '.lengths'
+        if not os.path.exists(args.filelist):
+            raise FileNotFoundError(f"Filelist {args.filelist} not found, and no filelist provided")
         
     if not args.output.endswith('.fa') and not args.output.endswith('.fasta'):
         args.output += '.fa'
@@ -42,7 +49,11 @@ def main():
     seq = Seq(''.join([l for l in open(file, 'r').read().splitlines() if not l.startswith('>')]))
     # seq = Seq('').join([record.seq for record in SeqIO.parse(file, "fasta")])
     assert len(seq) == int(line.split()[-1])
-    mum_lengths, mum_starts, mum_strands = from_bums(args.mumfile)
+    if args.mumfile.endswith('.bums'):
+        mum_lengths, mum_starts, mum_strands = from_bums(args.mumfile)
+    else:
+        mums = MUMdata(args.mumfile, sort=False)
+        mum_lengths, mum_starts, mum_strands = mums.lengths, mums.starts, mums.strands
     with open(args.output, 'w') as out:
         outlines = []
         for i in tqdm(range(len(mum_lengths))):

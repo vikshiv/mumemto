@@ -73,7 +73,7 @@ def parse_mums_generator(mumfile, seq_lengths, lenfilter=0, subsample=1):
             count += 1
 
 class MUMdata:
-    def __init__(self, mumfile, seq_lengths=None, lenfilter=0, subsample=1, verbose=False):
+    def __init__(self, mumfile, seq_lengths=None, lenfilter=0, subsample=1, sort=True, verbose=False):
         # If seq_lengths not provided, try to load from .lengths file
         if seq_lengths is None:
             lengths_file = mumfile.replace('.mums', '.lengths')
@@ -92,11 +92,12 @@ class MUMdata:
         )
         self.num_mums = len(self.lengths)
         self.num_seqs = self.starts.shape[1] if self.num_mums > 0 else 0
-        # sort by reference offset position
-        order = self.starts[:,0].argsort()
-        self.lengths = self.lengths[order]
-        self.starts = self.starts[order]
-        self.strands = self.strands[order]
+        if sort:
+            # sort by reference offset position
+            order = self.starts[:,0].argsort()
+            self.lengths = self.lengths[order]
+            self.starts = self.starts[order]
+            self.strands = self.strands[order]
         
     @staticmethod
     def parse_mums(mumfile, seq_lengths, lenfilter=0, subsample=1, verbose=False):
