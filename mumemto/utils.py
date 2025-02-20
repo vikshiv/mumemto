@@ -96,6 +96,18 @@ def get_sequence_lengths(lengths_file, multilengths=False):
     else:
         return get_lengths(lengths_file)
 
+def get_seq_paths(lengths_file):
+    with open(lengths_file, 'r') as f:
+        first_line = f.readline().strip().split()
+        if len(first_line) > 1 and first_line[1] == '*':
+            simple = False
+        else:
+            simple = True
+    if simple:
+        return [l.split()[0] for l in open(lengths_file, 'r').read().splitlines()]
+    else:
+        return [l.split()[0] for l in open(lengths_file, 'r').read().splitlines() if l.split()[1] == '*']
+
 def unpack_flags(packed_value):
     """
     Unpack a uint16 value into individual flags.

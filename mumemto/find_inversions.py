@@ -5,10 +5,10 @@ import sys
 import argparse
 import numpy as np
 try:
-    from utils import MUMdata, find_coll_blocks, get_block_order, get_sequence_lengths
+    from utils import MUMdata, find_coll_blocks, get_sequence_lengths
 except ImportError:
-    from mumemto.utils import MUMdata, find_coll_blocks, get_block_order, get_sequence_lengths
-from tqdm import tqdm
+    from mumemto.utils import MUMdata, find_coll_blocks, get_sequence_lengths
+from tqdm.auto import tqdm
 
 def parse_arguments(args=None):
     parser = argparse.ArgumentParser(description="Detect inversions from MUMs. Optionally checks if inversions are flanked by scaffold breaks when AGP files are provided.")
@@ -138,7 +138,7 @@ def main(args):
         breaks, contig_names = get_scaffold_breaks(args, hap_ids)
         
     # Load and process MUMs
-    mums = MUMdata(args.mumfile, seq_lengths=seq_lengths, verbose=args.verbose)
+    mums = MUMdata(args.mumfile, verbose=args.verbose)
     
     # Find collinear blocks and inversions
     small_blocks, block_orders = find_coll_blocks(mums, max_break=args.max_block_gap, verbose=args.verbose, return_order=True)

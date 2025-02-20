@@ -60,10 +60,7 @@ def main(args):
     coverage = np.zeros((len(seq_lengths), max_len), dtype=bool)
     
     # Process MUMs using generator
-    if args.verbose:
-        print(f'Processing MUMs from {args.mumfile}...', file=sys.stderr)
-    mum_gen = parse_mums_generator(args.mumfile, seq_lengths=seq_lengths, 
-                                 lenfilter=args.lenfilter)
+    mum_gen = parse_mums_generator(args.mumfile, lenfilter=args.lenfilter, verbose=args.verbose)
     
     # Update coverage
     coverage = update_coverage(coverage, mum_gen, verbose=args.verbose)

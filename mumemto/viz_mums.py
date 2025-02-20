@@ -7,9 +7,9 @@ import os, sys
 import numpy as np
 import argparse
 try:
-    from utils import MUMdata, find_coll_blocks, get_sequence_lengths
+    from utils import MUMdata, find_coll_blocks, get_sequence_lengths, get_seq_paths
 except ImportError:
-    from mumemto.utils import MUMdata, find_coll_blocks, get_sequence_lengths
+    from mumemto.utils import MUMdata, find_coll_blocks, get_sequence_lengths, get_seq_paths
 
 def parse_arguments(args=None):    
     parser = argparse.ArgumentParser(description="Plots a synteny plot of MUMs from mumemto")
@@ -257,7 +257,8 @@ def main(args):
     if args.mode == 'gapped':
         args.spacer = args.spacer * args.multilengths.max(axis=0).max()
     if args.filelist:
-        genome_names = [os.path.splitext(os.path.basename(l.split()[0]))[0] for l in open(args.filelist, 'r').read().splitlines()]
+        genome_names = get_seq_paths(args.filelist)
+        genome_names = [os.path.splitext(os.path.basename(l))[0] for l in genome_names]
     else:
         genome_names = None
     max_length = max(seq_lengths)
