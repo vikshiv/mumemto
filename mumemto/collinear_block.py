@@ -33,22 +33,22 @@ def parse_arguments(args=None):
     elif args.prefix:
         if args.prefix.endswith('.mums') or args.prefix.endswith('.bums'):
             args.prefix = args.prefix[:-5]
-        args.mumfile = args.prefix + '.mums'
-    else:
-        parser.error("Either --mums or --prefix must be provided")
+        if os.path.exists(args.prefix + '.bums'):
+            args.mumfile = args.prefix + '.bums'
+        elif os.path.exists(args.prefix + '.mums'):
+            args.mumfile = args.prefix + '.mums'
+        else:
+            parser.error("Either --mums or --prefix must be provided")
         
     if args.lens is None:
         args.lens = args.prefix + '.lengths'
     
     if args.filename is None:
-        args.filename = args.prefix + '_sorted'
+        args.filename = os.path.splitext(args.mumfile)[0] + '_sorted' + os.path.splitext(args.mumfile)[1]
     
     return args
 
-def main(args):
-    seq_lengths = get_sequence_lengths(args.lens)
-    max_length = max(seq_lengths)
-    
+def main(args):    
     mums = MUMdata(args.mumfile, verbose=args.verbose)
     if args.verbose:
         print(f'Found {mums.num_mums} MUMs', file=sys.stderr)
@@ -62,10 +62,10 @@ def main(args):
     if args.verbose:
         print(f'found {len(collinear_blocks)} collinear blocks', file=sys.stderr)
     
-    mums.write_bums(args.filename)
-    with open(args.filename + '.blocks', 'w') as f:
-        for l, r in collinear_blocks:
-            f.write(f'{l}\t{r}\n')
+    if args.filename.endswith('.mums'):
+        mums.write_mums(args.filename, blocks=collinear_blocks)
+    elif args.filename.endswith('.bums'):
+        mums.write_bums(args.filename, blocks=collinear_blocks)
     
 if __name__ == "__main__":
     args = parse_arguments()
