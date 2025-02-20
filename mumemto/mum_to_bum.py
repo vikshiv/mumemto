@@ -89,7 +89,7 @@ def mum_to_bum(mumfile, outfile, verbose=False):
     starts_out.close()
     strands_out.close()
     
-    flags = pack_flags({'partial': is_partial, 'coll_blocks': False, 'merge': False})
+    flags = pack_flags({'partial': is_partial, 'coll_blocks': len(blocks_list) > 0, 'merge': False})
     
     with open(outfile, 'wb') as out:
         out.write(flags.tobytes())
