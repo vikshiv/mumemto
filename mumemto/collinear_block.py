@@ -31,7 +31,7 @@ def parse_arguments(args=None):
     if args.mumfile:
         args.prefix = os.path.splitext(args.mumfile)[0]
     elif args.prefix:
-        if args.prefix.endswith('.mums'):
+        if args.prefix.endswith('.mums') or args.prefix.endswith('.bums'):
             args.prefix = args.prefix[:-5]
         args.mumfile = args.prefix + '.mums'
     else:
@@ -62,7 +62,10 @@ def main(args):
     if args.verbose:
         print(f'found {len(collinear_blocks)} collinear blocks', file=sys.stderr)
     
-    mums.write_mums(args.filename, blocks=collinear_blocks)
+    mums.write_bums(args.filename)
+    with open(args.filename + '.blocks', 'w') as f:
+        for l, r in collinear_blocks:
+            f.write(f'{l}\t{r}\n')
     
 if __name__ == "__main__":
     args = parse_arguments()

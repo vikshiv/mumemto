@@ -304,7 +304,7 @@ class MUMdata:
             self.strands = self.strands[block_idx]
             self.num_mums = len(self.lengths)
         with open(filename, 'wb') as f:
-            f.write(pack_flags({'partial': self.partial, 'coll_blocks': False, 'merge': False}).tobytes())
+            f.write(pack_flags({'partial': self.partial, 'coll_blocks': True if blocks else False, 'merge': False}).tobytes())
             f.write(np.uint64(self.num_seqs).tobytes())
             f.write(np.uint64(self.num_mums).tobytes())
             f.write(self.lengths.tobytes())
