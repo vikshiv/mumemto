@@ -96,32 +96,37 @@ def get_sequence_lengths(lengths_file, multilengths=False):
     else:
         return get_lengths(lengths_file)
 
-def unpack_flags(flags):
+def unpack_flags(packed_value):
     """
-    Unpack flags from a single uint64 value
+    Unpack a uint16 value into individual flags.
     """
     flag_labels = ['partial', 'coll_blocks', 'merge']
-    flags = np.unpackbits(np.array([flags], dtype=np.uint8))[-len(flag_labels):]
-    return {f : bool(b) for f, b in zip(flag_labels, flags)}
+    # Convert uint16 to 16-bit binary representation
+    bits = np.unpackbits(np.array([packed_value], dtype=np.uint16).view(np.uint8), bitorder='little')
+    # Extract the last `len(flag_labels)` flags
+    flags = {label: bool(bits[-(len(flag_labels) - i)]) for i, label in enumerate(flag_labels)}
+    return flags
 
 def pack_flags(flags):
     """
-    Pack flags into a single uint64 value
+    Pack flags into a single uint16 value.
     """
     flag_labels = ['partial', 'coll_blocks', 'merge']
-    flags = ([0] * (64 - len(flag_labels))) + [int(flags[f]) for f in flag_labels]
-    return np.packbits(flags)
+    bits = ([0] * (16 - len(flag_labels))) + [int(flags[f]) for f in flag_labels]
+    # Pack into bytes and convert to uint16
+    packed = np.packbits(bits, bitorder='little')
+    return np.frombuffer(packed, dtype=np.uint16)[0]
 
 class MUMdata:
-    def __init__(self, mumfile, lenfilter=0, subsample=1, verbose=False):
+    def __init__(self, mumfile, lenfilter=0, subsample=1, sort=True, verbose=False):
         if mumfile.endswith('.bums'):
-            self.lengths, self.starts, self.strands = self.parse_bums(
+            self.lengths, self.starts, self.strands, self.blocks = self.parse_bums(
                 mumfile, 
                 lenfilter, 
                 subsample
             )
         else:
-            self.lengths, self.starts, self.strands = self.parse_mums(
+            self.lengths, self.starts, self.strands, self.blocks = self.parse_mums(
                 mumfile, 
                 lenfilter, 
                 subsample,
@@ -129,11 +134,17 @@ class MUMdata:
             )
         self.num_mums = len(self.lengths)
         self.num_seqs = self.starts.shape[1] if self.num_mums > 0 else 0
-        # sort by reference offset position
-        order = self.starts[:,0].argsort()
-        self.lengths = self.lengths[order]
-        self.starts = self.starts[order]
-        self.strands = self.strands[order]
+        if sort:
+            sorted = np.all(np.diff(self.starts[:,0]) >= 0)
+            if self.blocks and not sorted:
+                print("MUMs must be sorted by first column to store blocks; ignoring blocks and sorting.", file=sys.stderr)
+                self.blocks = None
+            if not sorted:
+            # sort by reference offset position
+                order = self.starts[:,0].argsort()
+                self.lengths = self.lengths[order]
+                self.starts = self.starts[order]
+                self.strands = self.strands[order]
         self.partial = -1 in self.starts
     
     @classmethod
@@ -151,12 +162,14 @@ class MUMdata:
         instance.strands = strands
         instance.num_mums = len(lengths)
         instance.num_seqs = starts.shape[1] if instance.num_mums > 0 else 0
+        instance.blocks = None
+        instance.partial = -1 in starts
         return instance
         
     @staticmethod
     def parse_mums(mumfile, lenfilter=0, subsample=1, verbose=False):
         count = 0
-        lengths, starts, strands = [], [], []
+        lengths, starts, strands, coll_blocks = [], [], [], []
         with open(mumfile, 'r') as f:
             for line in tqdm(f, desc='parsing MUM file', disable=not verbose):
                 if subsample == 1 or count % subsample == 0:
@@ -169,6 +182,8 @@ class MUMdata:
                         starts.append(start)
                         strands.append(strand)
                         lengths.append(length)
+                        if len(line) > 3:
+                            coll_blocks.append(int(line[3]))
                 count += 1
         try:
             lengths = np.array(lengths, dtype=np.uint16)
@@ -178,20 +193,31 @@ class MUMdata:
             starts = np.array(starts, dtype=np.int64)
         except OverflowError:
             raise ValueError("MUM start position must be less than 2^63")
+
+        if len(coll_blocks) > 0:
+            blocks = MUMdata.deserialize_coll_blocks(coll_blocks)
+        else:
+            blocks = None
         
-        return lengths, starts, np.array(strands, dtype=bool)
+        return lengths, starts, np.array(strands, dtype=bool), blocks
         
     @staticmethod
     def parse_bums(bumfile, lenfilter=0, subsample=1):
         with open(bumfile, 'rb') as f:
-            flags, n_seqs, n_mums = np.fromfile(f, count = 3, dtype=np.uint64)
+            flags = np.fromfile(f, count = 1, dtype=np.uint16)
+            n_seqs, n_mums = np.fromfile(f, count = 2, dtype=np.uint64)
             flags = unpack_flags(flags)
             start_dtype = np.int64
             mum_lengths = np.fromfile(f, count = n_mums, dtype=np.uint16)
             mum_starts = np.fromfile(f, count = n_seqs * n_mums, dtype=start_dtype).reshape(n_mums, n_seqs)
-            mum_strands = np.fromfile(f, dtype=np.uint8)
+            mum_strands = np.fromfile(f, count=np.ceil(n_seqs*n_mums/8).astype(int), dtype=np.uint8)
             mum_strands = np.unpackbits(mum_strands, count=n_mums * n_seqs).reshape(n_mums, n_seqs).astype(bool)
-        
+            if flags['coll_blocks']:
+                num_blocks = np.fromfile(f, count=1, dtype=np.uint64)
+                blocks = np.fromfile(f, count=num_blocks * 2, dtype=np.uint32).reshape(num_blocks, 2)
+            else:
+                blocks = None
+    
         # Create boolean mask for subsampling
         mask = np.zeros(n_mums, dtype=bool)
         if subsample == 1:
@@ -201,8 +227,15 @@ class MUMdata:
 
         mask &= mum_lengths >= lenfilter
             
-        return mum_lengths[mask], mum_starts[mask], mum_strands[mask]
+        return mum_lengths[mask], mum_starts[mask], mum_strands[mask], blocks
 
+    @staticmethod
+    def deserialize_coll_blocks(coll_blocks):
+        change_points = np.where(np.diff(coll_blocks) != 0)[0] + 1
+        l_vals = np.concatenate(([0], change_points))
+        r_vals = np.concatenate((change_points - 1, [len(coll_blocks) - 1]))
+        return list(zip(l_vals, r_vals))
+    
     def filter_pmums(self):
         """Remove any MUMs that have -1 in their start positions"""
         if self.partial:
@@ -211,6 +244,7 @@ class MUMdata:
             self.starts = self.starts[valid_rows]
             self.strands = self.strands[valid_rows]
             self.num_mums = len(self.lengths)
+            self.partial = False
         return self
 
     def __iter__(self):
@@ -233,25 +267,35 @@ class MUMdata:
                     strands_str = ['+' if s else '-' for s in self.strands[i]]
                     f.write(f"{self.lengths[i]}\t{','.join(map(str, self.starts[i]))}\t{','.join(strands_str)}\n")
             else:
-                for idx, (l, r) in enumerate(blocks):
-                    for i in range(l, r + 1):
-                        strands_str = ['+' if s else '-' for s in self.strands[i]]
-                        f.write(f"{self.lengths[i]}\t{','.join(map(str, self.starts[i]))}\t{','.join(strands_str)}\t{idx}\n")
+                if not np.all(np.diff(self.starts[:,0]) >= 0):
+                    print("MUMs must be sorted by first column to write blocks; ignoring blocks.", file=sys.stderr)
+                else:
+                    for idx, (l, r) in enumerate(blocks):
+                        for i in range(l, r + 1):
+                            strands_str = ['+' if s else '-' for s in self.strands[i]]
+                            f.write(f"{self.lengths[i]}\t{','.join(map(str, self.starts[i]))}\t{','.join(strands_str)}\t{idx}\n")
     
     def write_bums(self, filename, blocks=None):
-        if blocks:
-            block_idx = [x for l,r in blocks for x in range(l, r + 1)]
-            self.lengths = self.lengths[block_idx]
-            self.starts = self.starts[block_idx]
-            self.strands = self.strands[block_idx]
-            self.num_mums = len(self.lengths)
         with open(filename, 'wb') as f:
             f.write(pack_flags({'partial': self.partial, 'coll_blocks': True if blocks else False, 'merge': False}).tobytes())
             f.write(np.uint64(self.num_seqs).tobytes())
-            f.write(np.uint64(self.num_mums).tobytes())
-            f.write(self.lengths.tobytes())
-            f.write(self.starts.tobytes())
-            f.write(self.strands.tobytes())
             if blocks:
-                block_idx = np.array([idx for idx, (l,r) in enumerate(blocks) for _ in range(l, r + 1)], dtype=np.uint32)
-                f.write(block_idx.tobytes())
+                if not np.all(np.diff(self.starts[:,0]) >= 0):
+                    print("MUMs must be sorted by first column to write blocks; ignoring blocks.", file=sys.stderr)
+                else:
+                    block_idx = [idx for idx, (l,r) in enumerate(blocks) for _ in range(l, r + 1)]
+                    f.write(np.uint64(len(block_idx)).tobytes())
+                    f.write(self.lengths[block_idx].tobytes())
+                    f.write(self.starts[block_idx].tobytes())
+                    strands_array = np.packbits(self.strands[block_idx])
+                    f.write(strands_array.tobytes())
+                    f.write(np.uint64(len(blocks)).tobytes())
+                    block_idx = np.array([(l,r) for l,r in blocks], dtype=np.uint32)
+                    f.write(block_idx.tobytes())
+            else:  
+                f.write(np.uint64(self.num_mums).tobytes())
+                f.write(self.lengths.tobytes())
+                f.write(self.starts.tobytes())
+                strands_array = np.packbits(self.strands)
+                f.write(strands_array.tobytes())
+                    

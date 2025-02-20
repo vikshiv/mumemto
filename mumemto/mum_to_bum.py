@@ -114,7 +114,7 @@ def bum_to_mum(bumfile, outfile, verbose=False, chunk_size=8):
     try:
         with open(bumfile, "rb") as f:
             # Read first byte and unpack into 8 bools
-            flags = int.from_bytes(f.read(8), byteorder='little')
+            flags = int.from_bytes(f.read(2), byteorder='little')
             flags = unpack_flags(flags)
             start_size = 8
             start_dtype = np.int64
@@ -122,7 +122,7 @@ def bum_to_mum(bumfile, outfile, verbose=False, chunk_size=8):
             num_seqs = int.from_bytes(f.read(8), byteorder='little')
             num_mums = int.from_bytes(f.read(8), byteorder='little')
             # Compute starting positions of each section
-            lengths_pos = 8 * 3  # Immediately after flags, num_seqs, and num_mums
+            lengths_pos = (8 + 8 + 2)  # Immediately after flags, num_seqs, and num_mums
             offsets_pos = lengths_pos + (num_mums * length_size)  # After num_mums bytes
             strands_pos = offsets_pos + (num_seqs * num_mums * start_size)  # After offsets
             # Compute bit length for strands
