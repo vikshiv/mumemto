@@ -16,6 +16,8 @@ def find_coll_blocks(mums, max_break=0, verbose=False, return_order=False):
     This function works by finding the ranks of each mum, then identifying consecutive MUMs with consecutive ranks.
     The strand orientiation of collinear MUMs must be identical, and MUMs in - strands should be reversed in rank.
     """
+    if verbose:
+        print(f'Finding collinear blocks (max gap = {None if max_break == 0 else max_break} bp)...', file=sys.stderr)
     starts = mums.starts
     strands = mums.strands
     lengths = mums.lengths
@@ -47,6 +49,13 @@ def find_coll_blocks(mums, max_break=0, verbose=False, return_order=False):
         order = mum_order_pos[:,[b[0] for b in blocks]].argsort(axis=1)
         return blocks, order
     return blocks
+
+def get_coll_block_order(mums, blocks):
+    mum_orders = mums.starts.transpose().argsort()
+    mum_order_pos = np.argsort(mum_orders, axis=1)
+    order = mum_order_pos[:,[b[0] for b in blocks]].argsort(axis=1)
+    return order
+    
 
 def parse_mums_generator(mumfile, lenfilter=0, subsample=1, verbose=False):
     """Generator that streams MUMs from mumfile"""

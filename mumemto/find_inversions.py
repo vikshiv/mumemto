@@ -5,9 +5,9 @@ import sys
 import argparse
 import numpy as np
 try:
-    from utils import MUMdata, find_coll_blocks, get_sequence_lengths
+    from utils import MUMdata, find_coll_blocks, get_sequence_lengths, get_coll_block_order
 except ImportError:
-    from mumemto.utils import MUMdata, find_coll_blocks, get_sequence_lengths
+    from mumemto.utils import MUMdata, find_coll_blocks, get_sequence_lengths, get_coll_block_order
 from tqdm.auto import tqdm
 
 def parse_arguments(args=None):
@@ -139,9 +139,19 @@ def main(args):
         
     # Load and process MUMs
     mums = MUMdata(args.mumfile, verbose=args.verbose)
+    # Find collinear blocks
+    if mums.blocks == None:
+        mums.filter_pmums()
+        if len(mums) == 0:
+            print('No strict MUMs found after filtering. Aborting.', file=sys.stderr)
+            return
+        small_blocks, block_orders = find_coll_blocks(mums, max_break=args.max_block_gap, verbose=args.verbose, return_order=True)
+    else:
+        print(f'Using pre-computed collinear blocks: {len(mums.blocks)} blocks', file=sys.stderr)
+        small_blocks = mums.blocks
+        block_orders = get_coll_block_order(mums, small_blocks)
     
-    # Find collinear blocks and inversions
-    small_blocks, block_orders = find_coll_blocks(mums, max_break=args.max_block_gap, verbose=args.verbose, return_order=True)
+    # Find inversions
     if args.verbose:
         print("Finding inversions...", file=sys.stderr)
     

@@ -278,19 +278,20 @@ def main(args):
         polygons, colors = get_mum_polygons(mums, centering, color=args.mum_color, inv_color=args.inv_color)
     else:
         ### filter out pmums for collinear blocks
-        mums.filter_pmums()
-        if len(mums) == 0:
-            print('No strict MUMs found after filtering. Try turning off collinear blocking with --no-coll-block', file=sys.stderr)
-            return
-        if args.max_break is None:
-            bp_per_inch = max_length / (args.dpi * args.size[0])
-            args.max_break = min(bp_per_inch, 100000)
-        if args.verbose:
-            print(f'Finding collinear blocks (max gap = {args.max_break} bp)...', file=sys.stderr, end=' ')
-        collinear_blocks = find_coll_blocks(mums, max_break=args.max_break, verbose=args.verbose)
-        if args.verbose:
-            print(f'found {len(collinear_blocks)} collinear blocks', file=sys.stderr)
-        
+        if mums.blocks == None:
+            mums.filter_pmums()
+            if len(mums) == 0:
+                print('No strict MUMs found after filtering. Try turning off collinear blocking with --no-coll-block', file=sys.stderr)
+                return
+            if args.max_break is None:
+                bp_per_inch = max_length / (args.dpi * args.size[0])
+                args.max_break = min(bp_per_inch, 100000)
+            collinear_blocks = find_coll_blocks(mums, max_break=args.max_break, verbose=args.verbose)
+            if args.verbose:
+                print(f'found {len(collinear_blocks)} collinear blocks', file=sys.stderr)
+        else:
+            print(f'Using pre-computed collinear blocks: {len(mums.blocks)} blocks', file=sys.stderr)
+            collinear_blocks = mums.blocks
         if args.mode == 'gapped':
             offset_mums(args, mums, spacer=args.spacer)
             
