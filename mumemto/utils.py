@@ -3,6 +3,7 @@ from tqdm.auto import tqdm
 from collections import namedtuple
 
 MUM = namedtuple('MUM', ['length', 'starts', 'strands'])
+MUM_BLOCK = namedtuple('MUM_BLOCK', ['length', 'starts', 'strands', 'block'])
 
 def find_coll_blocks(mums, max_break=0, verbose=False, return_order=False):
     def find_blocks(coll_mums):
@@ -57,7 +58,7 @@ def get_coll_block_order(mums, blocks):
     return order
     
 
-def parse_mums_generator(mumfile, lenfilter=0, subsample=1, verbose=False):
+def parse_mums_generator(mumfile, lenfilter=0, subsample=1, verbose=False, return_blocks=False):
     """Generator that streams MUMs from mumfile"""
     count = 0
     with open(mumfile, 'r') as f:
@@ -69,7 +70,11 @@ def parse_mums_generator(mumfile, lenfilter=0, subsample=1, verbose=False):
                     # Parse the line
                     strands = [s == '+' for s in line[2].split(',')]
                     starts = [int(pos) if pos != '' else -1 for pos in line[1].split(',')]
-                    yield MUM(length, starts, strands)
+                    if return_blocks:
+                        block = None if len(line) < 4 else int(line[3])
+                        yield MUM_BLOCK(length, starts, strands, block)
+                    else:
+                        yield MUM(length, starts, strands)
             count += 1
 
 def get_sequence_lengths(lengths_file, multilengths=False):
@@ -137,6 +142,12 @@ def pack_flags(flags):
     # Pack into bytes and convert to uint16
     packed = np.packbits(bits, bitorder='little')
     return np.frombuffer(packed, dtype=np.uint16)[0]
+
+def deserialize_coll_blocks(coll_blocks):
+    change_points = np.where(np.diff(coll_blocks) != 0)[0] + 1
+    l_vals = np.concatenate(([0], change_points))
+    r_vals = np.concatenate((change_points - 1, [len(coll_blocks) - 1]))
+    return list(zip(l_vals, r_vals))
 
 class MUMdata:
     def __init__(self, mumfile, lenfilter=0, subsample=1, sort=True, verbose=False):
@@ -216,7 +227,7 @@ class MUMdata:
             raise ValueError("MUM start position must be less than 2^63")
 
         if len(coll_blocks) > 0:
-            blocks = MUMdata.deserialize_coll_blocks(coll_blocks)
+            blocks = deserialize_coll_blocks(coll_blocks)
         else:
             blocks = None
         
@@ -249,13 +260,6 @@ class MUMdata:
         mask &= mum_lengths >= lenfilter
             
         return mum_lengths[mask], mum_starts[mask], mum_strands[mask], blocks
-
-    @staticmethod
-    def deserialize_coll_blocks(coll_blocks):
-        change_points = np.where(np.diff(coll_blocks) != 0)[0] + 1
-        l_vals = np.concatenate(([0], change_points))
-        r_vals = np.concatenate((change_points - 1, [len(coll_blocks) - 1]))
-        return list(zip(l_vals, r_vals))
     
     def filter_pmums(self):
         """Remove any MUMs that have -1 in their start positions"""

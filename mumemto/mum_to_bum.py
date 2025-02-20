@@ -5,9 +5,9 @@ import numpy as np
 import argparse
 from tqdm.auto import tqdm
 try:
-    from utils import parse_mums_generator, unpack_flags, pack_flags
+    from utils import parse_mums_generator, unpack_flags, pack_flags, deserialize_coll_blocks
 except ImportError:
-    from mumemto.utils import parse_mums_generator, unpack_flags, pack_flags
+    from mumemto.utils import parse_mums_generator, unpack_flags, pack_flags, deserialize_coll_blocks
 
 def parse_arguments(args=None):    
     parser = argparse.ArgumentParser(description="Plots a synteny plot of MUMs from mumemto")
@@ -53,14 +53,15 @@ def mum_to_bum(mumfile, outfile, verbose=False):
     length_dtype = np.uint16
     start_dtype = np.int64
     
-    parser = parse_mums_generator(mumfile, verbose=verbose)
+    parser = parse_mums_generator(mumfile, verbose=verbose, return_blocks=True)
     mum_count = 0
     lengths_out = open(outfile + '.len', 'wb')
     starts_out = open(outfile + '.starts', 'wb')
     strands_out = open(outfile + '.strands', 'wb')
     strands_array = []
+    blocks_list = []
     is_partial = False
-    for l, starts, strands in parser:
+    for l, starts, strands, block in parser:
         # Write length as uint64
         if l > 65535:
             raise ValueError("MUM length must be less than 65535")
@@ -76,6 +77,8 @@ def mum_to_bum(mumfile, outfile, verbose=False):
         # Write strands as packed bitvector
         strands_array.append(strands)
         
+        if block is not None:
+            blocks_list.append(block)
         mum_count += 1
     
     strands_array = np.array(strands_array, dtype=bool)
@@ -98,6 +101,11 @@ def mum_to_bum(mumfile, outfile, verbose=False):
             out.write(f.read())
         with open(outfile + '.strands', 'rb') as f:
             out.write(f.read())
+        if len(blocks_list) > 0:
+            blocks = deserialize_coll_blocks(blocks_list)
+            out.write(np.uint64(len(blocks)).tobytes())
+            block_idx = np.array(blocks, dtype=np.uint32)
+            out.write(block_idx.tobytes())
         
     # Clean up temporary files
     os.remove(outfile + '.len')
@@ -125,6 +133,11 @@ def bum_to_mum(bumfile, outfile, verbose=False, chunk_size=8):
             lengths_pos = (8 + 8 + 2)  # Immediately after flags, num_seqs, and num_mums
             offsets_pos = lengths_pos + (num_mums * length_size)  # After num_mums bytes
             strands_pos = offsets_pos + (num_seqs * num_mums * start_size)  # After offsets
+            if flags['coll_blocks']:
+                f.seek(strands_pos + (np.ceil(num_seqs*num_mums/8).astype(int)))
+                num_blocks = int.from_bytes(f.read(8), byteorder='little')
+                blocks = np.fromfile(f, count=num_blocks * 2, dtype=np.uint32).reshape(num_blocks, 2)
+                blocks = [idx for idx, (l,r) in enumerate(blocks) for _ in range(l, r + 1)]
             # Compute bit length for strands
             strand_buffer = None
             for mum_index in tqdm(range(0, num_mums, chunk_size), desc="Processing MUMs", disable=not verbose):
@@ -145,7 +158,10 @@ def bum_to_mum(bumfile, outfile, verbose=False, chunk_size=8):
                 # Output the current mum as human-readable text
                 if mum_index + chunk_size >= num_mums:
                     chunk_size = num_mums - mum_index
-                outfile.write('\n'.join([f"{lengths[i]}\t{','.join(starts[i,:].astype(str))}\t{','.join(np.where(strands[i, :], '+', '-'))}" for i in range(chunk_size)]) + '\n')
+                if not flags['coll_blocks']:
+                    outfile.write('\n'.join([f"{lengths[i]}\t{','.join(starts[i,:].astype(str))}\t{','.join(np.where(strands[i, :], '+', '-'))}" for i in range(chunk_size)]) + '\n')
+                else:
+                    outfile.write('\n'.join([f"{lengths[i]}\t{','.join(starts[i,:].astype(str))}\t{','.join(np.where(strands[i, :], '+', '-'))}\t{blocks[i]}" for i in range(chunk_size)]) + '\n')
                 
     except BrokenPipeError:
         # Python flushes standard streams on exit; redirect remaining output
