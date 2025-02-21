@@ -88,14 +88,14 @@ def run_collinear(args):
 def run_convert(args):
     """Convert MUMs to BUMs and vice versa"""
     try:
-        convert = import_module('mumemto.mum_to_bum')
+        convert = import_module('mumemto.mum_to_bumbl')
         parsed_args = convert.parse_arguments(args)
         convert.main(parsed_args)
     except ImportError:
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        script = os.path.join(script_dir, '_mumemto', 'mum_to_bum.py')
+        script = os.path.join(script_dir, '_mumemto', 'mum_to_bumbl.py')
         if not os.path.exists(script):
-            print(f"Error: mumemto not installed. Please run mumemto/mum_to_bum.py directly.", file=sys.stderr)
+            print(f"Error: mumemto not installed. Please run mumemto/mum_to_bumbl.py directly.", file=sys.stderr)
             sys.exit(1)
         subprocess.run([sys.executable, script] + args)
         

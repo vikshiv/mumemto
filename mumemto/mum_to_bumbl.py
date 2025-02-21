@@ -12,7 +12,7 @@ except ImportError:
 def parse_arguments(args=None):    
     parser = argparse.ArgumentParser(description="Plots a synteny plot of MUMs from mumemto")
     parser.add_argument('--mums', '-m', dest='mumfile', help='path to *.mum file from mumemto')
-    parser.add_argument('--bums', '-b', dest='bumfile', help='path to *.bum file from mumemto')
+    parser.add_argument('--bumbl', '-b', dest='bumfile', help='path to *.bumbl file from mumemto')
 
     parser.add_argument('--fout','-o', dest='out', help='output fname')
     parser.add_argument('--verbose','-v', dest='verbose', help='verbose mode', action='store_true', default=False)
@@ -43,7 +43,7 @@ def parse_arguments(args=None):
         
     if not args.to_bum and args.bumfile:
         if not os.path.exists(args.bumfile):
-            parser.error("BUM file does not exist")
+            parser.error("bumbl file does not exist")
     if args.to_bum and args.mumfile:
         if not os.path.exists(args.mumfile):
             parser.error("MUM file does not exist")            
