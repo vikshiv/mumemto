@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <vector>
 #include <fstream>
+#include <sstream>
 
 
 KSEQ_INIT(int, read);
