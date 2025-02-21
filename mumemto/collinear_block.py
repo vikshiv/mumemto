@@ -15,10 +15,7 @@ def parse_arguments(args=None):
     # parser.add_argument('--lengths','-l', dest='lens', help='lengths file, first column is seq length in order of filelist', required=True)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--input-prefix', '-i', dest='prefix', help='prefix for filelist, mums, and lengths files')
-    group.add_argument('--mums', '-m', dest='mumfile', help='path to *.mum file from mumemto')
-    
-    parser.add_argument('--lengths','-l', dest='lens', help='lengths file, first column is seq length in order of filelist')
-    
+    group.add_argument('--mums', '-m', dest='mumfile', help='path to *.mum file from mumemto')    
     parser.add_argument('--fout','-o', dest='filename', help='plot fname (default: input_prefix + _sorted)')
     parser.add_argument('--max-gap-len','-g', dest='max_break', help='maximum break between collinear mums within a collinear block (default: 1kbp)', default=1000, type=int)
     parser.add_argument('--verbose','-v', dest='verbose', help='verbose mode', action='store_true', default=False)
@@ -39,10 +36,7 @@ def parse_arguments(args=None):
             args.mumfile = args.prefix + '.mums'
         else:
             parser.error("Either --mums or --prefix must be provided")
-        
-    if args.lens is None:
-        args.lens = args.prefix + '.lengths'
-    
+            
     if args.filename is None:
         args.filename = os.path.splitext(args.mumfile)[0] + '_sorted' + os.path.splitext(args.mumfile)[1]
     

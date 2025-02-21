@@ -1,6 +1,7 @@
 import numpy as np
 from tqdm.auto import tqdm
 from collections import namedtuple
+import sys
 
 MUM = namedtuple('MUM', ['length', 'starts', 'strands'])
 MUM_BLOCK = namedtuple('MUM_BLOCK', ['length', 'starts', 'strands', 'block'])
@@ -71,7 +72,7 @@ def parse_mums_generator(mumfile, lenfilter=0, subsample=1, verbose=False, retur
                     strands = [s == '+' for s in line[2].split(',')]
                     starts = [int(pos) if pos != '' else -1 for pos in line[1].split(',')]
                     if return_blocks:
-                        block = None if len(line) < 4 else int(line[3])
+                        block = None if len(line) < 4 else line[3]
                         yield MUM_BLOCK(length, starts, strands, block)
                     else:
                         yield MUM(length, starts, strands)
@@ -144,10 +145,26 @@ def pack_flags(flags):
     return np.frombuffer(packed, dtype=np.uint16)[0]
 
 def deserialize_coll_blocks(coll_blocks):
+    coll_blocks = np.array([-1 if x == '-' else int(x) for x in coll_blocks])
     change_points = np.where(np.diff(coll_blocks) != 0)[0] + 1
     l_vals = np.concatenate(([0], change_points))
     r_vals = np.concatenate((change_points - 1, [len(coll_blocks) - 1]))
-    return list(zip(l_vals, r_vals))
+    valid_ranges = [(l, r) for l, r in zip(l_vals, r_vals) if coll_blocks[l] != -1]
+    return valid_ranges
+
+def serialize_coll_blocks(coll_blocks, num_mums):
+    idx = 0
+    block_idx = []
+    left_block, right_block = coll_blocks[idx]
+    for i in range(num_mums):
+        if i > right_block:
+            idx += 1
+            left_block, right_block = coll_blocks[idx]
+        if i < left_block:
+            block_idx.append('-')
+        else:
+            block_idx.append(str(idx))
+    return block_idx
 
 class MUMdata:
     def __init__(self, mumfile, lenfilter=0, subsample=1, sort=True, verbose=False):
@@ -168,7 +185,7 @@ class MUMdata:
         self.num_seqs = self.starts.shape[1] if self.num_mums > 0 else 0
         if sort:
             sorted = np.all(np.diff(self.starts[:,0]) >= 0)
-            if self.blocks and not sorted:
+            if self.blocks is not None and not sorted:
                 print("MUMs must be sorted by first column to store blocks; ignoring blocks and sorting.", file=sys.stderr)
                 self.blocks = None
             if not sorted:
@@ -215,7 +232,7 @@ class MUMdata:
                         strands.append(strand)
                         lengths.append(length)
                         if len(line) > 3:
-                            coll_blocks.append(int(line[3]))
+                            coll_blocks.append(line[3])
                 count += 1
         try:
             lengths = np.array(lengths, dtype=np.uint16)
@@ -245,7 +262,7 @@ class MUMdata:
             mum_strands = np.fromfile(f, count=np.ceil(n_seqs*n_mums/8).astype(int), dtype=np.uint8)
             mum_strands = np.unpackbits(mum_strands, count=n_mums * n_seqs).reshape(n_mums, n_seqs).astype(bool)
             if flags['coll_blocks']:
-                num_blocks = np.fromfile(f, count=1, dtype=np.uint64)
+                num_blocks = int.from_bytes(f.read(8), byteorder='little')
                 blocks = np.fromfile(f, count=num_blocks * 2, dtype=np.uint32).reshape(num_blocks, 2)
             else:
                 blocks = None
@@ -295,32 +312,33 @@ class MUMdata:
                 if not np.all(np.diff(self.starts[:,0]) >= 0):
                     print("MUMs must be sorted by first column to write blocks; ignoring blocks.", file=sys.stderr)
                 else:
-                    for idx, (l, r) in enumerate(blocks):
-                        for i in range(l, r + 1):
-                            strands_str = ['+' if s else '-' for s in self.strands[i]]
-                            f.write(f"{self.lengths[i]}\t{','.join(map(str, self.starts[i]))}\t{','.join(strands_str)}\t{idx}\n")
+                    idx = 0
+                    block_idx = 0
+                    left_block, right_block = blocks[idx]
+                    for i in range(self.num_mums):
+                        if i > right_block:
+                            idx += 1
+                            left_block, right_block = blocks[idx]
+                        if i < left_block:
+                            block_idx = '-'
+                        else:
+                            block_idx = idx
+                        strands_str = ['+' if s else '-' for s in self.strands[i]]
+                        f.write(f"{self.lengths[i]}\t{','.join(map(str, self.starts[i]))}\t{','.join(strands_str)}\t{block_idx}\n")
     
     def write_bums(self, filename, blocks=None):
         with open(filename, 'wb') as f:
-            f.write(pack_flags({'partial': self.partial, 'coll_blocks': True if blocks else False, 'merge': False}).tobytes())
+            f.write(pack_flags({'partial': self.partial, 'coll_blocks': True if blocks is not None else False, 'merge': False}).tobytes())
             f.write(np.uint64(self.num_seqs).tobytes())
-            if blocks:
+            f.write(np.uint64(self.num_mums).tobytes())
+            f.write(self.lengths.tobytes())
+            f.write(self.starts.tobytes())
+            strands_array = np.packbits(self.strands)
+            f.write(strands_array.tobytes())
+            if blocks is not None:
                 if not np.all(np.diff(self.starts[:,0]) >= 0):
                     print("MUMs must be sorted by first column to write blocks; ignoring blocks.", file=sys.stderr)
                 else:
-                    block_idx = [idx for idx, (l,r) in enumerate(blocks) for _ in range(l, r + 1)]
-                    f.write(np.uint64(len(block_idx)).tobytes())
-                    f.write(self.lengths[block_idx].tobytes())
-                    f.write(self.starts[block_idx].tobytes())
-                    strands_array = np.packbits(self.strands[block_idx])
-                    f.write(strands_array.tobytes())
                     f.write(np.uint64(len(blocks)).tobytes())
-                    block_idx = np.array([(l,r) for l,r in blocks], dtype=np.uint32)
+                    block_idx = np.array(blocks, dtype=np.uint32)
                     f.write(block_idx.tobytes())
-            else:  
-                f.write(np.uint64(self.num_mums).tobytes())
-                f.write(self.lengths.tobytes())
-                f.write(self.starts.tobytes())
-                strands_array = np.packbits(self.strands)
-                f.write(strands_array.tobytes())
-                    

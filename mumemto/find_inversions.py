@@ -5,9 +5,9 @@ import sys
 import argparse
 import numpy as np
 try:
-    from utils import MUMdata, find_coll_blocks, get_sequence_lengths, get_coll_block_order
+    from utils import MUMdata, find_coll_blocks, get_sequence_lengths, get_coll_block_order, get_seq_paths
 except ImportError:
-    from mumemto.utils import MUMdata, find_coll_blocks, get_sequence_lengths, get_coll_block_order
+    from mumemto.utils import MUMdata, find_coll_blocks, get_sequence_lengths, get_coll_block_order, get_seq_paths
 from tqdm.auto import tqdm
 
 def parse_arguments(args=None):
@@ -48,23 +48,17 @@ def parse_arguments(args=None):
     if args.lens is None:
         args.lens = args.prefix + '.lengths'
         
-    if not args.filelist:
-        args.filelist = args.prefix + '_filelist.txt'
-        
     return args
 
 def get_sequence_info(args):
     """Load sequence lengths and names"""
     seq_lengths = get_sequence_lengths(args.lens)
-    
-    if args.filelist:
-        if args.chr:
-            hap_ids = [os.path.basename(l.split()[0]).split(f'_chr{args.chr}')[0] 
-                      for l in open(args.filelist).readlines()]
-        else:
-            hap_ids = [os.path.basename(l.split()[0]) for l in open(args.filelist).readlines()]
+    seq_names = get_seq_paths(args.lens)
+    if args.chr:
+        hap_ids = [os.path.basename(l).split(f'_chr{args.chr}')[0] for l in seq_names]
     else:
-        hap_ids = [f'seq_{i}' for i in range(len(seq_lengths))]
+        hap_ids = [os.path.basename(l) for l in seq_names]
+
         
     return seq_lengths, hap_ids
 
@@ -128,7 +122,7 @@ def inversion_coords(coll_block_order, mums, blocks, i, s, e):
 def main(args):
 
     if args.verbose:
-        print("hahaLoading sequence information...", file=sys.stderr)
+        print("Loading sequence information...", file=sys.stderr)
     
     # Load data
     seq_lengths, hap_ids = get_sequence_info(args)
@@ -140,7 +134,7 @@ def main(args):
     # Load and process MUMs
     mums = MUMdata(args.mumfile, verbose=args.verbose)
     # Find collinear blocks
-    if mums.blocks == None:
+    if mums.blocks is None:
         mums.filter_pmums()
         if len(mums) == 0:
             print('No strict MUMs found after filtering. Aborting.', file=sys.stderr)
@@ -167,27 +161,31 @@ def main(args):
         print(f"Found {len(reversed_ranges)} inversions", file=sys.stderr)
         print("Writing results...", file=sys.stderr)
     
-    # Output results to stdout
-    print(f"hap_id\tstart\tend\tref_start\tref_end" + ("\tscaffold_break\tcontig" if args.scaffold else ""))
-    for seq_idx, start, end, ref_start, ref_end in reversed_ranges:
-        hap = hap_ids[seq_idx]
+    try:
+        # Output results to stdout
+        print(f"hap_id\tstart\tend\tref_start\tref_end" + ("\tscaffold_break\tcontig" if args.scaffold else ""))
+        for seq_idx, start, end, ref_start, ref_end in reversed_ranges:
+            hap = hap_ids[seq_idx]
+            
+            # Only check scaffold breaks if AGP files were provided
+            if args.scaffold and hap in breaks:
+                diffs_start = np.abs(np.cumsum(breaks[hap]) - start)
+                diffs_end = np.abs(np.cumsum(breaks[hap]) - end)
+                margin = (end - start) * args.margin  # within X% of inversion size
+                contig_id = []
+                if diffs_start.min() < margin:
+                    contig_id.extend([contig_names[hap][x] for x in np.where(diffs_start < margin)[0]])
+                if diffs_end.min() < margin:
+                    contig_id.extend([contig_names[hap][x] for x in np.where(diffs_end < margin)[0]])
+                # Output with scaffold break info
+                print(f"{hap}\t{start}\t{end}\t{ref_start}\t{ref_end}\t{True if contig_id else False}\t{','.join(contig_id) if contig_id else 'NA'}")
+            else:
+                # Basic output without scaffold break info
+                print(f"{hap}\t{start}\t{end}\t{ref_start}\t{ref_end}")
+    except BrokenPipeError:
+        sys.stdout = os.fdopen(sys.stdout.fileno(), 'wb', 0)
+        sys.exit(0)
         
-        # Only check scaffold breaks if AGP files were provided
-        if args.scaffold and hap in breaks:
-            diffs_start = np.abs(np.cumsum(breaks[hap]) - start)
-            diffs_end = np.abs(np.cumsum(breaks[hap]) - end)
-            margin = (end - start) * args.margin  # within X% of inversion size
-            contig_id = []
-            if diffs_start.min() < margin:
-                contig_id.extend([contig_names[hap][x] for x in np.where(diffs_start < margin)[0]])
-            if diffs_end.min() < margin:
-                contig_id.extend([contig_names[hap][x] for x in np.where(diffs_end < margin)[0]])
-            # Output with scaffold break info
-            print(f"{hap}\t{start}\t{end}\t{ref_start}\t{ref_end}\t{True if contig_id else False}\t{','.join(contig_id) if contig_id else 'NA'}")
-        else:
-            # Basic output without scaffold break info
-            print(f"{hap}\t{start}\t{end}\t{ref_start}\t{ref_end}")
-
 if __name__ == '__main__':
     args = parse_arguments()
     main(args)

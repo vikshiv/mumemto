@@ -5,9 +5,9 @@ import numpy as np
 import argparse
 from tqdm.auto import tqdm
 try:
-    from utils import parse_mums_generator, unpack_flags, pack_flags, deserialize_coll_blocks
+    from utils import parse_mums_generator, unpack_flags, pack_flags, deserialize_coll_blocks, serialize_coll_blocks
 except ImportError:
-    from mumemto.utils import parse_mums_generator, unpack_flags, pack_flags, deserialize_coll_blocks
+    from mumemto.utils import parse_mums_generator, unpack_flags, pack_flags, deserialize_coll_blocks, serialize_coll_blocks
 
 def parse_arguments(args=None):    
     parser = argparse.ArgumentParser(description="Plots a synteny plot of MUMs from mumemto")
@@ -137,9 +137,10 @@ def bum_to_mum(bumfile, outfile, verbose=False, chunk_size=8):
                 f.seek(strands_pos + (np.ceil(num_seqs*num_mums/8).astype(int)))
                 num_blocks = int.from_bytes(f.read(8), byteorder='little')
                 blocks = np.fromfile(f, count=num_blocks * 2, dtype=np.uint32).reshape(num_blocks, 2)
-                blocks = [idx for idx, (l,r) in enumerate(blocks) for _ in range(l, r + 1)]
+                blocks = serialize_coll_blocks(blocks, num_mums)
             # Compute bit length for strands
             strand_buffer = None
+            total_mums = 0
             for mum_index in tqdm(range(0, num_mums, chunk_size), desc="Processing MUMs", disable=not verbose):
                 f.seek(lengths_pos + (mum_index * length_size))
                 # Read length (1 byte per mum)
@@ -161,7 +162,8 @@ def bum_to_mum(bumfile, outfile, verbose=False, chunk_size=8):
                 if not flags['coll_blocks']:
                     outfile.write('\n'.join([f"{lengths[i]}\t{','.join(starts[i,:].astype(str))}\t{','.join(np.where(strands[i, :], '+', '-'))}" for i in range(chunk_size)]) + '\n')
                 else:
-                    outfile.write('\n'.join([f"{lengths[i]}\t{','.join(starts[i,:].astype(str))}\t{','.join(np.where(strands[i, :], '+', '-'))}\t{blocks[i]}" for i in range(chunk_size)]) + '\n')
+                    outfile.write('\n'.join([f"{lengths[i]}\t{','.join(starts[i,:].astype(str))}\t{','.join(np.where(strands[i, :], '+', '-'))}\t{blocks[i + total_mums]}" for i in range(chunk_size)]) + '\n')
+                total_mums += chunk_size
                 
     except BrokenPipeError:
         # Python flushes standard streams on exit; redirect remaining output
