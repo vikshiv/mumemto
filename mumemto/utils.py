@@ -102,7 +102,7 @@ def get_sequence_lengths(lengths_file, multilengths=False):
             if len(first_line) > 1 and first_line[1] == '*':
                 simple = False
     except FileNotFoundError:
-        raise ValueError("Either a *.lengths file or an input seq_lengths array is required")
+        raise FileNotFoundError(f"File {lengths_file} not found.")
     if simple and multilengths:
         raise ValueError("Multi-FASTA lengths not available in ", lengths_file)
     if not simple:

@@ -58,7 +58,9 @@ def parse_arguments(args=None):
         
     if args.lens is None:
         args.lens = args.prefix + '.lengths'
-
+        if not os.path.exists(args.lens):
+            raise FileNotFoundError(f"Lengths file {args.lens} not found, and no lengths file provided")
+    
     if not args.filename:
         args.filename = args.prefix
         
