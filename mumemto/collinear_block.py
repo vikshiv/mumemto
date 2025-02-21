@@ -9,7 +9,7 @@ except ImportError:
     from mumemto.utils import MUMdata, find_coll_blocks, get_sequence_lengths
 
 def parse_arguments(args=None):    
-    parser = argparse.ArgumentParser(description="Plots a synteny plot of MUMs from mumemto")
+    parser = argparse.ArgumentParser(description="Computes collinear blocks of MUMs")
     # parser.add_argument('--filelist', '-f', dest='filelist', help='path to filelist from mumemto', required=True)
     # parser.add_argument('--mums', '-m', dest='mumfile', help='path to *.mum file from mumemto', required=True)
     # parser.add_argument('--lengths','-l', dest='lens', help='lengths file, first column is seq length in order of filelist', required=True)

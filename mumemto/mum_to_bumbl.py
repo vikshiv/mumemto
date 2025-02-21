@@ -10,7 +10,7 @@ except ImportError:
     from mumemto.utils import parse_mums_generator, unpack_flags, pack_flags, deserialize_coll_blocks, serialize_coll_blocks
 
 def parse_arguments(args=None):    
-    parser = argparse.ArgumentParser(description="Plots a synteny plot of MUMs from mumemto")
+    parser = argparse.ArgumentParser(description="Converts Mumemto mum and bumbl formats")
     parser.add_argument('--mums', '-m', dest='mumfile', help='path to *.mum file from mumemto')
     parser.add_argument('--bumbl', '-b', dest='bumfile', help='path to *.bumbl file from mumemto')
 
