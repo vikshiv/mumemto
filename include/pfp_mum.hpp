@@ -52,7 +52,6 @@ bool is_integer(const std::string& str);
 bool endsWith(const std::string& str, const std::string& suffix);
 std::string execute_cmd(const char* cmd);
 
-
 struct BuildOptions {
     public:
         std::string input_list = "";
@@ -66,13 +65,16 @@ struct BuildOptions {
         bool is_fasta = true;
         bool arrays_out = false;
         std::string  arrays_in = "";
+        bool arrays_in_flag = false;
         bool keep_temp = false;
         int num_distinct_docs = 0;
         bool overlap = true;
-        bool from_parse = false;
+        std::string parse_prefix = "";
+        bool from_parse_flag = false;
         size_t min_match_len = 20;
         int max_mem_freq = 0;
         int rare_freq = 1;
+        bool binary = false;
 
         bool validate() {
             /* checks the arguments and make sure they are valid 
@@ -83,7 +85,7 @@ struct BuildOptions {
                 FORCE_LOG("build_main", "Using filelist, ignoring positional args");
                 files.clear();
             }
-            else if (input_list.length() == 0 && (files.size() == 0))
+            else if (input_list.length() == 0 && (files.size() == 0) && (!from_parse_flag && !arrays_in_flag))
                 FATAL_ERROR("Need to provide a file-list or files as positional args for processing.");
             
             for (auto f : files) {
@@ -96,11 +98,19 @@ struct BuildOptions {
                 output_prefix = "./" + output_prefix;
             else if (!is_dir(p.parent_path().string()))
                 std::filesystem::create_directories(p.parent_path());
+
+            if (from_parse_flag)
+                parse_prefix = parse_prefix + ".fna";
             // if (max_mem_freq < -1)
             //     FATAL_ERROR("Maximum MEM frequency cannot be negative (-1 indicates no limit on MEM frequency)"); 
 
             if (rare_freq < 0)
                 FATAL_ERROR("Per-sequence MEM frequency must be > 0 (or 0 for no limit)."); 
+
+            if (binary && rare_freq != 1) {
+                FORCE_LOG("build_main", "binary output is not supported for multi-MEMs, ignoring flag");
+                binary = false;
+            }
 
             return (rare_freq == 1);
         }

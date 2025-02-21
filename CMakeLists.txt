@@ -56,6 +56,7 @@ add_subdirectory(src)
 
 install(TARGETS mumemto_exec DESTINATION ${PROJECT_BINARY_DIR})
 install(TARGETS newscanNT.x DESTINATION ${PROJECT_BINARY_DIR})
+install(TARGETS compute_lengths DESTINATION ${PROJECT_BINARY_DIR})
 
 # Copy mumemto package to build directory as _mumemto
 file(COPY ${CMAKE_SOURCE_DIR}/mumemto/ DESTINATION ${PROJECT_BINARY_DIR}/_mumemto)

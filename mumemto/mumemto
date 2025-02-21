@@ -70,12 +70,73 @@ def run_coverage(args):
             print(f"Error: mumemto not installed. Please run mumemto/mum_coverage.py directly.", file=sys.stderr)
             sys.exit(1)
         subprocess.run([sys.executable, script] + args)
+        
+def run_collinear(args):
+    """Run MUM collinear blocking"""
+    try:
+        collinear = import_module('mumemto.collinear_block')
+        parsed_args = collinear.parse_arguments(args)
+        collinear.main(parsed_args)
+    except ImportError:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        script = os.path.join(script_dir, '_mumemto', 'collinear_block.py')
+        if not os.path.exists(script):
+            print(f"Error: mumemto not installed. Please run mumemto/collinear_block.py directly.", file=sys.stderr)
+            sys.exit(1)
+        subprocess.run([sys.executable, script] + args)
 
+def run_convert(args):
+    """Convert MUMs to BUMs and vice versa"""
+    try:
+        convert = import_module('mumemto.mum_to_bum')
+        parsed_args = convert.parse_arguments(args)
+        convert.main(parsed_args)
+    except ImportError:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        script = os.path.join(script_dir, '_mumemto', 'mum_to_bum.py')
+        if not os.path.exists(script):
+            print(f"Error: mumemto not installed. Please run mumemto/mum_to_bum.py directly.", file=sys.stderr)
+            sys.exit(1)
+        subprocess.run([sys.executable, script] + args)
+        
+def run_extract(args):
+    """Extract MUMs to a FASTA file"""
+    try:
+        extract = import_module('mumemto.extract_mums')
+        parsed_args = extract.parse_arguments(args)
+        extract.main(parsed_args)
+    except ImportError:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        script = os.path.join(script_dir, '_mumemto', 'extract_mums.py')
+        if not os.path.exists(script):
+            print(f"Error: mumemto not installed. Please run mumemto/extract_mums.py directly.", file=sys.stderr)
+            sys.exit(1)
+        subprocess.run([sys.executable, script] + args)
+
+def run_lengths(args):
+    """Run the compute_lengths executable with given args"""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    exec_path = os.path.join(script_dir, 'compute_lengths')
+    if not os.path.exists(exec_path):
+        print("Error: mumemto not installed. Please use make to install mumemto first", file=sys.stderr)
+        sys.exit(1)
+    cmd = [exec_path] + args
+    subprocess.run(cmd)
+    
 def main():
     if len(sys.argv) == 1:
         print("\nmumemto - find maximal [unique | exact] matches using PFP.\n", file=sys.stderr)
         print("Usage: mumemto [subcommand] [ARGS]\nUse -h for detailed usage for each subcommand.", file=sys.stderr)
-        print("Commands:\n\t[default]\t\tcompute multi-MUMs and MEMS across a collection of sequences\n\tviz\t\t\tvisualize multi-MUM synteny\n\tcoverage\t\tcompute multi-MUM coverage\n\tinversion\t\tidentify inversion SVs", file=sys.stderr)
+        print("Commands:\n" +
+              "\t[default]\t\tcompute multi-MUMs and MEMS across a collection of sequences\n" +
+              "\tviz\t\t\tvisualize multi-MUM synteny\n" +
+              "\tcoverage\t\tcompute multi-MUM coverage\n" + 
+              "\tinversion\t\tidentify inversion SVs\n" +
+              "\tcollinear\t\tfind collinear blocks of MUMs\n" +
+              "\tconvert\t\t\tconvert MUMs to BUMs and vice versa\n" +
+              "\textract\t\t\textract MUMs to a FASTA file\n" + 
+              "\tlengths\t\t\trecompute sequence lengths from a filelist",
+              file=sys.stderr)
         sys.exit(0)
 
     command = sys.argv[1]
@@ -87,6 +148,14 @@ def main():
         run_inversions(args)
     elif command == 'coverage':
         run_coverage(args)
+    elif command == 'collinear':
+        run_collinear(args)
+    elif command == 'convert':
+        run_convert(args)
+    elif command == 'extract':
+        run_extract(args)
+    elif command == 'lengths':
+        run_lengths(args)
     else:
         # If no special command, pass all args to mumemto executable
         run_mumemto(sys.argv[1:])

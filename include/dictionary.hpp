@@ -41,8 +41,7 @@ class dictionary{
 public:
   std::vector<uint8_t> d;
   std::vector<uint_t> saD;
-  // std::vector<uint_t> isaD;
-  sdsl::int_vector<40> isaD;
+  sdsl::int_vector<40> phrase_to_rank;
   std::vector<int_t> lcpD;
   sdsl::rmq_succinct_sct<> rmq_lcp_D;
   sdsl::bit_vector b_d; // Starting position of each phrase in D
@@ -101,8 +100,8 @@ public:
     if(a == 0 || b == 0)
       return 0;
     // Compute the lcp between phrases a and b
-    auto a_in_sa = isaD[select_b_d(a)]; // position of the phrase a in saD
-    auto b_in_sa = isaD[select_b_d(b)]; // position of the phrase b in saD
+    auto a_in_sa = phrase_to_rank[a - 1]; // position of the phrase a in saD
+    auto b_in_sa = phrase_to_rank[b - 1]; // position of the phrase b in saD
 
     auto lcp_left = std::min(a_in_sa, b_in_sa) + 1;
     auto lcp_right = std::max(a_in_sa, b_in_sa);
@@ -123,13 +122,13 @@ public:
         alphabet.push_back(elem);
       }
     }
-
     // Building the bitvector with a 1 in each starting position of each phrase in D
     b_d.resize(d.size());
     for(size_t i = 0; i < b_d.size(); ++i) b_d[i] = false; // bug in resize
     b_d[0] = true; // Mark the first phrase
-    for(size_t i = 1; i < d.size(); ++i )
+    for(size_t i = 1; i < d.size(); ++i ) {
       b_d[i] = (d[i-1]==EndOfWord);
+    }
     b_d[d.size()-1] = true; // This is necessary to get the length of the last phrase
 
     rank_b_d = sdsl::bit_vector::rank_1_type(&b_d);
@@ -146,14 +145,15 @@ public:
       // gsacak(&d[0], &saD[0], &lcpD[0], &daD[0], d.size())
     //);
 
-
     // inverse suffix array of the dictionary.
     verbose("Computing ISA of dictionary");
     _elapsed_time(
       {
-        isaD.resize(d.size());
+        phrase_to_rank.resize(n_phrases());
         for(int i = 0; i < saD.size(); ++i){
-          isaD[saD[i]] = i;
+          if (b_d[saD[i]]) {
+            phrase_to_rank[rank_b_d(saD[i])] = i;
+          }
         }
       }
     );
