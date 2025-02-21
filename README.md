@@ -122,8 +122,8 @@ lexicographically based on the match sequence.
 
 ## Visualization
 <figure>
-<img src="img/potato_syn_small.png" alt="potato_synteny"/>
-<figcaption> <p align="center">Potato pangenome (assemblies from <a href='https://www.nature.com/articles/s41586-022-04822-x'>[Tang <i>et al.</i>, 2022]</a>)</p></figcaption>
+<img src="img/potato_syn.png" alt="potato_synteny"/>
+<figcaption> <p align="center">Potato pangenome (assemblies from <a href='https://www.nature.com/articles/s41586-024-08476-9'>[Cheng <i>et al.</i>, 2025]</a>)</p></figcaption>
 </figure>
 Mumemto can visualize multi-MUMs in a synteny-like format, highlighting conservation and genomic structural diversity within a collection of sequences.
 
