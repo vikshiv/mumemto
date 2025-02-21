@@ -217,7 +217,8 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
     if size:
         fig.set_size_inches(*size)
     if filename:
-        filename = filename + ('' if filename.endswith('.png') else '.png')
+        if os.path.splitext(filename)[1] not in ['.png', '.pdf', '.svg']:
+            filename = filename + '.png'
         if os.path.dirname(filename):
             path = filename
         else:

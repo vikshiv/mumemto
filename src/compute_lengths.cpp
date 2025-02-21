@@ -18,7 +18,7 @@ KSEQ_INIT(int, read);
 
 void print_usage() {
     std::fprintf(stderr, "\ncompute_lengths - compute lengths of sequences in FASTA files\n");
-    std::fprintf(stderr, "Usage: compute_lengths [options] [input_fasta [...]]\n\n");
+    std::fprintf(stderr, "Usage: compute_lengths [options] [input_fastas [...]]\n\n");
     std::fprintf(stderr, "Options:\n");
     std::fprintf(stderr, "\t%-32sprints this usage message\n", "-h, --help");
     std::fprintf(stderr, "\t%-22s%-10spath to a file-list of genomes to use (overrides positional args)\n", "-i, --input", "[FILE]");
