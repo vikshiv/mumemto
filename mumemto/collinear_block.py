@@ -28,10 +28,10 @@ def parse_arguments(args=None):
     if args.mumfile:
         args.prefix = os.path.splitext(args.mumfile)[0]
     elif args.prefix:
-        if args.prefix.endswith('.mums') or args.prefix.endswith('.bums'):
-            args.prefix = args.prefix[:-5]
-        if os.path.exists(args.prefix + '.bums'):
-            args.mumfile = args.prefix + '.bums'
+        if args.prefix.endswith('.mums') or args.prefix.endswith('.bumbl'):
+            args.prefix = os.path.splitext(args.prefix)[0]
+        if os.path.exists(args.prefix + '.bumbl'):
+            args.mumfile = args.prefix + '.bumbl'
         elif os.path.exists(args.prefix + '.mums'):
             args.mumfile = args.prefix + '.mums'
         else:
@@ -58,7 +58,7 @@ def main(args):
     
     if args.filename.endswith('.mums'):
         mums.write_mums(args.filename, blocks=collinear_blocks)
-    elif args.filename.endswith('.bums'):
+    elif args.filename.endswith('.bumbl'):
         mums.write_bums(args.filename, blocks=collinear_blocks)
     
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ def parse_arguments(args=None):
         args.to_bum = False
         args.out = args.mumfile
     elif args.out == None and args.bumfile == None and args.mumfile:
-        args.out = args.mumfile.replace('.mums', '.bums')
+        args.out = args.mumfile.replace('.mums', '.bumbl')
         args.to_bum = True
     elif args.out == None and args.mumfile == None and args.bumfile:
         args.out = "-"

@@ -83,9 +83,9 @@ public:
             mem_file.open(filename + std::string(".mems"));
         else if (binary)
         {
-            bums_lengths.open(filename + std::string(".bums.lengths"), std::ios::binary);
-            bums_starts.open(filename + std::string(".bums.starts"), std::ios::binary);
-            bums_strands.open(filename + std::string(".bums.strands"), std::ios::binary);
+            bums_lengths.open(filename + std::string(".bumbl.lengths"), std::ios::binary);
+            bums_starts.open(filename + std::string(".bumbl.starts"), std::ios::binary);
+            bums_strands.open(filename + std::string(".bumbl.strands"), std::ios::binary);
         }
             
         else
@@ -380,7 +380,7 @@ private:
         bums_strands.close();
         bums_lengths.close();
         bums_starts.close();
-        mem_file.open(filename + std::string(".bums"), std::ios::binary);
+        mem_file.open(filename + std::string(".bumbl"), std::ios::binary);
         // Combine intermediate files into a single output file
         if (mem_file.is_open()) {
             uint64_t flags = get_flags();
@@ -389,9 +389,9 @@ private:
             mem_file.write(reinterpret_cast<const char*>(&num_mems), sizeof(uint64_t));
 
             // Read and write the contents of the intermediate files
-            std::ifstream lengths_file(filename + std::string(".bums.lengths"), std::ios::binary);
-            std::ifstream starts_file(filename + std::string(".bums.starts"), std::ios::binary);
-            std::ifstream strands_file(filename + std::string(".bums.strands"), std::ios::binary);
+            std::ifstream lengths_file(filename + std::string(".bumbl.lengths"), std::ios::binary);
+            std::ifstream starts_file(filename + std::string(".bumbl.starts"), std::ios::binary);
+            std::ifstream strands_file(filename + std::string(".bumbl.strands"), std::ios::binary);
 
             mem_file << lengths_file.rdbuf();
             mem_file << starts_file.rdbuf();
@@ -401,9 +401,9 @@ private:
         }
 
         // Optionally, remove the intermediate files
-        std::filesystem::remove(filename + std::string(".bums.lengths"));
-        std::filesystem::remove(filename + std::string(".bums.starts"));
-        std::filesystem::remove(filename + std::string(".bums.strands"));
+        std::filesystem::remove(filename + std::string(".bumbl.lengths"));
+        std::filesystem::remove(filename + std::string(".bumbl.starts"));
+        std::filesystem::remove(filename + std::string(".bumbl.strands"));
     }
 };
 

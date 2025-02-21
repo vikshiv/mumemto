@@ -168,7 +168,7 @@ def serialize_coll_blocks(coll_blocks, num_mums):
 
 class MUMdata:
     def __init__(self, mumfile, lenfilter=0, subsample=1, sort=True, verbose=False):
-        if mumfile.endswith('.bums'):
+        if mumfile.endswith('.bumbl'):
             self.lengths, self.starts, self.strands, self.blocks = self.parse_bums(
                 mumfile, 
                 lenfilter, 
