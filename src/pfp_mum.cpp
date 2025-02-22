@@ -39,9 +39,13 @@ int build_main(int argc, char** argv) {
     // determine output path for reference, generate and store filelist
     build_opts.output_ref.assign(build_opts.output_prefix + ".fna");
 
-    if (build_opts.input_list.length() == 0) {build_opts.input_list = make_filelist(build_opts.files, build_opts.output_prefix);}
+    if ((build_opts.input_list.length() == 0) && !(build_opts.from_parse_flag || build_opts.arrays_in_flag)) {build_opts.input_list = make_filelist(build_opts.files, build_opts.output_prefix);}
 
-    RefBuilder ref_build(build_opts.input_list, build_opts.output_prefix, build_opts.use_rcomp);
+    // Declare ref_build first
+    RefBuilder ref_build = (build_opts.from_parse_flag || build_opts.arrays_in_flag)
+        ? RefBuilder(build_opts.from_parse_flag ? build_opts.parse_prefix : build_opts.arrays_in, build_opts.use_rcomp)
+        : RefBuilder(build_opts.input_list, build_opts.output_prefix, build_opts.use_rcomp);
+
     // normalize and reconcile the input parameters
     build_opts.set_parameters(ref_build.num_docs, mum_mode);
 
@@ -58,8 +62,6 @@ int build_main(int argc, char** argv) {
     }
     DONE_LOG((std::chrono::system_clock::now() - start));
 
-    
-
     // Determine the paths to the BigBWT executables
     HelperPrograms helper_bins;
     // if (!std::getenv("PFPMUM_BUILD_DIR")) {FATAL_ERROR("Need to set PFPMUM_BUILD_DIR environment variable.");}
@@ -74,22 +76,22 @@ int build_main(int argc, char** argv) {
     helper_bins.validate();
 
     // just read from files if provided
-    if (build_opts.arrays_in.length() > 0) {
+    if (build_opts.arrays_in_flag) {
         file_lcp input_lcp(build_opts.arrays_in, &ref_build);
         start = std::chrono::system_clock::now();
         STATUS_LOG("build_main", "finding multi-%ss from pfp", mum_mode ? "MUM" : "MEM");
-        mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq);
+        mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary);
         input_lcp.process(match_finder);
         match_finder.close();
         input_lcp.close();
 
-        DONE_LOG((std::chrono::system_clock::now() - start));
+        auto sec = std::chrono::duration<double>((std::chrono::system_clock::now() - start)); std::fprintf(stderr, " done.  (%.3f sec)\n", sec.count());
 
         FORCE_LOG("build_main", "finished computing matches");
         return 0;
     }
 
-    if (!build_opts.from_parse){
+    if (!build_opts.from_parse_flag){
         // Parse the input text with BigBWT, and load it into pf object
         STATUS_LOG("build_main", "generating the prefix-free parse for given reference");
         start = std::chrono::system_clock::now();
@@ -99,8 +101,11 @@ int build_main(int argc, char** argv) {
     }
     STATUS_LOG("build_main", "building the parse and dictionary objects");
     start = std::chrono::system_clock::now();
+    
+    pf_parsing pf = build_opts.from_parse_flag
+        ? pf_parsing(build_opts.parse_prefix, build_opts.pfp_w)
+        : pf_parsing(build_opts.output_ref, build_opts.pfp_w);
 
-    pf_parsing pf(build_opts.output_ref, build_opts.pfp_w);
     DONE_LOG((std::chrono::system_clock::now() - start));
 
     std::cerr << "\n";
@@ -115,6 +120,7 @@ int build_main(int argc, char** argv) {
     STATUS_LOG("build_main", "finding multi-%ss from pfp", mum_mode ? "MUM" : "MEM");
     // std::string filename, RefBuilder& ref_build, size_t min_mem_len, size_t num_distinct, int max_doc_freq, int max_total_freq
     mergable_mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq);
+    // mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary);
     count = lcp.process(match_finder);
     match_finder.close();
     lcp.close();
@@ -128,7 +134,7 @@ int build_main(int argc, char** argv) {
 
     
 
-    if (!build_opts.keep_temp && !build_opts.from_parse)
+    if (!build_opts.keep_temp && !build_opts.from_parse_flag)
         remove_temp_files(build_opts.output_prefix);
     std::cerr << "\n";
     
@@ -237,7 +243,12 @@ int is_dir(std::string path) {
 void print_build_status_info(BuildOptions& opts, RefBuilder& ref_build, bool mum_mode) {
     /* prints out the information being used in the current run */
     std::fprintf(stderr, "\nOverview of Parameters:\n");
-    if (opts.files.size() > 5) {
+    if (opts.from_parse_flag) {
+        std::fprintf(stderr, "\tUsing pre-computed PFP files with prefix: %s\n", opts.parse_prefix.data());
+    }
+    else if (opts.arrays_in.length() > 0)
+        std::fprintf(stderr, "\tUsing pre-computed LCP/BWT/SA arrays from files with prefix: %s\n", opts.arrays_in.data());
+    else if (opts.files.size() > 5) {
         std::fprintf(stderr, "\tInput files (N = %d): ", ref_build.num_docs);
         std::fprintf(stderr, "%s,", opts.files.at(0).data());
         std::fprintf(stderr, "%s,", opts.files.at(1).data());
@@ -258,9 +269,7 @@ void print_build_status_info(BuildOptions& opts, RefBuilder& ref_build, bool mum
 
     std::string match_type = mum_mode ? "MUM" : "MEM";
     std::fprintf(stderr, "\tOutput path: %s\n", opts.output_prefix.data());
-    if (opts.arrays_in.length() > 0)
-        std::fprintf(stderr, "\tUsing pre-computed LCP/BWT/SA arrays from files with prefix: %s\n", opts.arrays_in.data());
-    else 
+    if (!opts.from_parse_flag && !opts.arrays_in_flag)
         std::fprintf(stderr, "\tPFP window size: %d\n", opts.pfp_w);
     if (opts.arrays_out) {std::fprintf(stderr, "\tWriting LCP, BWT and suffix arrays\n");}
     std::fprintf(stderr, "\tMinimum %s length: %d\n", match_type.data(), opts.min_match_len);
@@ -312,12 +321,13 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
         {"keep-temp-files",   no_argument, NULL,  'K'},
         {"window",   required_argument, NULL,  'w'},
         {"rare",   required_argument, NULL,  'f'},
+        {"binary",   no_argument, NULL,  'b'},
         {0, 0, 0,  0}
     };
     int c = 0;
     int long_index = 0;
     
-    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:", long_options, &long_index)) >= 0) {
+    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:b", long_options, &long_index)) >= 0) {
         switch(c) {
             case 'h': mumemto_usage(); std::exit(0);
             case 'i': opts->input_list.assign(optarg); break;
@@ -327,13 +337,14 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
             case 's': opts->overlap = false; break;
             case 'k': opts->num_distinct_docs = std::atoi(optarg); break;
             case 'm': opts->hash_mod = std::atoi(optarg); break;
-            case 'p': opts->from_parse = true; break;
+            case 'p': opts->parse_prefix.assign(optarg); opts->from_parse_flag = true; break;
             case 'l': opts->min_match_len = std::atoi(optarg); break;
             case 'F': opts->max_mem_freq = std::atoi(optarg); break;
             case 'A': opts->arrays_out = true; break;
-            case 'a': opts->arrays_in.assign(optarg); break;
+            case 'a': opts->arrays_in.assign(optarg); opts->arrays_in_flag = true; break;
             case 'K': opts->keep_temp = true; break;
             case 'f': opts->rare_freq = std::atoi(optarg); break;
+            case 'b': opts->binary = true; break;
             default: mumemto_usage(); std::exit(1);
         }
     }
@@ -353,7 +364,8 @@ int mumemto_usage() {
     std::fprintf(stderr, "\t%-22s%-10spath to a file-list of genomes to use (overrides positional args)\n", "-i, --input", "[FILE]");
     std::fprintf(stderr, "\t%-22s%-10soutput prefix path\n", "-o, --output", "[arg]");
     std::fprintf(stderr, "\t%-32sinclude the reverse complement of the sequences (default: true)\n\n", "-r, --no-revcomp");
-    
+    std::fprintf(stderr, "\t%-32soutput binary format (multi-MUMs only)\n\n", "-b, --binary");
+
     std::fprintf(stderr, "\t%-32swrite LCP, BWT, and SA to file\n", "-A, --arrays-out");
     std::fprintf(stderr, "\t%-22s%-10scompute matches from precomputed LCP, BWT, SA (with shared PREFIX.bwt/sa/lcp)\n\n", "-a, --arrays-in", "[PREFIX]");
 

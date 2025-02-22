@@ -1,4 +1,5 @@
-from Bio import SeqIO
+#!/usr/bin/env python3
+
 from Bio.Seq import Seq
 import argparse
 import numpy as np
@@ -6,58 +7,47 @@ from tqdm.auto import tqdm
 import os
 
 try:
-    from utils import MUMdata
+    from utils import MUMdata, get_seq_paths, get_sequence_lengths
 except ImportError:
-    from mumemto.utils import MUMdata
+    from mumemto.utils import MUMdata, get_seq_paths, get_sequence_lengths
 
-def parse_arguments():
+def parse_arguments(args=None):
     parser = argparse.ArgumentParser(description='Extract the MUM sequences')
-    parser.add_argument('-m', '--mumfile', type=str, help='bumfile to process')
+    parser.add_argument('-m', '--mumfile', type=str, help='bumbl file to process')
     parser.add_argument('-i', '--index', type=int, default=0, help='The index of the file in the corresponding filelist')
-    parser.add_argument('-o', '--output', type=str, help='The name of the output file', default="mums.fa")
+    parser.add_argument('-o', '--output', type=str, help='The name of the output file')
     parser.add_argument('-f', '--filelist', type=str, help='filelist file')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Print verbose output')
     
-    args = parser.parse_args()
+    if args is None:
+        args = parser.parse_args()
+    else:
+        args = parser.parse_args(args)
+    
     if args.filelist == None:
         args.filelist = os.path.splitext(args.mumfile)[0] + '.lengths'
         if not os.path.exists(args.filelist):
             raise FileNotFoundError(f"Filelist {args.filelist} not found, and no filelist provided")
-        
+    
+    if args.output is None:
+        args.output = os.path.splitext(args.mumfile)[0] + '_mums.fa'
     if not args.output.endswith('.fa') and not args.output.endswith('.fasta'):
         args.output += '.fa'
     return args
 
-def from_bums(bumsfile):
-    def unpack_flags(flags):
-        flag_labels = ['partial', 'coll_blocks', 'merge']
-        flags = np.unpackbits(np.array([flags], dtype=np.uint8))[-len(flag_labels):]
-        return {f : bool(b) for f, b in zip(flag_labels, flags)}
-    with open(bumsfile, 'rb') as f:
-        flags, n_seqs, n_mums = np.fromfile(f, count = 3, dtype=np.uint64)
-        flags = unpack_flags(flags)
-        start_dtype = np.int64
-        mum_lengths = np.fromfile(f, count = n_mums, dtype=np.uint16)
-        mum_starts = np.fromfile(f, count = n_seqs * n_mums, dtype=start_dtype).reshape(n_mums, n_seqs)
-        mum_strands = np.fromfile(f, dtype=np.uint8)
-        mum_strands = np.unpackbits(mum_strands, count=n_mums * n_seqs).reshape(n_mums, n_seqs).astype(bool)
-    return mum_lengths, mum_starts, mum_strands
-def main():
-    args = parse_arguments()
-    line = open(args.filelist, 'r').read().splitlines()[args.index]
-    file = line.split()[0]
-    print(file)
+def main(args):
+    file = get_seq_paths(args.filelist)[args.index]
+    lengths = get_sequence_lengths(args.filelist)
+    if not os.path.exists(file):
+        raise FileNotFoundError(f"File {file} not found. Ensure lengths file is formatted correctly. Perhaps the paths are relative, not absolute?")
     seq = Seq(''.join([l for l in open(file, 'r').read().splitlines() if not l.startswith('>')]))
-    # seq = Seq('').join([record.seq for record in SeqIO.parse(file, "fasta")])
-    assert len(seq) == int(line.split()[-1])
-    if args.mumfile.endswith('.bums'):
-        mum_lengths, mum_starts, mum_strands = from_bums(args.mumfile)
-    else:
-        mums = MUMdata(args.mumfile, sort=False)
-        mum_lengths, mum_starts, mum_strands = mums.lengths, mums.starts, mums.strands
+    assert len(seq) == lengths[args.index], f"Sequence length {len(seq)} does not match expected length {lengths[args.index]}. There may be Ns or other non-ACGT chars in the FASTA file."
+    mums = MUMdata(args.mumfile, sort=False)
+    mum_lengths, mum_starts, mum_strands = mums.lengths, mums.starts, mums.strands
     with open(args.output, 'w') as out:
         outlines = []
-        for i in tqdm(range(len(mum_lengths))):
-            outlines.append(f'>{i}')
+        for i in tqdm(range(len(mum_lengths)), desc="Extracting MUMs", disable=not args.verbose):
+            outlines.append(f'>mum_{i}')
             cur = seq[mum_starts[i, args.index] : mum_starts[i, args.index] + mum_lengths[i]]  
             if mum_strands[i, args.index]:
                 outlines.append(str(cur))
@@ -65,5 +55,6 @@ def main():
                 outlines.append(str(cur.reverse_complement()))
         out.write('\n'.join(outlines))
 if __name__ == "__main__":
-    main()
+    args = parse_arguments()
+    main(args)
 
