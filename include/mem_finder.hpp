@@ -354,10 +354,11 @@ private:
         sa_buffer.push_back(sa_pos);
         da_buffer.push_back(docid);
     }
-    inline uint64_t get_flags() {
-        uint64_t flags = 0;
+
+    inline uint16_t get_flags() {
+        uint16_t flags = 0;
         if (num_distinct < num_docs)
-            flags |= 1 << 2; 
+            flags |= 1 << 0; 
         return flags;
     }
 
@@ -383,7 +384,7 @@ private:
         mem_file.open(filename + std::string(".bumbl"), std::ios::binary);
         // Combine intermediate files into a single output file
         if (mem_file.is_open()) {
-            uint64_t flags = get_flags();
+            uint16_t flags = get_flags();
             mem_file.write(reinterpret_cast<const char*>(&flags), sizeof(flags));
             mem_file.write(reinterpret_cast<const char*>(&num_seqs), sizeof(uint64_t));
             mem_file.write(reinterpret_cast<const char*>(&num_mems), sizeof(uint64_t));
