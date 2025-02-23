@@ -93,7 +93,6 @@ def get_sequence_lengths(lengths_file, multilengths=False):
                 continue
             cur_offset.append(int(l[2]))
         offset.append(cur_offset)
-        offset = np.array(offset)
         return offset
     simple = True
     try:
@@ -107,7 +106,7 @@ def get_sequence_lengths(lengths_file, multilengths=False):
         raise ValueError("Multi-FASTA lengths not available in ", lengths_file)
     if not simple:
         offsets = get_multilengths(lengths_file)
-        return offsets if multilengths else offsets.sum(axis=1).tolist()
+        return offsets if multilengths else [sum(o) for o in offsets]
     else:
         return get_lengths(lengths_file)
 

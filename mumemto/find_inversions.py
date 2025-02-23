@@ -5,9 +5,9 @@ import sys
 import argparse
 import numpy as np
 try:
-    from utils import MUMdata, find_coll_blocks, get_sequence_lengths, get_coll_block_order, get_seq_paths
+    from utils import MUMdata, find_coll_blocks, get_coll_block_order, get_seq_paths
 except ImportError:
-    from mumemto.utils import MUMdata, find_coll_blocks, get_sequence_lengths, get_coll_block_order, get_seq_paths
+    from mumemto.utils import MUMdata, find_coll_blocks, get_coll_block_order, get_seq_paths
 from tqdm.auto import tqdm
 
 def parse_arguments(args=None):
@@ -15,10 +15,9 @@ def parse_arguments(args=None):
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--input-prefix', '-i', dest='prefix', help='prefix for filelist, mums, and lengths files')
     group.add_argument('--mums', '-m', dest='mumfile', help='path to *.mum file from mumemto')
-    parser.add_argument('--lengths', '-l', dest='lens', help='Path to lengths file')
     
     parser.add_argument('--agp-filelist', '-a', dest='agp_filelist', help='Path to filelist containing AGP files. Each line should contain the path to an AGP file, in the same order as sequences in the mumemto filelist/lengths file. Assume first sequence is reference.')
-    parser.add_argument('--filelist', '-f', dest='filelist', help='Path to filelist for sequence names')
+    parser.add_argument('--filelist', '-f', dest='filelist', help='Path to filelist for sequence names (default lengths file)')
     parser.add_argument('--chr', '-c', help='Chromosome number (required if using --agp-filelist)')
     parser.add_argument('--margin', '-d', dest='margin', type=float, default=0.01, help='Proximity margin for scaffold break detection (default: within 1%% of inversion length)')
     parser.add_argument('--max-length', '-L', dest='max_length', type=int, help='Maximum inversion length to detect')
@@ -45,22 +44,19 @@ def parse_arguments(args=None):
     else:
         parser.error("Either --mums or --prefix must be provided")
     
-    if args.lens is None:
-        args.lens = args.prefix + '.lengths'
+    if args.filelist is None:
+        args.filelist = args.prefix + '.lengths'
         
     return args
 
 def get_sequence_info(args):
-    """Load sequence lengths and names"""
-    seq_lengths = get_sequence_lengths(args.lens)
-    seq_names = get_seq_paths(args.lens)
+    """Load sequence names"""
+    seq_names = get_seq_paths(args.filelist)
     if args.chr:
         hap_ids = [os.path.basename(l).split(f'_chr{args.chr}')[0] for l in seq_names]
     else:
         hap_ids = [os.path.basename(l) for l in seq_names]
-
-        
-    return seq_lengths, hap_ids
+    return hap_ids
 
 def get_scaffold_breaks(args, hap_ids):
     """Load contig break positions from AGP files"""
@@ -125,7 +121,7 @@ def main(args):
         print("Loading sequence information...", file=sys.stderr)
     
     # Load data
-    seq_lengths, hap_ids = get_sequence_info(args)
+    hap_ids = get_sequence_info(args)
     
     # Only get scaffold breaks if both AGP and chr are provided
     if args.scaffold:

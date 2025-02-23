@@ -156,10 +156,10 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
             
     elif args.mode == 'delineated':
         # Plot lines with delineators for multifasta
-        offsets = args.multilengths.cumsum(axis=1)
-        for idx in range(offsets.shape[0]):
+        for idx in range(len(args.multilengths)):
+            cur_offsets = np.cumsum(args.multilengths[idx])
             last_offset = 0
-            for i, offset in enumerate([0] + offsets[idx][:-1].tolist()):
+            for i, offset in enumerate([0] + cur_offsets[:-1]):
                 ax.plot([centering[idx] + offset, centering[idx] + offset], 
                         [idx - 0.25, idx + 0.25], alpha=0.5, linewidth=0.25, color=cm.tab20((i+1) % 20))
                 ax.plot([centering[idx] + last_offset, centering[idx] + offset], 
@@ -245,11 +245,12 @@ def main(args):
     if args.mode != 'normal':
         try:
             offset = get_sequence_lengths(args.lens, multilengths=True)
+            seq_lengths = [sum(o) for o in offset]
             if args.mode == 'gapped' and len(set([len(o) for o in offset])) > 1:
                 print('Warning: gapped mode requires the same number of sequences per input FASTA file. Using delineated mode instead.', file=sys.stderr)
                 args.mode = 'delineated'
-            seq_lengths = offset.sum(axis=1).tolist()
-            args.multilengths = offset
+            else:   
+                args.multilengths = np.array(offset)
         except ValueError:
             print('Warning: Multi-FASTA lengths not available in %s. Treating input FASTAs as a single sequence instead.' % args.lens, file=sys.stderr)
             args.mode = 'normal'
