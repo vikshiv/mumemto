@@ -41,7 +41,7 @@ class dictionary{
 public:
   std::vector<uint8_t> d;
   std::vector<uint_t> saD;
-  sdsl::int_vector<40> phrase_to_rank;
+  std::vector<uint32_t> phrase_to_rank;
   std::vector<int_t> lcpD;
   sdsl::rmq_succinct_sct<> rmq_lcp_D;
   sdsl::bit_vector b_d; // Starting position of each phrase in D
