@@ -437,10 +437,25 @@ public:
     void close() override
     {
         mem_file.close();
-
+        // write thresholds in terms of positions on MUMs, rather than first genome coords
+        size_t total_mum_length = 0;
+        for (size_t i = 0; i < mum_positions.size(); i++) {
+            total_mum_length += mum_positions[i].second + 1;
+        }
+        size_t offset = 0;
+        std::vector<uint16_t> mum_based_thresh(total_mum_length, 0);
+        for (size_t i = 0; i < mum_positions.size(); i++) {
+            for (size_t j = 0; j < mum_positions[i].second; j++) {
+                mum_based_thresh[offset] = candidate_thresh[mum_positions[i].first + j];
+                offset++;
+            }
+            mum_based_thresh[offset] = 0;
+            offset++;
+        }
+        // write to file
         std::string thresh_file = filename + ".thresh";
         std::ofstream thresh_out(thresh_file, std::ios::binary);
-        thresh_out.write(reinterpret_cast<const char*>(candidate_thresh.data()), candidate_thresh.size() * sizeof(uint16_t));
+        thresh_out.write(reinterpret_cast<const char*>(mum_based_thresh.data()), mum_based_thresh.size() * sizeof(uint16_t));
         thresh_out.close();
     }
     
@@ -537,6 +552,9 @@ private:
         }
         if (strand[i] == '-')
             return 0;
+
+        // store the offset in the first genome to pull later
+        mum_positions.push_back(std::make_pair(offsets[0], length));
 
         if (binary) {
             uint16_t length_uint16 = static_cast<uint16_t>(length);
