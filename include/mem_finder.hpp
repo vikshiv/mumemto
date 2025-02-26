@@ -446,7 +446,8 @@ public:
         std::vector<uint16_t> mum_based_thresh(total_mum_length, 0);
         for (size_t i = 0; i < mum_positions.size(); i++) {
             for (size_t j = 0; j < mum_positions[i].second; j++) {
-                mum_based_thresh[offset] = candidate_thresh[mum_positions[i].first + j];
+                if (candidate_thresh[mum_positions[i].first + j] < mum_positions[i].second - j)
+                    mum_based_thresh[offset] = candidate_thresh[mum_positions[i].first + j];
                 offset++;
             }
             mum_based_thresh[offset] = 0;
