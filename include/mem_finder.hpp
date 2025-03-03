@@ -418,6 +418,7 @@ public:
     mergable_mem_finder(std::string filename, RefBuilder& ref_build, size_t min_mem_len, size_t num_distinct, int max_doc_freq, int max_total_freq):
         mem_finder(filename, ref_build, min_mem_len, num_distinct, max_doc_freq, max_total_freq, false),
         candidate_thresh(doc_lens[0], 0),
+        candidate_thresh_rev(doc_lens[0], 0),
         filename(filename)
     {
         init_stack();
@@ -444,13 +445,20 @@ public:
         }
         size_t offset = 0;
         std::vector<uint16_t> mum_based_thresh(total_mum_length, 0);
+        std::vector<uint16_t> mum_based_thresh_rev(total_mum_length, 0);
+        size_t revpos;
         for (size_t i = 0; i < mum_positions.size(); i++) {
+            //doc_lens[curdoc] + doc_lens[curdoc] - curpos - length - 1
+            // revpos = doc_lens[0] - mum_positions[i].first - mum_positions[i].second - 1;
             for (size_t j = 0; j < mum_positions[i].second; j++) {
                 if (candidate_thresh[mum_positions[i].first + j] < mum_positions[i].second - j)
                     mum_based_thresh[offset] = candidate_thresh[mum_positions[i].first + j];
+                if (candidate_thresh_rev.at(mum_positions[i].first + j) < mum_positions[i].second - j)
+                    mum_based_thresh_rev[offset] = candidate_thresh_rev.at(mum_positions[i].first + j);
                 offset++;
             }
             mum_based_thresh[offset] = 0;
+            mum_based_thresh_rev[offset] = 0;
             offset++;
         }
         // write to file
@@ -458,6 +466,11 @@ public:
         std::ofstream thresh_out(thresh_file, std::ios::binary);
         thresh_out.write(reinterpret_cast<const char*>(mum_based_thresh.data()), mum_based_thresh.size() * sizeof(uint16_t));
         thresh_out.close();
+
+        std::string thresh_file_rev = filename + ".thresh_rev";
+        std::ofstream thresh_out_rev(thresh_file_rev, std::ios::binary);
+        thresh_out_rev.write(reinterpret_cast<const char*>(mum_based_thresh_rev.data()), mum_based_thresh_rev.size() * sizeof(uint16_t));
+        thresh_out_rev.close();
     }
     
 protected:
@@ -470,6 +483,7 @@ private:
 
     // data structure to hold meta data for merging
     std::vector<uint16_t> candidate_thresh;
+    std::vector<uint16_t> candidate_thresh_rev;
     size_t MAX_THRESH = static_cast<size_t>(UINT16_MAX);
     std::string filename; // filename for output metadata
 
@@ -502,7 +516,8 @@ private:
                             start_offset = sa_buffer[i - buffer_start] - doc_offsets[0];
                             if (!revcomp || start_offset < doc_lens[0]) {
                                 candidate_thresh[start_offset] = next_best;
-                            }
+                            } else if (revcomp && start_offset >= doc_lens[0])
+                                candidate_thresh_rev.at(doc_lens[0] + doc_lens[0] - start_offset - interval.second - 1) = next_best;
                             break;
                         }
                     }
