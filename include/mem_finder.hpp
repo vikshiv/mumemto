@@ -445,22 +445,36 @@ public:
         }
         size_t offset = 0;
         std::vector<uint16_t> mum_based_thresh(total_mum_length, 0);
-        std::vector<uint16_t> mum_based_thresh_rev(total_mum_length, 0);
-        size_t revpos;
         for (size_t i = 0; i < mum_positions.size(); i++) {
             //doc_lens[curdoc] + doc_lens[curdoc] - curpos - length - 1
             // revpos = doc_lens[0] - mum_positions[i].first - mum_positions[i].second - 1;
             for (size_t j = 0; j < mum_positions[i].second; j++) {
                 if (candidate_thresh[mum_positions[i].first + j] < mum_positions[i].second - j)
                     mum_based_thresh[offset] = candidate_thresh[mum_positions[i].first + j];
-                if (candidate_thresh_rev.at(mum_positions[i].first + j) < mum_positions[i].second - j)
-                    mum_based_thresh_rev[offset] = candidate_thresh_rev.at(mum_positions[i].first + j);
                 offset++;
             }
             mum_based_thresh[offset] = 0;
+            offset++;
+        }
+        // reverse
+        total_mum_length = 0;
+        offset = 0;
+        size_t revpos;
+        for (size_t i = 0; i < mum_positions_rev.size(); i++) {
+            total_mum_length += mum_positions_rev[i].second + 1;
+        }
+        std::vector<uint16_t> mum_based_thresh_rev(total_mum_length, 0);
+        for (size_t i = 0; i < mum_positions_rev.size(); i++) {
+            for (size_t j = 0; j < mum_positions_rev[i].second; j++) {
+                if (candidate_thresh_rev.at(mum_positions_rev[i].first + j) < mum_positions_rev[i].second - j)
+                    mum_based_thresh_rev[offset] = candidate_thresh_rev.at(mum_positions_rev[i].first + j);
+                offset++;
+            }
             mum_based_thresh_rev[offset] = 0;
             offset++;
         }
+
+
         // write to file
         std::string thresh_file = filename + ".thresh";
         std::ofstream thresh_out(thresh_file, std::ios::binary);
@@ -480,6 +494,7 @@ private:
     // Override the data structure for current_mems to include prev_lcp
     std::vector<std::pair<std::pair<size_t, size_t>, size_t>> current_mems;
     std::vector<std::pair<size_t, size_t>> mum_positions;
+    std::vector<std::pair<size_t, size_t>> mum_positions_rev;
 
     // data structure to hold meta data for merging
     std::vector<uint16_t> candidate_thresh;
@@ -566,8 +581,10 @@ private:
                 break;
             i++;
         }
-        if (strand[i] == '-')
+        if (strand[i] == '-') {
+            mum_positions_rev.push_back(std::make_pair(offsets[0], length));
             return 0;
+        }
 
         // store the offset in the first genome to pull later
         mum_positions.push_back(std::make_pair(offsets[0], length));
