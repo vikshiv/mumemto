@@ -450,12 +450,12 @@ public:
             // revpos = doc_lens[0] - mum_positions[i].first - mum_positions[i].second - 1;
             // curpos = doc_lens[curdoc] + doc_lens[curdoc] - curpos - length - 1;
             // 
+            revpos = doc_lens[0] + doc_lens[0] - (mum_positions[i].first) - mum_positions[i].second - 1;
             for (size_t j = 0; j < mum_positions[i].second; j++) {
                 if (candidate_thresh[mum_positions[i].first + j] < mum_positions[i].second - j)
                     mum_based_thresh[offset] = candidate_thresh[mum_positions[i].first + j];
-                revpos = doc_lens[0] + doc_lens[0] - (mum_positions[i].first + j) - mum_positions[i].second - 1;
-                if (candidate_thresh.at(revpos) < mum_positions[i].second - j)
-                    mum_based_thresh_rev[offset] = candidate_thresh.at(revpos);
+                if (candidate_thresh.at(revpos + j) < mum_positions[i].second - j)
+                    mum_based_thresh_rev[offset] = candidate_thresh.at(revpos + j);
                 offset++;
             }
             mum_based_thresh[offset] = 0;
