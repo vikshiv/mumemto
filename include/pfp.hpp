@@ -106,7 +106,7 @@ public:
     verbose("Computing s_lcp_T");
     _elapsed_time(compute_s_lcp_T());
 
-    std::vector<uint32_t>().swap(dict.phrase_to_rank);
+    std::vector<uint_t>().swap(dict.isaD);
     // dict.isaD.clear(); 
     // dict.isaD.shrink_to_fit();
 
