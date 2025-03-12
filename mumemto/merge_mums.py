@@ -43,12 +43,15 @@ def main():
     for i in range(len(args.mum_files)):
         if not args.mum_files[i].endswith('.mums'):
             args.mum_files[i] += '.mums'
-
+    
+    
     premerge_mums = [list(parse_mums_generator(m)) for m in args.mum_files]
     
     ### get lengths
     mum_lens = get_sequence_lengths(args.merged_mums.replace('.mums', '.lengths'), multilengths=True)
 
+    NUM_SETS = len(mum_lens)
+    
     ### build bitvectors for mum starts in comb mums
     mum_starts = [np.cumsum(lens) for lens in mum_lens]
     set1_bv = np.zeros(sum(mum_lens[0]) + 1, dtype=bool)
@@ -63,7 +66,11 @@ def main():
         with open(m.replace('.mums', '.thresh_rev'), 'rb') as f:
             rev_thresholds.append(np.fromfile(f, dtype=np.uint16))
     
-    NUM_SETS = len(mum_lens)
+    
+    assert len(thresholds) == NUM_SETS, "input # of MUM files does not match merged MUM input file"
+    assert len(rev_thresholds) == NUM_SETS, "input # of MUM files does not match merged MUM input file"
+    assert len(premerge_mums) == NUM_SETS, "input # of MUM files does not match merged MUM input file"
+    assert len(mum_offsets) == NUM_SETS, "input # of MUM files does not match merged MUM input file"
     
     ### split grandMUMs that span multiple $ in the concatenated mums into match segments
     dollar_less = []
