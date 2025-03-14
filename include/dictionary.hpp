@@ -41,7 +41,7 @@ class dictionary{
 public:
   std::vector<uint8_t> d;
   std::vector<uint_t> saD;
-  std::vector<uint_t> isaD;
+  std::vector<uint32_t> phrase_to_rank;
   std::vector<int_t> lcpD;
   sdsl::rmq_succinct_sct<> rmq_lcp_D;
   sdsl::bit_vector b_d; // Starting position of each phrase in D
@@ -100,8 +100,8 @@ public:
     if(a == 0 || b == 0)
       return 0;
     // Compute the lcp between phrases a and b
-    auto a_in_sa = isaD[select_b_d(a)]; // position of the phrase a in saD
-    auto b_in_sa = isaD[select_b_d(b)]; // position of the phrase b in saD
+    auto a_in_sa = phrase_to_rank[a-1]; // position of the phrase a in saD
+    auto b_in_sa = phrase_to_rank[b-1]; // position of the phrase b in saD
 
     auto lcp_left = std::min(a_in_sa, b_in_sa) + 1;
     auto lcp_right = std::max(a_in_sa, b_in_sa);
@@ -148,10 +148,13 @@ public:
     // inverse suffix array of the dictionary.
     verbose("Computing ISA of dictionary");
     _elapsed_time(
-      {
-        isaD.resize(d.size());
+      { 
+        size_t n_phrases = rank_b_d(d.size()-1);
+        phrase_to_rank.resize(n_phrases + 1);
         for(size_t i = 0; i < saD.size(); ++i){
-          isaD[saD[i]] = i;
+          if (b_d[saD[i]]) {
+            phrase_to_rank[rank_b_d(saD[i])] = i;
+          }
         }
       }
     );
