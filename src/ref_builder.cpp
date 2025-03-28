@@ -59,7 +59,8 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
 
     while (std::getline(input_fd, line)) {
         auto word_list = split(line, ' ');
-
+        if (word_list.size() == 0) 
+            continue;
         // Make sure the filelist has at least 2 columns (name and doc_id)
         // ASSERT((word_list.size() >= 2), "Input file-list does not have expected structure.");
         // if (word_list.size() == 1)
