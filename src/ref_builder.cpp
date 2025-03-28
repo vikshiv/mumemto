@@ -108,8 +108,17 @@ RefBuilder::RefBuilder(std::string output_prefix, bool use_rcomp): use_revcomp(u
     size_t cur_length = 0;
     while (std::getline(lengths_fd, line)) {
         auto word_list = split(line, ' ');
+        if (word_list.size() == 0)
+            continue;
+        
+        if (word_list.size() == 2) {
+            cur_length = std::stoi(word_list[1]) + 1;
+        } else if ((word_list.size() == 3) && (word_list[1] == "*")) {
+            cur_length = std::stoi(word_list[2]) + 1;
+        }
+        else {continue;}
         input_files.push_back(word_list[0]);
-        cur_length = std::stoi(word_list[1]) + 1;
+        
         if (use_revcomp) {
             cur_length *= 2;
         }
