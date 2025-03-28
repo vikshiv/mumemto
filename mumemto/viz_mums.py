@@ -152,7 +152,7 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
         # Just plot simple genome lines
         for idx, g in enumerate(genome_lengths):
             ax.plot([centering[idx] + 0, centering[idx] + g], [idx, idx], 
-                    alpha=0.2, linewidth=0.75)
+                    alpha=0.2, linewidth=0.75, c='black')
             
     elif args.mode == 'delineated':
         # Plot lines with delineators for multifasta
