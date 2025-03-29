@@ -220,6 +220,8 @@ protected:
             curpos = sa_buffer.at(i - buffer_start) - doc_offsets[curdoc];
             if (revcomp && curpos >= doc_lens[curdoc]) {
                 curstrand = '-';
+                if (curpos + length > (doc_lens[curdoc] + doc_lens[curdoc]))
+                    return 0;
                 curpos = doc_lens[curdoc] + doc_lens[curdoc] - curpos - length - 1;
             }
             else
