@@ -24,7 +24,7 @@ class CMakeBuild(Command):
         # Create build directory
         os.makedirs(self.build_temp, exist_ok=True)
         
-        subprocess.check_call(['cmake', '-S', '.', '-B', self.build_temp])
+        subprocess.check_call(['cmake', '-S', '.', '-B', self.build_temp, '-DCMAKE_POLICY_VERSION_MINIMUM=3.5'])
         subprocess.check_call(['cmake', '--build', self.build_temp])
         subprocess.check_call(['cmake', '--install', self.build_temp])
         
@@ -38,6 +38,10 @@ class CMakeBuild(Command):
         shutil.copy2(
             os.path.join(self.build_temp, 'mumemto_exec'),
             os.path.join(bin_dir, 'mumemto_exec')
+        )
+        shutil.copy2(
+            os.path.join(self.build_temp, 'compute_lengths'),
+            os.path.join(bin_dir, 'compute_lengths')
         )
         shutil.copy2(
             os.path.join(self.build_temp, 'newscanNT.x'),
@@ -81,7 +85,7 @@ def read_requirements():
 
 setup(
     name="mumemto",
-    version="1.1.1",
+    version="1.2.2",
     packages=find_packages(),
     install_requires=read_requirements(),
     scripts=['mumemto/mumemto'],

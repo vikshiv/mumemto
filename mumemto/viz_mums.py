@@ -226,8 +226,10 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
         fig.savefig(path, dpi=dpi)
     return ax
 
-def offset_mums(args, mums, spacer=100000, blocks=None):
+def offset_mums(args, mums, spacer=None, blocks=None):
     offset = args.multilengths
+    if spacer is None:
+        spacer = args.spacer
     NUM_SEQS = len(offset)
     ### offset the mums by the contig locations
     offsets = np.cumsum(offset, axis=1)
