@@ -198,7 +198,7 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
     else:
         ax.set_xlabel('genomic position')
     ax.set_ylabel('sequences')
-    ax.set_ylim(0, len(genome_lengths)-1)
+    ax.set_ylim(-0.25, len(genome_lengths)-1 + 0.25)
     if args.mode == 'gapped':
         ax.set_xlim(0, args.multilengths.max(axis=0).sum() + args.spacer * (args.multilengths.shape[1] - 1))
     else:
@@ -234,8 +234,8 @@ def offset_mums(args, mums, spacer=None, blocks=None):
     ### offset the mums by the contig locations
     offsets = np.cumsum(offset, axis=1)
     ### label each mum with the contig it belongs to
-    breaks = np.hstack((np.array([[0]*NUM_SEQS]).transpose(), offsets))
-    contig_idx = np.array([np.searchsorted(breaks[idx], mums.starts[:,idx]) - 1 for idx in range(NUM_SEQS)]).transpose()
+    # breaks = np.hstack((np.array([[0]*NUM_SEQS]).transpose(), offsets))
+    contig_idx = np.array([np.searchsorted(offsets[idx], mums.starts[:,idx], side='right') for idx in range(NUM_SEQS)]).transpose()
     # if using blocks, split any that cross contigs
     if blocks is not None:
         new_blocks = []
