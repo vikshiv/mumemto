@@ -112,6 +112,20 @@ def run_extract(args):
             print(f"Error: mumemto not installed. Please run mumemto/extract_mums.py directly.", file=sys.stderr)
             sys.exit(1)
         subprocess.run([sys.executable, script] + args)
+        
+def run_reframe(args):
+    """Add contig information to MUMs"""
+    try:
+        reframe = import_module('mumemto.get_sequence_info')
+        parsed_args = reframe.parse_arguments(args)
+        reframe.main(parsed_args)
+    except ImportError:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        script = os.path.join(script_dir, '_mumemto', 'get_sequence_info.py')
+        if not os.path.exists(script):
+            print(f"Error: mumemto not installed. Please run mumemto/get_sequence_info.py directly.", file=sys.stderr)
+            sys.exit(1)
+        subprocess.run([sys.executable, script] + args)
 
 def run_lengths(args):
     """Run the compute_lengths executable with given args"""
@@ -135,6 +149,7 @@ def main():
               "\tcollinear\t\tfind collinear blocks of MUMs\n" +
               "\tconvert\t\t\tconvert MUMs to BUMs and vice versa\n" +
               "\textract\t\t\textract MUMs to a FASTA file\n" + 
+              "\treframe\t\t\tlabel MUMs with contig information\n" +
               "\tlengths\t\t\trecompute sequence lengths from a filelist",
               file=sys.stderr)
         sys.exit(0)
@@ -154,6 +169,8 @@ def main():
         run_convert(args)
     elif command == 'extract':
         run_extract(args)
+    elif command == 'reframe':
+        run_reframe(args)
     elif command == 'lengths':
         run_lengths(args)
     else:

@@ -15,6 +15,7 @@ def parse_arguments(args=None):
     parser.add_argument('-o', '--output', type=str, help='Path to the output file')
     parser.add_argument('-l', '--lengths', type=str, help='Path to alternate lengths file')
     parser.add_argument('-v', '--verbose', action='store_true', help='Print verbose output')
+    parser.add_argument('-n', '--contig-names', dest='contig_names', action='store_true', help='Print contig names/sequence IDs instead of numerical indexes')
     
     if args is None:
         args = parser.parse_args()
@@ -37,7 +38,8 @@ def parse_arguments(args=None):
 
 
 def offset_mums(mums, lengths):
-    print('Transforming MUMs to contig-relative coordinates...', file=sys.stderr)
+    if args.verbose:
+        print('Transforming MUMs to contig-relative coordinates...', file=sys.stderr)
     NUM_SEQS = len(lengths)
     ### offset the mums by the contig locations
     offsets = np.cumsum(lengths, axis=1)
@@ -51,12 +53,30 @@ def offset_mums(mums, lengths):
     mums.starts[partial_mask] = rel_offsets[partial_mask]
     return contig_idx, rel_offsets
 
+def get_contig_names(lengths_file):
+    ### assumes lengths_file is formatted as multilengths
+    names = []
+    cur_name = []
+    for l in open(lengths_file, 'r').readlines():
+        l = l.strip().split()
+        if l[1] == '*':
+            if cur_name:
+                names.append(cur_name)
+            cur_name = []
+            continue
+        cur_name.append(l[1])
+    names.append(cur_name)
+    return names
+
 def main(args):
     try:
         lengths = get_sequence_lengths(args.lengths, multilengths=True)
     except ValueError as e:
         print("Multi-FASTA input required for contig ID annotation.", file=sys.stderr)
         sys.exit(1)
+    if args.contig_names:
+        names = get_contig_names(args.lengths)
+    
     mums = MUMdata(args.mumfile, sort=False, verbose=args.verbose)
     mum_lengths, mum_strands = mums.lengths, mums.strands
     
@@ -65,7 +85,10 @@ def main(args):
     with open(args.output, 'w') as out:
         for i in range(mums.num_mums):
             strands_str = ['+' if s else '-' for s in mum_strands[i]]
-            cur_contig_idx = ','.join(map(str, contig_idx[i]))
+            if args.contig_names:
+                cur_contig_idx = ','.join([names[idx][i] for idx, i in enumerate(contig_idx[i])])
+            else:
+                cur_contig_idx = ','.join(map(str, contig_idx[i]))
             out.write(f"{mum_lengths[i]}\t{','.join(map(str, rel_offsets[i]))}\t{','.join(strands_str)}\t{cur_contig_idx}\n")
     
 if __name__ == "__main__":
