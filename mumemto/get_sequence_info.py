@@ -49,8 +49,8 @@ def offset_mums(mums, lengths):
     ### get the relative offset of each mum to the start of its contig
     left_start = np.hstack((np.zeros((offsets.shape[0],1), dtype=int), offsets[:,:-1]))
     rel_offsets = mums.starts - left_start[np.arange(NUM_SEQS), contig_idx]
-    partial_mask = mums.starts != -1
-    mums.starts[partial_mask] = rel_offsets[partial_mask]
+    partial_mask = mums.starts == -1
+    rel_offsets[partial_mask] = -1
     return contig_idx, rel_offsets
 
 def get_contig_names(lengths_file):
@@ -78,8 +78,11 @@ def main(args):
         names = get_contig_names(args.lengths)
     
     mums = MUMdata(args.mumfile, sort=False, verbose=args.verbose)
-    mum_lengths, mum_strands = mums.lengths, mums.strands
-    
+    mum_lengths, mum_starts, mum_strands = mums.lengths, mums.starts, mums.strands
+    is_blocked = mums.blocks is not None
+    if is_blocked:
+        blocks = mums.blocks
+        
     contig_idx, rel_offsets = offset_mums(mums, lengths)
     mums.starts = rel_offsets
     with open(args.output, 'w') as out:
@@ -89,7 +92,10 @@ def main(args):
                 cur_contig_idx = ','.join([names[idx][i] for idx, i in enumerate(contig_idx[i])])
             else:
                 cur_contig_idx = ','.join(map(str, contig_idx[i]))
-            out.write(f"{mum_lengths[i]}\t{','.join(map(str, rel_offsets[i]))}\t{','.join(strands_str)}\t{cur_contig_idx}\n")
+            if is_blocked:
+                out.write(f"{mum_lengths[i]}\t{','.join(map(str, mum_starts[i]))}\t{','.join(strands_str)}\t{blocks[i]}\t{cur_contig_idx}\t{','.join(map(str, rel_offsets[i]))}\n")
+            else:
+                out.write(f"{mum_lengths[i]}\t{','.join(map(str, mum_starts[i]))}\t{','.join(strands_str)}\t*\t{cur_contig_idx}\t{','.join(map(str, rel_offsets[i]))}\n")
     
 if __name__ == "__main__":
     args = parse_arguments()
