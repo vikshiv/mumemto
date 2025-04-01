@@ -27,8 +27,12 @@ def parse_arguments(args=None):
     if args.mumfile and args.bumfile and os.path.exists(args.mumfile) and os.path.exists(args.bumfile):
         parser.error("Multiple input files provided, only one is allowed")
         
-    
-    if args.mumfile and os.path.exists(args.mumfile) and args.bumfile and not os.path.exists(args.bumfile):
+    if args.out != None:
+        if args.mumfile:
+            args.to_bum = True
+        else:
+            args.to_bum = False
+    elif args.mumfile and os.path.exists(args.mumfile) and args.bumfile and not os.path.exists(args.bumfile):
         args.to_bum = True
         args.out = args.bumfile
     elif args.bumfile and os.path.exists(args.bumfile) and args.mumfile and not os.path.exists(args.mumfile):
