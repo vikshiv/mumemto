@@ -152,8 +152,7 @@ def main():
               "\tconvert\t\t\tconvert MUMs to BUMs and vice versa\n" +
               "\textract\t\t\textract MUMs to a FASTA file\n" + 
               "\treframe\t\t\tlabel MUMs with contig information\n" +
-              "\tlengths\t\t\trecompute sequence lengths from a filelist\n" +
-              "\t--version\t\tprint version information",
+              "\tlengths\t\t\trecompute sequence lengths from a filelist",
               file=sys.stderr)
         sys.exit(0)
 
@@ -161,7 +160,7 @@ def main():
     args = sys.argv[2:]
 
     if command == '--version':
-        print(f"mumemto version {MUMEMTO_VERSION}")
+        print(f"mumemto version: {MUMEMTO_VERSION}")
         sys.exit(0)
     elif command == 'viz':
         run_viz(args)
