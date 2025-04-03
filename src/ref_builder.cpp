@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <numeric>
 #include <sdsl/bit_vectors.hpp>
+#include <unordered_set>
 #include <filesystem>
 
 KSEQ_INIT(int, read);
@@ -88,6 +89,16 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
         //     FATAL_ERROR("The IDs in the file_list must be staying constant or increasing by 1.");
         // member_num += 1;
     }
+
+    // Remove duplicates while preserving order
+    std::vector<std::string> unique_files;
+    std::unordered_set<std::string> seen;
+    for (const auto& file : input_files) {
+        if (seen.insert(file).second) {
+            unique_files.push_back(file);
+        }
+    }
+    input_files = std::move(unique_files);
     
     // Make sure we have parsed each line, and it has multiple groups
     // ASSERT((document_ids.size() == input_files.size()), "Issue with file-list parsing occurred.");

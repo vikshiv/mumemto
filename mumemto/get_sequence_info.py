@@ -5,9 +5,9 @@ import numpy as np
 import os, sys
 
 try:
-    from utils import MUMdata, get_sequence_lengths
+    from utils import MUMdata, get_sequence_lengths, serialize_coll_blocks
 except ImportError:
-    from mumemto.utils import MUMdata, get_sequence_lengths
+    from mumemto.utils import MUMdata, get_sequence_lengths, serialize_coll_blocks
 
 def parse_arguments(args=None):
     parser = argparse.ArgumentParser(description='Extract the MUM sequences')
@@ -37,7 +37,7 @@ def parse_arguments(args=None):
     return args
 
 
-def offset_mums(mums, lengths):
+def offset_mums(args, mums, lengths):
     if args.verbose:
         print('Transforming MUMs to contig-relative coordinates...', file=sys.stderr)
     NUM_SEQS = len(lengths)
@@ -81,9 +81,9 @@ def main(args):
     mum_lengths, mum_starts, mum_strands = mums.lengths, mums.starts, mums.strands
     is_blocked = mums.blocks is not None
     if is_blocked:
-        blocks = mums.blocks
+        blocks = serialize_coll_blocks(mums.blocks, mums.num_mums)
         
-    contig_idx, rel_offsets = offset_mums(mums, lengths)
+    contig_idx, rel_offsets = offset_mums(args, mums, lengths)
     mums.starts = rel_offsets
     with open(args.output, 'w') as out:
         for i in range(mums.num_mums):
