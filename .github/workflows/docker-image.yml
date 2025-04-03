@@ -3,9 +3,6 @@ name: Docker Build and Publish
 on:
   release:
     types: [published]
-  push:
-    branches:
-      - main
 
 env:
   REGISTRY: docker.io
