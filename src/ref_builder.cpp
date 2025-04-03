@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <numeric>
 #include <sdsl/bit_vectors.hpp>
+#include <unordered_set>
 #include <filesystem>
 
 KSEQ_INIT(int, read);
@@ -59,7 +60,8 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
 
     while (std::getline(input_fd, line)) {
         auto word_list = split(line, ' ');
-
+        if (word_list.size() == 0) 
+            continue;
         // Make sure the filelist has at least 2 columns (name and doc_id)
         // ASSERT((word_list.size() >= 2), "Input file-list does not have expected structure.");
         // if (word_list.size() == 1)
@@ -87,6 +89,16 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
         //     FATAL_ERROR("The IDs in the file_list must be staying constant or increasing by 1.");
         // member_num += 1;
     }
+
+    // Remove duplicates while preserving order
+    std::vector<std::string> unique_files;
+    std::unordered_set<std::string> seen;
+    for (const auto& file : input_files) {
+        if (seen.insert(file).second) {
+            unique_files.push_back(file);
+        }
+    }
+    input_files = std::move(unique_files);
     
     // Make sure we have parsed each line, and it has multiple groups
     // ASSERT((document_ids.size() == input_files.size()), "Issue with file-list parsing occurred.");
@@ -107,8 +119,17 @@ RefBuilder::RefBuilder(std::string output_prefix, bool use_rcomp): use_revcomp(u
     size_t cur_length = 0;
     while (std::getline(lengths_fd, line)) {
         auto word_list = split(line, ' ');
+        if (word_list.size() == 0)
+            continue;
+        
+        if (word_list.size() == 2) {
+            cur_length = std::stoi(word_list[1]) + 1;
+        } else if ((word_list.size() == 3) && (word_list[1] == "*")) {
+            cur_length = std::stoi(word_list[2]) + 1;
+        }
+        else {continue;}
         input_files.push_back(word_list[0]);
-        cur_length = std::stoi(word_list[1]) + 1;
+        
         if (use_revcomp) {
             cur_length *= 2;
         }

@@ -72,7 +72,7 @@ def parse_mums_generator(mumfile, lenfilter=0, subsample=1, verbose=False, retur
                     strands = [s == '+' for s in line[2].split(',')]
                     starts = [int(pos) if pos != '' else -1 for pos in line[1].split(',')]
                     if return_blocks:
-                        block = None if len(line) < 4 else line[3]
+                        block = None if (len(line) < 4 or line[3] == '*') else line[3]
                         yield MUM_BLOCK(length, starts, strands, block)
                     else:
                         yield MUM(length, starts, strands)
@@ -173,8 +173,9 @@ class MUMdata:
                 lenfilter, 
                 subsample
             )
+            self.extra_fields = None
         else:
-            self.lengths, self.starts, self.strands, self.blocks = self.parse_mums(
+            self.lengths, self.starts, self.strands, self.blocks, self.extra_fields = self.parse_mums(
                 mumfile, 
                 lenfilter, 
                 subsample,
@@ -193,6 +194,8 @@ class MUMdata:
                 self.lengths = self.lengths[order]
                 self.starts = self.starts[order]
                 self.strands = self.strands[order]
+                if self.extra_fields is not None:
+                    self.extra_fields = [self.extra_fields[i] for i in order]
         self.partial = -1 in self.starts
     
     @classmethod
@@ -217,7 +220,7 @@ class MUMdata:
     @staticmethod
     def parse_mums(mumfile, lenfilter=0, subsample=1, verbose=False):
         count = 0
-        lengths, starts, strands, coll_blocks = [], [], [], []
+        lengths, starts, strands, coll_blocks, extra_fields = [], [], [], [], []
         with open(mumfile, 'r') as f:
             for line in tqdm(f, desc='parsing MUM file', disable=not verbose):
                 if subsample == 1 or count % subsample == 0:
@@ -230,8 +233,10 @@ class MUMdata:
                         starts.append(start)
                         strands.append(strand)
                         lengths.append(length)
-                        if len(line) > 3:
+                        if len(line) > 3 and line[3] != '*':
                             coll_blocks.append(line[3])
+                        if len(line) > 4:
+                            extra_fields.append('\t'.join(line[4:]))
                 count += 1
         try:
             lengths = np.array(lengths, dtype=np.uint16)
@@ -247,7 +252,10 @@ class MUMdata:
         else:
             blocks = None
         
-        return lengths, starts, np.array(strands, dtype=bool), blocks
+        if len(extra_fields) == 0:
+            extra_fields = None
+        
+        return lengths, starts, np.array(strands, dtype=bool), blocks, extra_fields
         
     @staticmethod
     def parse_bums(bumfile, lenfilter=0, subsample=1):
@@ -286,6 +294,8 @@ class MUMdata:
             self.strands = self.strands[valid_rows]
             self.num_mums = len(self.lengths)
             self.partial = False
+            if self.extra_fields is not None:
+                self.extra_fields = [self.extra_fields[i] for i in valid_rows]
         return self
 
     def __iter__(self):
@@ -323,7 +333,10 @@ class MUMdata:
                         else:
                             block_idx = idx
                         strands_str = ['+' if s else '-' for s in self.strands[i]]
-                        f.write(f"{self.lengths[i]}\t{','.join(map(str, self.starts[i]))}\t{','.join(strands_str)}\t{block_idx}\n")
+                        if self.extra_fields is not None:
+                            f.write(f"{self.lengths[i]}\t{','.join(map(str, self.starts[i]))}\t{','.join(strands_str)}\t{block_idx}\t{self.extra_fields[i]}\n")
+                        else:
+                            f.write(f"{self.lengths[i]}\t{','.join(map(str, self.starts[i]))}\t{','.join(strands_str)}\t{block_idx}\n")
     
     def write_bums(self, filename, blocks=None):
         with open(filename, 'wb') as f:

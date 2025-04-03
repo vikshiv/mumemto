@@ -1,3 +1,4 @@
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/vikshiv/mumemto) ![GitHub](https://img.shields.io/github/license/vikshiv/mumemto?color=green) [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/mumemto/README.html)
 # **mumemto**: finding multi-MUMs and MEMs in pangenomes
 
 <img src="img/polaroid_tattoo.png" alt="logo" width="292" align="left"/>

@@ -59,13 +59,14 @@ install(TARGETS newscanNT.x DESTINATION ${PROJECT_BINARY_DIR})
 install(TARGETS compute_lengths DESTINATION ${PROJECT_BINARY_DIR})
 install(TARGETS extract_mums DESTINATION ${PROJECT_BINARY_DIR})
 
-# Copy mumemto package to build directory as _mumemto
-file(COPY ${CMAKE_SOURCE_DIR}/mumemto/ DESTINATION ${PROJECT_BINARY_DIR}/_mumemto)
+# Create a custom target to copy mumemto package during build
+add_custom_target(copy_mumemto ALL
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${PROJECT_BINARY_DIR}/_mumemto
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/mumemto ${PROJECT_BINARY_DIR}/_mumemto
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/_mumemto/mumemto ${PROJECT_BINARY_DIR}/mumemto
+    COMMAND chmod 755 ${PROJECT_BINARY_DIR}/mumemto
+    COMMENT "Copying mumemto package to build directory"
+)
 
-# Move the script from _mumemto to build directory and make it executable
-file(RENAME ${PROJECT_BINARY_DIR}/_mumemto/mumemto ${PROJECT_BINARY_DIR}/mumemto)
-file(CHMOD ${PROJECT_BINARY_DIR}/mumemto 
-     PERMISSIONS 
-     OWNER_READ OWNER_WRITE OWNER_EXECUTE 
-     GROUP_READ GROUP_EXECUTE 
-     WORLD_READ WORLD_EXECUTE)
+# Make sure this target runs after the main executables
+add_dependencies(copy_mumemto mumemto_exec newscanNT.x compute_lengths)

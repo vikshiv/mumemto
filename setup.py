@@ -24,29 +24,35 @@ class CMakeBuild(Command):
         # Create build directory
         os.makedirs(self.build_temp, exist_ok=True)
         
-        subprocess.check_call(['cmake', '-S', '.', '-B', self.build_temp])
+        subprocess.check_call(['cmake', '-S', '.', '-B', self.build_temp, '-DCMAKE_POLICY_VERSION_MINIMUM=3.5'])
         subprocess.check_call(['cmake', '--build', self.build_temp])
         subprocess.check_call(['cmake', '--install', self.build_temp])
         
-        # Get the bin directory
-        bin_dir = self.install_scripts
+        # Get the package directory and scripts directory
         pkg_dir = os.path.join(self.build_lib, 'mumemto')
+        bin_dir = self.install_scripts
         
         os.makedirs(pkg_dir, exist_ok=True)
         os.makedirs(bin_dir, exist_ok=True)
         
-        shutil.copy2(
-            os.path.join(self.build_temp, 'mumemto_exec'),
-            os.path.join(bin_dir, 'mumemto_exec')
-        )
-        shutil.copy2(
-            os.path.join(self.build_temp, 'newscanNT.x'),
-            os.path.join(bin_dir, 'newscanNT.x')
-        )
+        # Copy executables to scripts directory and make them executable
+        executables = [
+            (os.path.join(self.build_temp, 'mumemto_exec'), 'mumemto_exec'),
+            (os.path.join(self.build_temp, 'compute_lengths'), 'compute_lengths'),
+            (os.path.join(self.build_temp, 'install', 'bin', 'newscanNT.x'), 'newscanNT.x'),
+        ]
+        
+        for src, dst in executables:
+            dst_path = os.path.join(bin_dir, dst)
+            shutil.copy2(src, dst_path)
+            os.chmod(dst_path, 0o755)  # Make executable
+        
+        # Copy the Python script separately
         shutil.copy2(
             'mumemto/mumemto',
             os.path.join(bin_dir, 'mumemto')
         )
+        os.chmod(os.path.join(bin_dir, 'mumemto'), 0o755)
         
         # Copy Python files
         for py_file in os.listdir('mumemto'):
@@ -81,10 +87,10 @@ def read_requirements():
 
 setup(
     name="mumemto",
-    version="1.1.1",
+    version="1.2.2",
     packages=find_packages(),
     install_requires=read_requirements(),
-    scripts=['mumemto/mumemto'],
+    scripts=['mumemto/mumemto'],  # Only include the Python script here
     package_data={
         'mumemto': ['*.py'],
     },
@@ -104,4 +110,5 @@ setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: OS Independent",
     ],
+    include_package_data=True,
 ) 

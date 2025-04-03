@@ -152,7 +152,7 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
         # Just plot simple genome lines
         for idx, g in enumerate(genome_lengths):
             ax.plot([centering[idx] + 0, centering[idx] + g], [idx, idx], 
-                    alpha=0.2, linewidth=0.75)
+                    alpha=0.2, linewidth=0.75, c='black')
             
     elif args.mode == 'delineated':
         # Plot lines with delineators for multifasta
@@ -198,7 +198,7 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
     else:
         ax.set_xlabel('genomic position')
     ax.set_ylabel('sequences')
-    ax.set_ylim(0, len(genome_lengths)-1)
+    ax.set_ylim(-0.25, len(genome_lengths)-1 + 0.25)
     if args.mode == 'gapped':
         ax.set_xlim(0, args.multilengths.max(axis=0).sum() + args.spacer * (args.multilengths.shape[1] - 1))
     else:
@@ -226,20 +226,48 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
         fig.savefig(path, dpi=dpi)
     return ax
 
-def offset_mums(args, mums, spacer=100000):
+def offset_mums(args, mums, spacer=None, blocks=None):
     offset = args.multilengths
+    if spacer is None:
+        spacer = args.spacer
     NUM_SEQS = len(offset)
     ### offset the mums by the contig locations
     offsets = np.cumsum(offset, axis=1)
     ### label each mum with the contig it belongs to
-    breaks = np.hstack((np.array([[0]*NUM_SEQS]).transpose(), offsets))
-    contig_idx = np.array([np.searchsorted(breaks[idx], mums.starts[:,idx]) - 1 for idx in range(NUM_SEQS)]).transpose()
+    # breaks = np.hstack((np.array([[0]*NUM_SEQS]).transpose(), offsets))
+    contig_idx = np.array([np.searchsorted(offsets[idx], mums.starts[:,idx], side='right') for idx in range(NUM_SEQS)]).transpose()
+    # if using blocks, split any that cross contigs
+    if blocks is not None:
+        new_blocks = []
+        for l,r in blocks:
+            # if block crosses contig boundaries in any sequence, break it up
+            if not np.all(contig_idx[l,:] == contig_idx[r,:]):
+                if l == r - 1:
+                    continue
+                diffs = ~(np.diff(contig_idx[l:r+1,:], axis=0) == 0).all(axis=1)
+                old_l = l
+                for s in np.where(diffs)[0] + 1:
+                    if s == 1:
+                        l = old_l + 2
+                        continue
+                    cur = old_l + s
+                    if l < cur - 1 and cur - 1 <= r:
+                        print(l, cur-1)
+                        new_blocks.append((l, cur - 1))
+                        l = cur + 1
+                if l < r:
+                    new_blocks.append((l, r))
+            else:
+                new_blocks.append((l, r))
+    else:
+        new_blocks = None   
     ### get the relative offset of each mum to the start of its contig
     left_start = np.hstack((np.zeros((offsets.shape[0],1), dtype=int), offsets[:,:-1]))
     rel_offsets = mums.starts - left_start[np.arange(NUM_SEQS), contig_idx]
     partial_mask = mums.starts != -1
     new_starts = np.array([0] + (offset.max(axis=0) + spacer).cumsum().tolist()[:-1])[contig_idx] + rel_offsets
     mums.starts[partial_mask] = new_starts[partial_mask]
+    return new_blocks
 
 def main(args):
     if args.mode != 'normal':
@@ -298,7 +326,7 @@ def main(args):
                 print(f'Using pre-computed collinear blocks: {len(mums.blocks)} blocks', file=sys.stderr)
             collinear_blocks = mums.blocks
         if args.mode == 'gapped':
-            offset_mums(args, mums, spacer=args.spacer)
+            collinear_blocks = offset_mums(args, mums, spacer=args.spacer, blocks=collinear_blocks)
             
         polygons, colors = get_block_polygons(collinear_blocks, mums, centering, color=args.mum_color, inv_color=args.inv_color)
     

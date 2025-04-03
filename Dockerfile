@@ -15,9 +15,13 @@ ENV VIRTUAL_ENV=/opt/venv
 RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Clone the repository and install using pip
+# Accept version as build argument
+ARG VERSION=main
+
+# Clone specific version of repository and install using pip
 RUN git clone https://github.com/vshiv18/mumemto && \
     cd mumemto && \
+    git checkout ${VERSION} && \
     pip install .
 
 # Set the entrypoint
