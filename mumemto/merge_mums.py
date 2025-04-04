@@ -4,7 +4,10 @@ try:
     from utils import get_sequence_lengths, parse_mums_generator
 except ImportError:
     from mumemto.utils import get_sequence_lengths, parse_mums_generator
-
+import os
+import sys
+import subprocess
+from tqdm.auto import tqdm
 
 def remove_start_dollar(mums, s1_bv):
     new_mums = []
@@ -28,21 +31,51 @@ def remove_start_dollar(mums, s1_bv):
             new_mums.append((new_l, new_starts, strands))
     return new_mums
 
+def run_merger(args):
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    extract_script = os.path.join(script_dir, '../extract_mums')
+    mumemto_script = os.path.join(script_dir, '../mumemto_exec')
+    if not os.path.exists(extract_script) or not os.path.exists(mumemto_script):
+        print("Error: mumemto not installed. Please use make to install mumemto first", file=sys.stderr)
+        sys.exit(1)
+        
+    if args.verbose:
+        print("Extracting MUM sequences...")
+    for f in args.mum_files:
+        cmd = [extract_script, '-m', f]
+        subprocess.run(cmd)
+    
+    cmd = [mumemto_script] + [f.replace('.mums', '_mums.fa') for f in args.mum_files] + ['-o', args.output + '_temp_merged']
+    subprocess.run(cmd)
+    
+    args.merged_mums = args.output + '_temp_merged.mums'
+
 def main():
     parser = argparse.ArgumentParser(description='Merge MUMs files')
-    parser.add_argument('--merged_mums', '-m', required=True, help='Path to MUMs of MUMs file')
+    parser.add_argument('--merged_mums', '-m', help='Path to MUMs of MUMs file')
     parser.add_argument('mum_files', metavar='MUM_FILES', nargs='+', help='Paths to MUMs files to merge')
     parser.add_argument('--output', '-o', help='Path to output merged MUMs file', default='merged.mums')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Print verbose output')
     
     args = parser.parse_args()
     
     assert len(args.mum_files) >= 2, "At least two MUMs files are required for merging"
     
-    if not args.merged_mums.endswith('.mums'):
-        args.merged_mums += '.mums'
     for i in range(len(args.mum_files)):
         if not args.mum_files[i].endswith('.mums'):
             args.mum_files[i] += '.mums'
+            
+    if args.merged_mums is not None and not args.merged_mums.endswith('.mums'):
+        args.merged_mums += '.mums'
+        
+    if args.merged_mums is not None and not os.path.exists(args.merged_mums):
+        print(f"Error: MUMs of MUMs file {args.merged_mums} does not exist. Omit -m to run merge from start.", file=sys.stderr)
+        sys.exit(1)
+    
+    if args.merged_mums is None:
+        run_merger(args)
+    
+    
     
     
     premerge_mums = [list(parse_mums_generator(m)) for m in args.mum_files]
@@ -85,7 +118,7 @@ def main():
     new_thresholds = []
     new_thresholds_rev = []
     merged = []
-    for idx, (l, starts, strands) in enumerate(dollar_less):
+    for idx, (l, starts, strands) in tqdm(enumerate(dollar_less), total=len(dollar_less), desc="Merging MUMs", disable=not args.verbose):
         # first check if it is no longer unique
         offset = []
         thresh_check = True
