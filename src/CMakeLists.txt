@@ -12,3 +12,8 @@ target_compile_options(compute_lengths PUBLIC "-std=c++17" "-DM64" "-march=nativ
 add_executable(extract_mums extract_mums.cpp)
 target_include_directories(extract_mums PUBLIC "../include/")
 target_compile_options(extract_mums PUBLIC "-std=c++17" "-DM64" "-march=native" "-w")
+
+# Add anchor_merge executable
+add_executable(anchor_merge merge_candidates.cpp)
+target_include_directories(anchor_merge PUBLIC)
+target_compile_options(anchor_merge PUBLIC "-std=c++17" "-DM64" "-march=native" "-w")

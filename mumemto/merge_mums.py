@@ -72,10 +72,9 @@ def main():
         print(f"Error: MUMs of MUMs file {args.merged_mums} does not exist. Omit -m to run merge from start.", file=sys.stderr)
         sys.exit(1)
     
+    cleanup = args.merged_mums is None
     if args.merged_mums is None:
         run_merger(args)
-    
-    
     
     
     premerge_mums = [list(parse_mums_generator(m)) for m in args.mum_files]
@@ -181,6 +180,10 @@ def main():
         for m in args.mum_files:
             with open(m.replace('.mums', '.lengths'), 'r') as f:
                 out.write(f.read().strip() + '\n')
-    
+    if cleanup:
+        for f in args.mum_files:
+            os.remove(f.replace('.mums', '_mums.fa'))
+        os.remove(args.merged_mums.replace('.mums', '.lengths'))
+        
 if __name__ == "__main__":
     main()

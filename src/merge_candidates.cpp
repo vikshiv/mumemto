@@ -37,7 +37,7 @@ std::vector<uint16_t> readThresholds(const std::string& filename) {
 
 tuple<vector<Mum>, vector<bool>, vector<uint16_t>> parse_candidate(const string& path) {
 
-    vector<uint16_t> next_best = readThresholds(path + ".thresh");
+    vector<uint16_t> next_best = readThresholds(path + ".athresh");
     vector<bool> mum_bv(next_best.size(), false);
     vector<Mum> mums;
 
@@ -145,13 +145,13 @@ tuple<vector<Mum>, vector<bool>, vector<uint16_t>> merge_partitions(
 
 string get_path(const string& path) {
     string base_path = path;
-    if (path.size() >= 7 && path.compare(path.size() - 7, 7, ".thresh") == 0) {
-        base_path = path.substr(0, path.size() - 7);
+    if (path.size() >= 8 && path.compare(path.size() - 8, 8, ".athresh") == 0) {
+        base_path = path.substr(0, path.size() - 8);
     } else if (path.size() >= 5 && path.compare(path.size() - 5, 5, ".mums") == 0) {
         base_path = path.substr(0, path.size() - 5);
     }
     // Check that both .thresh and .mums files exist
-    string thresh_path = base_path + ".thresh";
+    string thresh_path = base_path + ".athresh";
     string mums_path = base_path + ".mums";
     
     if (!filesystem::exists(thresh_path)) {
@@ -232,7 +232,7 @@ int main(int argc, char* argv[]) {
         output_file << "\n";
     }
 
-    string thresh_path = output_prefix + ".thresh";
+    string thresh_path = output_prefix + ".athresh";
     ofstream thresh_file(thresh_path, ios::binary);
     const vector<uint16_t>& new_nb = std::get<2>(left_mums);
     thresh_file.write(reinterpret_cast<const char*>(new_nb.data()), new_nb.size() * sizeof(uint16_t));

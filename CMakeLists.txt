@@ -58,6 +58,7 @@ install(TARGETS mumemto_exec DESTINATION ${PROJECT_BINARY_DIR})
 install(TARGETS newscanNT.x DESTINATION ${PROJECT_BINARY_DIR})
 install(TARGETS compute_lengths DESTINATION ${PROJECT_BINARY_DIR})
 install(TARGETS extract_mums DESTINATION ${PROJECT_BINARY_DIR})
+install(TARGETS anchor_merge DESTINATION ${PROJECT_BINARY_DIR})
 
 # Create a custom target to copy mumemto package during build
 add_custom_target(copy_mumemto ALL
