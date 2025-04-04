@@ -76,6 +76,7 @@ struct BuildOptions {
         int rare_freq = 1;
         bool binary = false;
         bool merge = false;
+        bool anchor_merge = false;
 
         bool validate() {
             /* checks the arguments and make sure they are valid 

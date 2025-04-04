@@ -80,7 +80,7 @@ int build_main(int argc, char** argv) {
         file_lcp input_lcp(build_opts.arrays_in, &ref_build);
         start = std::chrono::system_clock::now();
         STATUS_LOG("build_main", "finding multi-%ss from pfp", mum_mode ? "MUM" : "MEM");
-        mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary, build_opts.merge);
+        mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary, build_opts.merge, build_opts.anchor_merge);
         input_lcp.process(match_finder);
         match_finder.close();
         input_lcp.close();
@@ -119,7 +119,7 @@ int build_main(int argc, char** argv) {
 
     STATUS_LOG("build_main", "finding multi-%ss from pfp", mum_mode ? "MUM" : "MEM");
     
-    mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary, build_opts.merge);
+    mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary, build_opts.merge, build_opts.anchor_merge);
     count = lcp.process(match_finder);
     match_finder.close();
     lcp.close();
@@ -281,7 +281,10 @@ void print_build_status_info(BuildOptions& opts, RefBuilder& ref_build, bool mum
     else
         std::fprintf(stderr, "\tfinding multi-%ss present in %d genomes\n", match_type.data(), opts.num_distinct_docs);
     if (opts.merge) {
-        std::fprintf(stderr, "\twriting mergeable output\n");
+        if (opts.anchor_merge)
+            std::fprintf(stderr, "\twriting anchor-based mergeable output\n");
+        else
+            std::fprintf(stderr, "\twriting string-based mergeable output\n");
     }
     std::fprintf(stderr, "\n");
 }
@@ -325,12 +328,13 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
         {"rare",   required_argument, NULL,  'f'},
         {"binary",   no_argument, NULL,  'b'},
         {"merge",   no_argument, NULL,  'M'},
+        {"anchor",   no_argument, NULL,  'n'},
         {0, 0, 0,  0}
     };
     int c = 0;
     int long_index = 0;
     
-    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:bM", long_options, &long_index)) >= 0) {
+    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:bMn", long_options, &long_index)) >= 0) {
         switch(c) {
             case 'h': mumemto_usage(); std::exit(0);
             case 'i': opts->input_list.assign(optarg); break;
@@ -349,6 +353,7 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
             case 'f': opts->rare_freq = std::atoi(optarg); break;
             case 'b': opts->binary = true; break;
             case 'M': opts->merge = true; break;
+            case 'n': opts->anchor_merge = true; break;
             default: mumemto_usage(); std::exit(1);
         }
     }
@@ -373,6 +378,7 @@ int mumemto_usage() {
     std::fprintf(stderr, "\t%-32swrite LCP, BWT, and SA to file\n", "-A, --arrays-out");
     std::fprintf(stderr, "\t%-22s%-10scompute matches from precomputed LCP, BWT, SA (with shared PREFIX.bwt/sa/lcp)\n\n", "-a, --arrays-in", "[PREFIX]");
     std::fprintf(stderr, "\t%-32soutput extra metadata to enable merging multi-MUMs\n", "-M, --merge");
+    std::fprintf(stderr, "\t%-32sUse anchor-based merging (requires -M, uses first sequence as anchor)\n", "-n, --anchor");
 
     
     std::fprintf(stderr, "Exact match parameters:\n");
