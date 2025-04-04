@@ -47,9 +47,10 @@ public:
     bool mummode;
     bool binary;
     bool merge;
+    bool anchor_merge;
     std::string filename;
 
-    mem_finder(std::string filename, RefBuilder& ref_build, size_t min_mem_len, size_t num_distinct, int max_doc_freq, int max_total_freq, bool binary, bool merge): 
+    mem_finder(std::string filename, RefBuilder& ref_build, size_t min_mem_len, size_t num_distinct, int max_doc_freq, int max_total_freq, bool binary, bool merge, bool anchor_merge): 
                 min_mem_length(min_mem_len),
                 num_docs(ref_build.num_docs),
                 revcomp(ref_build.use_revcomp),
@@ -61,7 +62,8 @@ public:
                 binary(binary),
                 filename(filename),
                 merge(merge),
-                candidate_thresh(0)
+                candidate_thresh(0), 
+                anchor_merge(anchor_merge)
     {
         // get cumulative offset
         size_t curr_sum = 0;
@@ -77,6 +79,7 @@ public:
         if (merge) {
             candidate_thresh.resize(doc_lens[0] * 2, 0);
         }
+
         this->mummode = (max_doc_freq == 1);
         // Initialize stack
         init_stack();
@@ -104,7 +107,13 @@ public:
             write_bums();
         else
             mem_file.close();
-        if (merge) {
+        if (anchor_merge) {
+            std::string thresh_file = filename + ".athresh";
+            std::ofstream thresh_out(thresh_file, std::ios::binary);
+            thresh_out.write(reinterpret_cast<const char*>(candidate_thresh.data()), doc_lens[0] * sizeof(uint16_t));
+            thresh_out.close();
+        }
+        else if (merge) {
             // write merging metadata
             // write thresholds in terms of positions on MUMs, rather than first genome coords
             size_t total_mum_length = 0;
