@@ -235,7 +235,7 @@ int main(int argc, char* argv[]) {
             output_file << (mum.strands[i] ? "+" : "-");
             if (i < mum.strands.size() - 1) output_file << ",";
         }
-        output_file << "\n";
+        output_file << std::endl;
     }
 
     string thresh_path = output_prefix + ".athresh";
@@ -256,6 +256,7 @@ int main(int argc, char* argv[]) {
             lengths_file << input_lengths.rdbuf();
             split_line = split_by_whitespace(line);
             simple = !(split_line.size() > 2 && split_line[1] == "*");
+            input_lengths.close();
         } else {
             input_lengths.open(paths[i] + ".lengths");
             getline(input_lengths, line);
@@ -269,15 +270,16 @@ int main(int argc, char* argv[]) {
                     split_line = split_by_whitespace(line);
                     if (split_line[1] == "*") {
                         anchor = false;
-                        lengths_file << line << "\n";
+                        lengths_file << line << std::endl;
                     }
                 }
                 lengths_file << input_lengths.rdbuf();           
             }
+        input_lengths.close();
         }
     }
 
-
+    std::cerr << "done." << std::endl;
 
     return 0;
 }
