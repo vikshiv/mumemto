@@ -75,6 +75,7 @@ struct BuildOptions {
         int max_mem_freq = 0;
         int rare_freq = 1;
         bool binary = false;
+        bool use_gsacak = false;
 
         bool validate() {
             /* checks the arguments and make sure they are valid 
