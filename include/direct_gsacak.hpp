@@ -43,34 +43,20 @@ public:
     std::vector<uint_t> sa;
     std::vector<int_t> lcp;
     std::vector<uint8_t> bwt;
-    
+
     gsacak_lcp(std::string filename, RefBuilder* ref_build, bool write_arrays = false) : 
                 ref_build(ref_build)
     {
         text.reserve(ref_build->total_length);
         readFasta(filename + ".fna");
-        text.push_back(0);
         text.push_back(1);
-        std::cerr << "length of text: " << text.size() << std::endl;
+        text.push_back(0);
 
         sa.resize(text.size());
         lcp.resize(text.size());
 
-        std::cerr << "finished allocating sa and lcp" << std::endl;
-        std::cerr << "first 100 chars in text: ";
-        for (size_t i = 0; i < std::min(text.size(), (size_t)100); ++i) {
-            std::cerr << (char)text[i];
-        }
-        std::cerr << std::endl;
-        std::cerr << "last 100 chars in text: ";
-        for (size_t i = std::max((size_t)0, text.size()-100); i < text.size(); ++i) {
-            std::cerr << (char)text[i];
-        }
-        std::cerr << std::endl;
         gsacak(&text[0], &sa[0], &lcp[0], nullptr, text.size());
         
-        std::cerr << "finished gsacak" << std::endl;
-
         bwt.resize(text.size()-1);
         for (size_t i = 0; i < text.size(); ++i) {
             bwt[i] = text[(sa[i] == 0 ? sa.size() : sa[i]) - 1];
