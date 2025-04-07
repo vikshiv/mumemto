@@ -91,6 +91,9 @@ int build_main(int argc, char** argv) {
         sec = std::chrono::duration<double>((std::chrono::system_clock::now() - start)); std::fprintf(stderr, " done.  (%.3f sec)\n", sec.count());
 
         FORCE_LOG("build_main", "Found %d matches!", count);
+
+        if (!build_opts.keep_temp)
+            remove_temp_files(build_opts.output_prefix);
         return 0;
     }
 
