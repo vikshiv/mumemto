@@ -113,15 +113,9 @@ tuple<vector<Mum>, vector<bool>, vector<uint16_t>> merge_partitions(
             last_mum2 = i;
         }
         if (cur_mum1 && cur_mum2 && (p1_mum_bv[i] || p2_mum_bv[i]) && (p1_nb[i] > 0 && p2_nb[i] > 0)) {
-            // std::cout << "merging " << i << " " << last_mum1 << " " << last_mum2 << std::endl;
-            // std::cout << "cur_mum1: " << cur_mum1->length << " " << cur_mum1->offsets[0] << " " << cur_mum1->strands[0] << std::endl;
-            // std::cout << "cur_mum2: " << cur_mum2->length << " " << cur_mum2->offsets[0] << " " << cur_mum2->strands[0] << std::endl;   
-            // std::cout << "p1_nb: " << p1_nb[i] << " " << p2_nb[i] << std::endl;
-            // std::cout << "new_nb: " << new_nb[i] << std::endl;
             int s1_len = cur_mum1->length - (i - last_mum1);
             int s2_len = cur_mum2->length - (i - last_mum2);
             int new_len = min(s1_len, s2_len);
-            // std::cout << "new_len: " << new_len << std::endl;
             if (new_len > new_nb[i] && new_len >= 20) {
                 vector<uint32_t> new_offsets2 = fix_neg_strand(*cur_mum2, i - last_mum2, new_len, s2_len);
                 vector<uint32_t> new_offsets1 = fix_neg_strand(*cur_mum1, i - last_mum1, new_len, s1_len);
@@ -134,9 +128,6 @@ tuple<vector<Mum>, vector<bool>, vector<uint16_t>> merge_partitions(
                 new_mums.emplace_back(Mum{new_len, move(combined_offsets), move(combined_strands)});
                 new_mum_bv[new_offsets1[0]] = true;
             }
-
-            // std::cout << "new_mums: " << new_mums.back().length << " " << new_mums.back().offsets[0] << " " << new_mums.back().strands[0] << std::endl;
-            // std::exit(0);
         }
     }
 
@@ -163,6 +154,17 @@ string get_path(const string& path) {
 
     return base_path;
 }
+
+vector<string> split_by_whitespace(const string& str) {
+    vector<string> tokens;
+    string token;
+    istringstream iss(str);
+    while (iss >> token) {
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
 
 int main(int argc, char* argv[]) {
     if (argc < 3) {
@@ -194,8 +196,12 @@ int main(int argc, char* argv[]) {
     tuple<vector<Mum>, vector<bool>, vector<uint16_t>> left_mums;
     tuple<vector<Mum>, vector<bool>, vector<uint16_t>> right_mums;
 
-    std::string base_left = get_path(paths[0]);
-    std::string base_right = get_path(paths[1]);
+    for (auto i = 0; i < paths.size(); ++i) {
+        paths[i] = get_path(paths[i]);
+    }
+
+    std::string base_left = paths[0];
+    std::string base_right = paths[1];
     std::cerr << "merging " << filesystem::path(base_left).filename().string() << " and " << filesystem::path(base_right).filename().string() << endl;
         
     left_mums = parse_candidate(base_left);
@@ -205,7 +211,7 @@ int main(int argc, char* argv[]) {
 
     if (paths.size() > 2) {
         for (size_t i = 2; i < paths.size(); ++i) {
-            base_right = get_path(paths[i]);
+            base_right = paths[i];
             std::cerr << "merging in " << filesystem::path(base_right).filename().string() << endl;
             right_mums = parse_candidate(base_right);
             left_mums = merge_partitions(left_mums, right_mums);
@@ -236,6 +242,42 @@ int main(int argc, char* argv[]) {
     ofstream thresh_file(thresh_path, ios::binary);
     const vector<uint16_t>& new_nb = std::get<2>(left_mums);
     thresh_file.write(reinterpret_cast<const char*>(new_nb.data()), new_nb.size() * sizeof(uint16_t));
+
+    ofstream lengths_file(output_prefix + ".lengths");
+    ifstream input_lengths;
+    bool simple;
+    std::vector<std::string> split_line;
+    std::string line;
+    for (auto i = 0; i < paths.size(); ++i) {
+        if (i == 0) {
+            input_lengths.open(paths[i] + ".lengths");
+            getline(input_lengths, line);
+            input_lengths.seekg(0);
+            lengths_file << input_lengths.rdbuf();
+            split_line = split_by_whitespace(line);
+            simple = !(split_line.size() > 2 && split_line[1] == "*");
+        } else {
+            input_lengths.open(paths[i] + ".lengths");
+            getline(input_lengths, line);
+            if (simple) {
+                lengths_file << input_lengths.rdbuf();
+            }
+            else {
+                bool anchor = true;
+                while (anchor) {
+                    getline(input_lengths, line);
+                    split_line = split_by_whitespace(line);
+                    if (split_line[1] == "*") {
+                        anchor = false;
+                        lengths_file << line << "\n";
+                    }
+                }
+                lengths_file << input_lengths.rdbuf();           
+            }
+        }
+    }
+
+
 
     return 0;
 }
