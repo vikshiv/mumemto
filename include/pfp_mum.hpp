@@ -77,6 +77,7 @@ struct BuildOptions {
         bool binary = false;
         bool merge = false;
         bool anchor_merge = false;
+        bool use_gsacak = false;
 
         bool validate() {
             /* checks the arguments and make sure they are valid 
