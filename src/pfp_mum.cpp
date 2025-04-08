@@ -85,7 +85,7 @@ int build_main(int argc, char** argv) {
 
         STATUS_LOG("build_main", "finding multi-%ss", mum_mode ? "MUM" : "MEM");
         start = std::chrono::system_clock::now();
-        mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary);
+        mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary, build_opts.merge, build_opts.anchor_merge);
         size_t count = gsacak.process(match_finder);
         match_finder.close();
         sec = std::chrono::duration<double>((std::chrono::system_clock::now() - start)); std::fprintf(stderr, " done.  (%.3f sec)\n", sec.count());
