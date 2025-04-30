@@ -123,9 +123,9 @@ RefBuilder::RefBuilder(std::string output_prefix, bool use_rcomp): use_revcomp(u
             continue;
         
         if (word_list.size() == 2) {
-            cur_length = std::stoi(word_list[1]) + 1;
+            cur_length = std::stoull(word_list[1]) + 1;
         } else if ((word_list.size() == 3) && (word_list[1] == "*")) {
-            cur_length = std::stoi(word_list[2]) + 1;
+            cur_length = std::stoull(word_list[2]) + 1;
         }
         else {continue;}
         input_files.push_back(word_list[0]);
