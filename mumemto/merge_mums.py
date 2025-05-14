@@ -50,9 +50,18 @@ def run_merger(args):
     
     args.merged_mums = args.output + '_temp_merged.mums'
 
+def run_anchor_merger(args):
+    print("*.athresh files detected, running anchor merging...", file=sys.stderr)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    anchor_merge_script = os.path.realpath(os.path.join(script_dir, '../anchor_merge'))
+    cmd = [anchor_merge_script] + args.mum_files + ['-o', args.output] + ['-v'] if args.verbose else []
+    if args.verbose:
+        print(f"Running command: {' '.join(cmd)}", file=sys.stderr)
+    subprocess.run(cmd)
+
 def main():
     parser = argparse.ArgumentParser(description='Merge MUMs files')
-    parser.add_argument('--merged_mums', '-m', help='Path to MUMs of MUMs file')
+    parser.add_argument('--merged_mums', '-m', help='Path to MUMs of MUMs file (only for string merging)')
     parser.add_argument('mum_files', metavar='MUM_FILES', nargs='+', help='Paths to MUMs files to merge')
     parser.add_argument('--output', '-o', help='Path to output merged MUMs file', default='merged.mums')
     parser.add_argument('--verbose', '-v', action='store_true', help='Print verbose output')
@@ -70,6 +79,18 @@ def main():
         
     if args.merged_mums is not None and not os.path.exists(args.merged_mums):
         print(f"Error: MUMs of MUMs file {args.merged_mums} does not exist. Omit -m to run merge from start.", file=sys.stderr)
+        sys.exit(1)
+    
+    anchor_merge = all([os.path.exists(m.replace('.mums', '.athresh')) for m in args.mum_files])
+    if anchor_merge:
+        if args.merged_mums is not None:
+            print("Error: -m is only for string merging, but anchor-based merging detected. Ignoring -m.", file=sys.stderr)
+        run_anchor_merger(args)
+        sys.exit(0)
+
+    threshold_exists = all([os.path.exists(m.replace('.mums', '.thresh')) for m in args.mum_files])
+    if not threshold_exists:
+        print("Error: *.thresh or *.athresh files required for all inputs for merging.", file=sys.stderr)
         sys.exit(1)
     
     cleanup = args.merged_mums is None

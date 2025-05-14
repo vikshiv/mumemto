@@ -218,7 +218,13 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    string output_path = output_prefix + ".mums";
+    string output_path = output_prefix;
+    if (output_path.size() < 5 || output_path.compare(output_path.size() - 5, 5, ".mums") != 0) {
+        output_path += ".mums";
+    }
+    else { output_prefix = output_path.substr(0, output_path.size() - 5); }
+    
+    
     if (verbose) {
         cout << "Writing results to " << output_path << endl;
     }
