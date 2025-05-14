@@ -24,6 +24,7 @@ void print_usage() {
     std::fprintf(stderr, "\t%-32sprints this usage message\n", "-h, --help");
     std::fprintf(stderr, "\t%-22s%-10spath to a mum file\n", "-m, --mums", "[FILE]");
     std::fprintf(stderr, "\t%-22s%-10soutput path\n", "-o, --output", "[FILE]");
+    std::fprintf(stderr, "\t%-32sdo not add terminator (#) to end of each MUM sequence\n", "-t, --no-terminator");
 }
 
 bool endsWith(const std::string& str, const std::string& suffix) {
@@ -94,7 +95,7 @@ std::vector<std::pair<size_t, size_t>> parse_mums(std::string mum_file_path) {
     return mum_list;
 }
 
-int extract_mums(std::string mum_file_path, std::string length_file_path, std::string output_path) {
+int extract_mums(std::string mum_file_path, std::string length_file_path, std::string output_path, bool add_terminator) {
     std::string ref_seq;
     int result = read_ref_file(length_file_path, ref_seq);
     if (result != 0) {
@@ -108,7 +109,10 @@ int extract_mums(std::string mum_file_path, std::string length_file_path, std::s
     size_t count = 0;
     for (const auto& mum : mum_list) {
         output_file << ">mum_" << count << "\n";
-        output_file << ref_seq.substr(mum.first, mum.second) << "#\n";
+        output_file << ref_seq.substr(mum.first, mum.second);
+        if (add_terminator) {
+            output_file << "#\n";
+        }
         count++;
     }
     output_file.close();
@@ -124,20 +128,23 @@ int main(int argc, char** argv) {
 
     std::string mum_file_path;
     std::string output_path = "";
+    bool add_terminator = true;  // default is true
 
     static struct option long_options[] = {
-        {"help",    no_argument,       NULL, 'h'},
-        {"mums",   required_argument, NULL, 'm'},
-        {"output",  required_argument, NULL, 'o'},
+        {"help",          no_argument,       NULL, 'h'},
+        {"mums",          required_argument, NULL, 'm'},
+        {"output",        required_argument, NULL, 'o'},
+        {"no-terminator", no_argument,       NULL, 't'},
         {0, 0, 0, 0}
     };
 
     int c;
-    while ((c = getopt_long(argc, argv, "hm:l:o:", long_options, NULL)) >= 0) {
+    while ((c = getopt_long(argc, argv, "hm:l:o:t", long_options, NULL)) >= 0) {
         switch(c) {
             case 'h': print_usage(); return 0;
             case 'm': mum_file_path.assign(optarg); break;
             case 'o': output_path.assign(optarg); break;
+            case 't': add_terminator = false; break;
             default: print_usage(); return 1;
         }
     }
@@ -172,5 +179,5 @@ int main(int argc, char** argv) {
         output_path += ".fa";
     }
 
-    return extract_mums(mum_file_path, length_file_path, output_path);
+    return extract_mums(mum_file_path, length_file_path, output_path, add_terminator);
 }
