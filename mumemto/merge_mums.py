@@ -39,13 +39,13 @@ def run_merger(args):
         print("Error: mumemto not installed. Please use make to install mumemto first", file=sys.stderr)
         sys.exit(1)
         
-    if args.verbose:
-        print("Extracting MUM sequences...")
-    for f in args.mum_files:
+    for f in tqdm(args.mum_files, desc="Extracting MUM sequences", disable=not args.verbose):
         cmd = [extract_script, '-m', f]
         subprocess.run(cmd)
     
     cmd = [mumemto_script] + [f.replace('.mums', '_mums.fa') for f in args.mum_files] + ['-o', args.output + '_temp_merged']
+    if args.verbose:
+        print(f"Running command: {' '.join(cmd)}", file=sys.stderr)
     subprocess.run(cmd)
     
     args.merged_mums = args.output + '_temp_merged.mums'

@@ -134,7 +134,21 @@ def run_lengths(args):
         sys.exit(1)
     cmd = [exec_path] + args
     subprocess.run(cmd)
-    
+
+def run_merge(args):
+    """Run the merge executable with given args"""
+    try:
+        merge = import_module('mumemto.merge_mums')
+        parsed_args = merge.parse_arguments(args)
+        merge.main(parsed_args)
+    except ImportError:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        script = os.path.join(script_dir, '_mumemto', 'merge_mums.py')
+        if not os.path.exists(script):
+            print(f"Error: mumemto not installed. Please run mumemto/merge_mums.py directly.", file=sys.stderr)
+            sys.exit(1)
+        subprocess.run([sys.executable, script] + args)
+        
 def main():
     if len(sys.argv) == 1:
         print("\nmumemto - find maximal [unique | exact] matches using PFP.\n", file=sys.stderr)
@@ -148,7 +162,8 @@ def main():
               "\tconvert\t\t\tconvert MUMs to BUMs and vice versa\n" +
               "\textract\t\t\textract MUMs to a FASTA file\n" + 
               "\tlabel\t\t\tlabel MUMs with contig information\n" +
-              "\tlengths\t\t\trecompute sequence lengths from a filelist",
+              "\tlengths\t\t\trecompute sequence lengths from a filelist\n" +
+              "\tmerge\t\t\tmerge MUMs using anchor-based or string-based merging\n",
               file=sys.stderr)
         sys.exit(0)
 
@@ -174,6 +189,8 @@ def main():
         run_label(args)
     elif command == 'lengths':
         run_lengths(args)
+    elif command == 'merge':
+        run_merge(args)
     else:
         # If no special command, pass all args to mumemto executable
         run_mumemto(sys.argv[1:])
