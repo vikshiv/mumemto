@@ -60,6 +60,8 @@ def main(args):
         mums.write_mums(args.filename, blocks=collinear_blocks)
     elif args.filename.endswith('.bumbl'):
         mums.write_bums(args.filename, blocks=collinear_blocks)
+    else:
+        mums.write_mums(args.filename + '.mums', blocks=collinear_blocks)
     
 if __name__ == "__main__":
     args = parse_arguments()
