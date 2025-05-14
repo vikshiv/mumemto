@@ -111,12 +111,12 @@ def run_extract(args):
     cmd = [exec_path] + args
     subprocess.run(cmd)
         
-def run_reframe(args):
+def run_label(args):
     """Add contig information to MUMs"""
     try:
-        reframe = import_module('mumemto.get_sequence_info')
-        parsed_args = reframe.parse_arguments(args)
-        reframe.main(parsed_args)
+        label = import_module('mumemto.get_sequence_info')
+        parsed_args = label.parse_arguments(args)
+        label.main(parsed_args)
     except ImportError:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         script = os.path.join(script_dir, '_mumemto', 'get_sequence_info.py')
@@ -147,7 +147,7 @@ def main():
               "\tcollinear\t\tfind collinear blocks of MUMs\n" +
               "\tconvert\t\t\tconvert MUMs to BUMs and vice versa\n" +
               "\textract\t\t\textract MUMs to a FASTA file\n" + 
-              "\treframe\t\t\tlabel MUMs with contig information\n" +
+              "\tlabel\t\t\tlabel MUMs with contig information\n" +
               "\tlengths\t\t\trecompute sequence lengths from a filelist",
               file=sys.stderr)
         sys.exit(0)
@@ -170,8 +170,8 @@ def main():
         run_convert(args)
     elif command == 'extract':
         run_extract(args)
-    elif command == 'reframe':
-        run_reframe(args)
+    elif command == 'label':
+        run_label(args)
     elif command == 'lengths':
         run_lengths(args)
     else:
