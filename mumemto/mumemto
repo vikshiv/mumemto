@@ -103,17 +103,13 @@ def run_convert(args):
         
 def run_extract(args):
     """Extract MUMs to a FASTA file"""
-    try:
-        extract = import_module('mumemto.extract_mums')
-        parsed_args = extract.parse_arguments(args)
-        extract.main(parsed_args)
-    except ImportError:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        script = os.path.join(script_dir, '_mumemto', 'extract_mums.py')
-        if not os.path.exists(script):
-            print(f"Error: mumemto not installed. Please run mumemto/extract_mums.py directly.", file=sys.stderr)
-            sys.exit(1)
-        subprocess.run([sys.executable, script] + args)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    exec_path = os.path.join(script_dir, 'extract_mums')
+    if not os.path.exists(exec_path):
+        print("Error: mumemto not installed. Please use make to install mumemto first", file=sys.stderr)
+        sys.exit(1)
+    cmd = [exec_path] + args
+    subprocess.run(cmd)
         
 def run_reframe(args):
     """Add contig information to MUMs"""
