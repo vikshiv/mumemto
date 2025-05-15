@@ -25,7 +25,8 @@ conda install -c bioconda mumemto
 
 ### Docker/Singularity
 Mumemto is available on `docker` and `singularity`. 
-> [!TIP] you may need to bind a local directory to access files in the container, which may cause issues when globbing input files. Input filelist + docker/singularity bind mount is recommended.
+> [!TIP]
+>  you may need to bind a local directory to access files in the container, which may cause issues when globbing input files. Input filelist + docker/singularity bind mount is recommended.
 ```sh
 ### if using docker ###
 docker pull vshiv123/mumemto:latest
@@ -80,7 +81,8 @@ The multi-MUM properties can be loosened to find different types of matches with
 - `-f` controls the maximum number of occurences in _each_ sequence (e.g. finding duplication regions)
 - `-F` controls the total number of occurences in the collection (e.g. filtering out matches that occur frequently due to low complexity)
 
->[!TIP] `-k` is flexible in input format. The user can specify a positive integer, indicating the minimum number of sequences a match should appear in. Passing a negative integer indicates a subset size relative to N, the number of sequences in the collection (i.e. N - k). For instance, to specify a match must appear in at least all sequences _except_ one, we could pass `-k -1`. Similarly, passing negative values to `-F` specifies limits relative to N. Note: when setting `-F` and `-f` together, the max total limit will be the smaller of `F` and `N * f`.
+>[!TIP] 
+> `-k` is flexible in input format. The user can specify a positive integer, indicating the minimum number of sequences a match should appear in. Passing a negative integer indicates a subset size relative to N, the number of sequences in the collection (i.e. N - k). For instance, to specify a match must appear in at least all sequences _except_ one, we could pass `-k -1`. Similarly, passing negative values to `-F` specifies limits relative to N. Note: when setting `-F` and `-f` together, the max total limit will be the smaller of `F` and `N * f`.
 
 Here are some example use cases:
 
@@ -105,9 +107,11 @@ mumemto merge p1.mums p2.mums <...> -o <out_prefix>.mums
 ```
 The merge script automatically detects which type of merging is possible and creates an output using `out_prefix` which is identical to if Mumemto was run on the union of the input partitions.
 
-> [!NOTE] Merging is currently limited to strict multi-MUMs. However, partial multi-MUMs for local paritions can be found using string-based merging incrementally.
+> [!NOTE]
+>  Merging is currently limited to strict multi-MUMs. However, partial multi-MUMs for local paritions can be found using string-based merging incrementally.
 
-> [!TIP] Using either merge mode enables a dynamic updating of multi-MUMs. You can incrementally add assemblies as the pangenome grows and update the global set of multi-MUMs across the collection.
+> [!TIP] 
+> Using either merge mode enables a dynamic updating of multi-MUMs. You can incrementally add assemblies as the pangenome grows and update the global set of multi-MUMs across the collection.
 
 ### I/O format
 The `mumemto` command takes in a list of fasta files as positional arguments and then generates output files using the output prefix. Alternatively, you can provide a file-list, which specifies a list of fastas (one per line). Passing in fastas as positional arguments will auto-generate a filelist that defines the order of the sequences in the output. 
