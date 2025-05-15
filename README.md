@@ -26,7 +26,7 @@ conda install -c bioconda mumemto
 ### Docker/Singularity
 Mumemto is available on `docker` and `singularity`. 
 > [!TIP]
->  you may need to bind a local directory to access files in the container, which may cause issues when globbing input files. Input filelist + docker/singularity bind mount is recommended.
+>  You may need to bind a local directory to access files in the container, which may cause issues when globbing input files. Input filelist + docker/singularity bind mount is recommended.
 ```sh
 ### if using docker ###
 docker pull vshiv123/mumemto:latest
@@ -116,7 +116,8 @@ The merge script automatically detects which type of merging is possible and cre
 ### I/O format
 The `mumemto` command takes in a list of fasta files as positional arguments and then generates output files using the output prefix. Alternatively, you can provide a file-list, which specifies a list of fastas (one per line). Passing in fastas as positional arguments will auto-generate a filelist that defines the order of the sequences in the output. 
 
-> Note: the output `*.lengths` file can also serve as an input filelist to re-run expts.
+> [!TIP]
+> The output `*.lengths` file can also serve as an input filelist to re-run expts.
 
 **Example of file-list file:**
 ```sh
