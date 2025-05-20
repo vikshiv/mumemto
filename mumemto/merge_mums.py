@@ -51,7 +51,8 @@ def run_merger(args):
     args.merged_mums = args.output + '_temp_merged.mums'
 
 def run_anchor_merger(args):
-    print("*.athresh files detected, running anchor merging...", file=sys.stderr)
+    if args.verbose:
+        print("*.athresh files detected, running anchor merging...", file=sys.stderr)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     anchor_merge_script = os.path.realpath(os.path.join(script_dir, '../anchor_merge'))
     cmd = [anchor_merge_script] + args.mum_files + ['-o', args.output] + ['-v'] if args.verbose else []
@@ -80,7 +81,6 @@ def main():
     if args.merged_mums is not None and not os.path.exists(args.merged_mums):
         print(f"Error: MUMs of MUMs file {args.merged_mums} does not exist. Omit -m to run merge from start.", file=sys.stderr)
         sys.exit(1)
-    
     anchor_merge = all([os.path.exists(m.replace('.mums', '.athresh')) for m in args.mum_files])
     if anchor_merge:
         if args.merged_mums is not None:
