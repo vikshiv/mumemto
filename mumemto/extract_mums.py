@@ -50,9 +50,9 @@ def main(args):
             outlines.append(f'>mum_{i}')
             cur = seq[mum_starts[i, args.index] : mum_starts[i, args.index] + mum_lengths[i]]  
             if mum_strands[i, args.index]:
-                outlines.append(str(cur))
+                outlines.append(str(cur) + '#')
             else:
-                outlines.append(str(cur.reverse_complement()))
+                outlines.append(str(cur.reverse_complement()) + '#')
         out.write('\n'.join(outlines))
 if __name__ == "__main__":
     args = parse_arguments()

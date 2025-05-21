@@ -41,14 +41,18 @@ def offset_mums(args, mums, lengths):
     if args.verbose:
         print('Transforming MUMs to contig-relative coordinates...', file=sys.stderr)
     NUM_SEQS = len(lengths)
-    ### offset the mums by the contig locations
-    offsets = np.cumsum(lengths, axis=1)
-    ### label each mum with the contig it belongs to
-    # breaks = np.hstack((np.array([[0]*NUM_SEQS]).transpose(), offsets))
-    contig_idx = np.array([np.searchsorted(offsets[idx], mums.starts[:,idx], side='right') for idx in range(NUM_SEQS)]).transpose()
-    ### get the relative offset of each mum to the start of its contig
-    left_start = np.hstack((np.zeros((offsets.shape[0],1), dtype=int), offsets[:,:-1]))
-    rel_offsets = mums.starts - left_start[np.arange(NUM_SEQS), contig_idx]
+    contig_idx = []
+    rel_offsets = []
+    for i in range(NUM_SEQS):
+        ### offset the mums by the contig locations
+        offsets = np.cumsum(lengths[i])
+        ### label each mum with the contig it belongs to
+        contig_idx.append(np.searchsorted(offsets, mums.starts[:,i], side='right'))
+        ### get the relative offset of each mum to the start of its contig
+        left_start = np.hstack((0, offsets[:-1]))
+        rel_offsets.append(mums.starts[:,i] - left_start[contig_idx[i]])
+    contig_idx = np.vstack(contig_idx).transpose()
+    rel_offsets = np.vstack(rel_offsets).transpose()
     partial_mask = mums.starts == -1
     rel_offsets[partial_mask] = -1
     return contig_idx, rel_offsets

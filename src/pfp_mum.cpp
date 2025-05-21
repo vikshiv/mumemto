@@ -21,6 +21,7 @@
 #include <pfp.hpp>
 #include <pfp_lcp_mum.hpp>
 #include <mem_finder.hpp>
+#include <direct_gsacak.hpp>
 // #include <mum_finder.hpp>
 #include <getopt.h>
 #include <queue>
@@ -75,12 +76,33 @@ int build_main(int argc, char** argv) {
     helper_bins.build_paths((path / "").string());
     helper_bins.validate();
 
+    // skip PFP altogether, use gsacak directly
+    if (build_opts.use_gsacak) {
+        STATUS_LOG("build_main", "computing LCP, BWT, SA with gsacak");
+        start = std::chrono::system_clock::now();
+        gsacak_lcp gsacak(build_opts.output_prefix, &ref_build, build_opts.arrays_out);
+        auto sec = std::chrono::duration<double>((std::chrono::system_clock::now() - start)); std::fprintf(stderr, " done.  (%.3f sec)\n", sec.count());
+
+        STATUS_LOG("build_main", "finding multi-%ss", mum_mode ? "MUM" : "MEM");
+        start = std::chrono::system_clock::now();
+        mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary, build_opts.merge, build_opts.anchor_merge);
+        size_t count = gsacak.process(match_finder);
+        match_finder.close();
+        sec = std::chrono::duration<double>((std::chrono::system_clock::now() - start)); std::fprintf(stderr, " done.  (%.3f sec)\n", sec.count());
+
+        FORCE_LOG("build_main", "Found %d matches!", count);
+
+        if (!build_opts.keep_temp)
+            remove_temp_files(build_opts.output_prefix);
+        return 0;
+    }
+
     // just read from files if provided
     if (build_opts.arrays_in_flag) {
         file_lcp input_lcp(build_opts.arrays_in, &ref_build);
         start = std::chrono::system_clock::now();
         STATUS_LOG("build_main", "finding multi-%ss from pfp", mum_mode ? "MUM" : "MEM");
-        mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary);
+        mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary, build_opts.merge, build_opts.anchor_merge);
         input_lcp.process(match_finder);
         match_finder.close();
         input_lcp.close();
@@ -118,8 +140,8 @@ int build_main(int argc, char** argv) {
     size_t count = 0;
 
     STATUS_LOG("build_main", "finding multi-%ss from pfp", mum_mode ? "MUM" : "MEM");
-    // std::string filename, RefBuilder& ref_build, size_t min_mem_len, size_t num_distinct, int max_doc_freq, int max_total_freq
-    mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary);
+    
+    mem_finder match_finder(build_opts.output_prefix, ref_build, build_opts.min_match_len, build_opts.num_distinct_docs, build_opts.rare_freq, build_opts.max_mem_freq, build_opts.binary, build_opts.merge, build_opts.anchor_merge);
     count = lcp.process(match_finder);
     match_finder.close();
     lcp.close();
@@ -268,7 +290,8 @@ void print_build_status_info(BuildOptions& opts, RefBuilder& ref_build, bool mum
 
     std::string match_type = mum_mode ? "MUM" : "MEM";
     std::fprintf(stderr, "\tOutput path: %s\n", opts.output_prefix.data());
-    if (!opts.from_parse_flag && !opts.arrays_in_flag)
+    if (opts.use_gsacak) {std::fprintf(stderr, "\tUsing gsacak to compute LCP, BWT, SA\n");}
+    else if (!opts.from_parse_flag && !opts.arrays_in_flag)
         std::fprintf(stderr, "\tPFP window size: %d\n", opts.pfp_w);
     if (opts.arrays_out) {std::fprintf(stderr, "\tWriting LCP, BWT and suffix arrays\n");}
     std::fprintf(stderr, "\tMinimum %s length: %d\n", match_type.data(), opts.min_match_len);
@@ -280,6 +303,12 @@ void print_build_status_info(BuildOptions& opts, RefBuilder& ref_build, bool mum
         std::fprintf(stderr, "\tfinding multi-%ss present in all genomes\n", match_type.data());
     else
         std::fprintf(stderr, "\tfinding multi-%ss present in %d genomes\n", match_type.data(), opts.num_distinct_docs);
+    if (opts.merge) {
+        if (opts.anchor_merge)
+            std::fprintf(stderr, "\twriting anchor-based mergeable output\n");
+        else
+            std::fprintf(stderr, "\twriting string-based mergeable output\n");
+    }
     std::fprintf(stderr, "\n");
 }
 
@@ -321,12 +350,15 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
         {"window",   required_argument, NULL,  'w'},
         {"rare",   required_argument, NULL,  'f'},
         {"binary",   no_argument, NULL,  'b'},
+        {"merge",   no_argument, NULL,  'M'},
+        {"anchor",   no_argument, NULL,  'n'},
+        {"use-gsacak",   no_argument, NULL,  'g'},
         {0, 0, 0,  0}
     };
     int c = 0;
     int long_index = 0;
     
-    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:b", long_options, &long_index)) >= 0) {
+    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:bgMn", long_options, &long_index)) >= 0) {
         switch(c) {
             case 'h': mumemto_usage(); std::exit(0);
             case 'i': opts->input_list.assign(optarg); break;
@@ -344,6 +376,9 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
             case 'K': opts->keep_temp = true; break;
             case 'f': opts->rare_freq = std::atoi(optarg); break;
             case 'b': opts->binary = true; break;
+            case 'M': opts->merge = true; break;
+            case 'n': opts->anchor_merge = true; break;
+            case 'g': opts->use_gsacak = true; break;
             default: mumemto_usage(); std::exit(1);
         }
     }
@@ -367,7 +402,10 @@ int mumemto_usage() {
 
     std::fprintf(stderr, "\t%-32swrite LCP, BWT, and SA to file\n", "-A, --arrays-out");
     std::fprintf(stderr, "\t%-22s%-10scompute matches from precomputed LCP, BWT, SA (with shared PREFIX.bwt/sa/lcp)\n\n", "-a, --arrays-in", "[PREFIX]");
+    std::fprintf(stderr, "\t%-32soutput extra metadata to enable merging multi-MUMs\n", "-M, --merge");
+    std::fprintf(stderr, "\t%-32sUse anchor-based merging (requires -M, uses first sequence as anchor)\n", "-n, --anchor");
 
+    
     std::fprintf(stderr, "Exact match parameters:\n");
     std::fprintf(stderr, "\t%-22s%-10sminimum MUM or MEM length (default: 20)\n\n", "-l, --min-match-len", "[INT]");
     std::fprintf(stderr, "\t%-22s%-10sfind matches in at least k sequences (k < 0 sets the sequences relative to N, i.e. matches must occur in at least N - |k| sequences)\n\t%-32s(default: match occurs in all sequences, i.e. strict multi-MUM/MEM)\n\n", "-k, --minimum-genomes", "[INT]", "");
@@ -380,6 +418,7 @@ int mumemto_usage() {
     std::fprintf(stderr, "\t%-22s%-10shash-modulus used for pfp (default: 100)\n", "-m, --modulus", "[INT]");
     std::fprintf(stderr, "\t%-32suse pre-computed pf-parse\n", "-p, --from-parse");
     std::fprintf(stderr, "\t%-32skeep PFP files\n\n", "-K, --keep-temp-files");
+    std::fprintf(stderr, "\t%-32sskip PFP and use gsacak directly to compute LCP, BWT, SA\n", "-g, --use-gsacak");
 
     std::fprintf(stderr, "Overview:\n");
         std::fprintf(stderr, "\tBy default, Mumemto computes multi-MUMs. Exact match parameters can be additionally tuned in three main ways:\n");

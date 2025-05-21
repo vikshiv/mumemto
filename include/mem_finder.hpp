@@ -46,9 +46,11 @@ public:
     bool revcomp;
     bool mummode;
     bool binary;
+    bool merge;
+    bool anchor_merge;
     std::string filename;
 
-    mem_finder(std::string filename, RefBuilder& ref_build, size_t min_mem_len, size_t num_distinct, int max_doc_freq, int max_total_freq, bool binary): 
+    mem_finder(std::string filename, RefBuilder& ref_build, size_t min_mem_len, size_t num_distinct, int max_doc_freq, int max_total_freq, bool binary, bool merge, bool anchor_merge): 
                 min_mem_length(min_mem_len),
                 num_docs(ref_build.num_docs),
                 revcomp(ref_build.use_revcomp),
@@ -58,7 +60,10 @@ public:
                 max_freq(max_total_freq),
                 max_doc_freq(max_doc_freq),
                 binary(binary),
-                filename(filename)
+                filename(filename),
+                merge(merge),
+                candidate_thresh(0), 
+                anchor_merge(anchor_merge)
     {
         // get cumulative offset
         size_t curr_sum = 0;
@@ -71,9 +76,13 @@ public:
                 doc_lens[i] = doc_lens[i] / 2;
             }
         }
+        if (merge) {
+            candidate_thresh.resize(doc_lens[0] * 2, 0);
+        }
+
         this->mummode = (max_doc_freq == 1);
         // Initialize stack
-        current_mems.push_back(std::make_pair(0, 0));
+        init_stack();
         
         // Set parameters and limits
         // this->max_freq = num_docs + max_freq;
@@ -92,12 +101,56 @@ public:
             mem_file.open(filename + std::string(".mums"));
     }
 
-    void close()
+    virtual void close()
     {
         if (binary)
             write_bums();
         else
             mem_file.close();
+        if (anchor_merge) {
+            std::string thresh_file = filename + ".athresh";
+            std::ofstream thresh_out(thresh_file, std::ios::binary);
+            thresh_out.write(reinterpret_cast<const char*>(candidate_thresh.data()), doc_lens[0] * sizeof(uint16_t));
+            thresh_out.close();
+        }
+        else if (merge) {
+            // write merging metadata
+            // write thresholds in terms of positions on MUMs, rather than first genome coords
+            size_t total_mum_length = 0;
+            for (size_t i = 0; i < mum_positions.size(); i++) {
+                total_mum_length += mum_positions[i].second + 1;
+            }
+            size_t offset = 0;
+            std::vector<uint16_t> mum_based_thresh(total_mum_length, 0);
+            std::vector<uint16_t> mum_based_thresh_rev(total_mum_length, 0);
+            size_t revpos;
+            for (size_t i = 0; i < mum_positions.size(); i++) {
+                // revpos = doc_lens[0] - mum_positions[i].first - mum_positions[i].second - 1;
+                // curpos = doc_lens[curdoc] + doc_lens[curdoc] - curpos - length - 1;
+                // 
+                revpos = doc_lens[0] + doc_lens[0] - (mum_positions[i].first) - mum_positions[i].second - 1;
+                for (size_t j = 0; j < mum_positions[i].second; j++) {
+                    if (candidate_thresh[mum_positions[i].first + j] < mum_positions[i].second - j)
+                        mum_based_thresh[offset] = candidate_thresh[mum_positions[i].first + j];
+                    if (candidate_thresh.at(revpos + j) < mum_positions[i].second - j)
+                        mum_based_thresh_rev[offset] = candidate_thresh.at(revpos + j);
+                    offset++;
+                }
+                mum_based_thresh[offset] = 0;
+                mum_based_thresh_rev[offset] = 0;
+                offset++;
+            }
+            // write to file
+            std::string thresh_file = filename + ".thresh";
+            std::ofstream thresh_out(thresh_file, std::ios::binary);
+            thresh_out.write(reinterpret_cast<const char*>(mum_based_thresh.data()), mum_based_thresh.size() * sizeof(uint16_t));
+            thresh_out.close();
+
+            std::string thresh_file_rev = filename + ".thresh_rev";
+            std::ofstream thresh_out_rev(thresh_file_rev, std::ios::binary);
+            thresh_out_rev.write(reinterpret_cast<const char*>(mum_based_thresh_rev.data()), mum_based_thresh_rev.size() * sizeof(uint16_t));
+            thresh_out_rev.close();
+        }
     }
 
     // main update function, takes in the current streamed value of each array and write mem if found
@@ -108,8 +161,10 @@ public:
         if (bwt_buffer.size() == 0 || bwt_buffer.back() != bwt_c)
             last_bwt_change = j;
         update_buffers(j, bwt_c, sa_entry, lcp, doc);
+        prev_lcp = lcp;
         return count;
     }
+
 protected:
     std::ofstream mem_file;
     std::ofstream bums_lengths;
@@ -126,8 +181,6 @@ protected:
     std::deque<size_t> sa_buffer;
     std::deque<uint8_t> bwt_buffer;
     std::deque<size_t> da_buffer;
-
-    std::vector<std::pair<size_t, size_t>> current_mems; // list of pairs, (start idx in SA, length of mem)
 
     inline bool check_bwt_range(size_t start, size_t end) 
     {
@@ -205,6 +258,98 @@ protected:
         return 1;
     }
 
+    inline bool check_doc_range(size_t start, size_t end) 
+    {
+        std::unordered_map<size_t, size_t> seen;
+        size_t unique = 0;
+        size_t iterations = end - start + 1;
+        size_t idx = 0;
+        std::deque<size_t>::iterator it = da_buffer.begin() + (start - buffer_start);
+        size_t cur_doc = *it;
+        while (idx < iterations) {
+            if (!seen.count(cur_doc)) {
+                unique++;
+                seen[cur_doc] = 1;
+                // if (max_doc_freq == 0 && unique >= num_distinct)
+                //     return true;
+            } else {
+                // seen[cur_doc]++;
+                if (max_doc_freq && (++seen[cur_doc]) > max_doc_freq)
+                    return false;
+            }
+            it++;
+            idx++;
+            cur_doc = *it;
+        }
+        return unique >= num_distinct;
+    }
+        
+
+private:    
+    // current stack of MEMs, ((start idx in SA, length of mem), prev_lcp)
+    std::vector<std::pair<std::pair<size_t, size_t>, size_t>> current_mems; 
+    // positions of MUMs in the first genome (offset, length), for merging
+    std::vector<std::pair<size_t, size_t>> mum_positions;
+    // data structure to hold meta data for merging
+    std::vector<uint16_t> candidate_thresh;
+    size_t MAX_THRESH = static_cast<size_t>(UINT16_MAX);
+
+    // stores the LCP value preceding the current MEM interval
+    size_t prev_lcp = 0;
+
+    inline size_t update_mems(size_t j, size_t lcp)
+    {
+        // three cases for LCP, increase, decrease, or stagnant (nothing changes)
+        // j = idx in SA
+        size_t count = 0;
+        size_t start = j - 1;
+        size_t prev = 0;
+        size_t next_best = 0;
+        size_t start_offset = 0;
+        std::pair<size_t, size_t> interval;
+        while (lcp < current_mems.back().first.second) {
+            interval = current_mems.back().first;
+            prev = current_mems.back().second;
+            current_mems.pop_back();
+
+            // check conditions of MEM/MUM
+            if (interval.second >= min_mem_length && 
+                j - interval.first >= num_distinct && 
+                (no_max_freq || j - interval.first <= max_freq) &&
+                // !check_bwt_range(interval.first, j-1) && 
+                check_doc_range(interval.first, j-1)) 
+                {
+                    if (merge) {
+                        // update candidate threshold
+                        next_best = std::min(std::max(prev, lcp), MAX_THRESH); // cap at max uint16
+                        for (size_t i = interval.first; i <= j-1; i++) {
+                            if (da_buffer[i - buffer_start] == 0) {
+                                start_offset = sa_buffer[i - buffer_start] - doc_offsets[0];
+                                candidate_thresh[start_offset] = next_best;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!check_bwt_range(interval.first, j-1)) {
+                        if (mummode)
+                            count += write_mum(interval.second, interval.first, j - 1);
+                        else
+                            count += write_mem(interval.second, interval.first, j - 1);
+                    }
+                    
+                }
+            start = interval.first;
+            prev_lcp = prev;
+        }
+
+        if (lcp > current_mems.back().first.second) {
+            if (lcp >= min_mem_length)
+                current_mems.push_back(std::make_pair(std::make_pair(start, lcp), prev_lcp));
+        }
+        return count;
+    }
+
     inline size_t write_mum(size_t length, size_t start, size_t end)
     {
         std::vector<size_t> offsets(num_docs, -1);
@@ -241,6 +386,11 @@ protected:
         if (strand[i] == '-')
             return 0;
 
+        // store the offset in the first genome to pull later
+        if (merge) {
+            mum_positions.push_back(std::make_pair(offsets[0], length));
+        }
+        
         if (binary) {
             uint16_t length_uint16 = static_cast<uint16_t>(length);
             bums_lengths.write(reinterpret_cast<const char*>(&length_uint16), sizeof(length_uint16));
@@ -272,68 +422,6 @@ protected:
         }
         return 1;
     }
-        
-
-private:    
-    inline size_t update_mems(size_t j, size_t lcp)
-    {
-        // three cases for LCP, increase, decrease, or stagnant (nothing changes)
-        // j = idx in SA
-        size_t count = 0;
-        size_t start = j - 1;
-        std::pair<size_t, size_t> interval;
-        while (lcp < current_mems.back().second) {
-            interval = current_mems.back();
-            current_mems.pop_back();
-
-            // check conditions of MEM/MUM
-            if (interval.second >= min_mem_length && 
-                j - interval.first >= num_distinct && 
-                (no_max_freq || j - interval.first <= max_freq) &&
-                !check_bwt_range(interval.first, j-1) && 
-                check_doc_range(interval.first, j-1)) 
-                {
-                    if (mummode)
-                        count += write_mum(interval.second, interval.first, j - 1);
-                    else
-                        count += write_mem(interval.second, interval.first, j - 1);
-                }
-            start = interval.first;
-        }
-
-        if (lcp > current_mems.back().second) {
-            if (lcp >= min_mem_length)
-                current_mems.push_back(std::make_pair(start, lcp));
-        }
-
-        return count;
-    }
-
-    inline bool check_doc_range(size_t start, size_t end) 
-    {
-        std::unordered_map<size_t, size_t> seen;
-        size_t unique = 0;
-        size_t iterations = end - start + 1;
-        size_t idx = 0;
-        std::deque<size_t>::iterator it = da_buffer.begin() + (start - buffer_start);
-        size_t cur_doc = *it;
-        while (idx < iterations) {
-            if (!seen.count(cur_doc)) {
-                unique++;
-                seen[cur_doc] = 1;
-                // if (max_doc_freq == 0 && unique >= num_distinct)
-                //     return true;
-            } else {
-                // seen[cur_doc]++;
-                if (max_doc_freq && (++seen[cur_doc]) > max_doc_freq)
-                    return false;
-            }
-            it++;
-            idx++;
-            cur_doc = *it;
-        }
-        return unique >= num_distinct;
-    }
 
     inline void update_buffers(size_t j, uint8_t bwt_c, size_t sa_pos, size_t lcp, size_t docid) {
         if (current_mems.size() <= 1) { // empty stack, only the null interval. < 1 should never happen, but included nonetheless
@@ -344,9 +432,9 @@ private:
             }
             buffer_start = j;
         }
-        else if (current_mems[1].first > buffer_start) {
-            size_t to_remove = current_mems[1].first - buffer_start;
-            buffer_start = current_mems[1].first;
+        else if (current_mems[1].first.first > buffer_start) {
+            size_t to_remove = current_mems[1].first.first - buffer_start;
+            buffer_start = current_mems[1].first.first;
             sa_buffer.erase(sa_buffer.begin(), sa_buffer.begin() + to_remove);
             bwt_buffer.erase(bwt_buffer.begin(), bwt_buffer.begin() + to_remove);
             da_buffer.erase(da_buffer.begin(), da_buffer.begin() + to_remove);
@@ -406,6 +494,11 @@ private:
         std::filesystem::remove(filename + std::string(".bumbl.lengths"));
         std::filesystem::remove(filename + std::string(".bumbl.starts"));
         std::filesystem::remove(filename + std::string(".bumbl.strands"));
+    }
+
+    virtual void init_stack()
+    {
+        current_mems.push_back(std::make_pair(std::make_pair(0, 0), 0));
     }
 };
 

@@ -103,24 +103,20 @@ def run_convert(args):
         
 def run_extract(args):
     """Extract MUMs to a FASTA file"""
-    try:
-        extract = import_module('mumemto.extract_mums')
-        parsed_args = extract.parse_arguments(args)
-        extract.main(parsed_args)
-    except ImportError:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        script = os.path.join(script_dir, '_mumemto', 'extract_mums.py')
-        if not os.path.exists(script):
-            print(f"Error: mumemto not installed. Please run mumemto/extract_mums.py directly.", file=sys.stderr)
-            sys.exit(1)
-        subprocess.run([sys.executable, script] + args)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    exec_path = os.path.join(script_dir, 'extract_mums')
+    if not os.path.exists(exec_path):
+        print("Error: mumemto not installed. Please use make to install mumemto first", file=sys.stderr)
+        sys.exit(1)
+    cmd = [exec_path] + args
+    subprocess.run(cmd)
         
-def run_reframe(args):
+def run_label(args):
     """Add contig information to MUMs"""
     try:
-        reframe = import_module('mumemto.get_sequence_info')
-        parsed_args = reframe.parse_arguments(args)
-        reframe.main(parsed_args)
+        label = import_module('mumemto.get_sequence_info')
+        parsed_args = label.parse_arguments(args)
+        label.main(parsed_args)
     except ImportError:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         script = os.path.join(script_dir, '_mumemto', 'get_sequence_info.py')
@@ -138,7 +134,20 @@ def run_lengths(args):
         sys.exit(1)
     cmd = [exec_path] + args
     subprocess.run(cmd)
-    
+
+def run_merge(args):
+    """Run the merge executable with given args"""
+    try:
+        merge = import_module('mumemto.merge_mums')
+        merge.main()
+    except ImportError:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        script = os.path.join(script_dir, '_mumemto', 'merge_mums.py')
+        if not os.path.exists(script):
+            print(f"Error: mumemto not installed. Please run mumemto/merge_mums.py directly.", file=sys.stderr)
+            sys.exit(1)
+        subprocess.run([sys.executable, script] + args)
+        
 def main():
     if len(sys.argv) == 1:
         print("\nmumemto - find maximal [unique | exact] matches using PFP.\n", file=sys.stderr)
@@ -151,8 +160,9 @@ def main():
               "\tcollinear\t\tfind collinear blocks of MUMs\n" +
               "\tconvert\t\t\tconvert MUMs to BUMs and vice versa\n" +
               "\textract\t\t\textract MUMs to a FASTA file\n" + 
-              "\treframe\t\t\tlabel MUMs with contig information\n" +
-              "\tlengths\t\t\trecompute sequence lengths from a filelist",
+              "\tlabel\t\t\tlabel MUMs with contig information\n" +
+              "\tlengths\t\t\trecompute sequence lengths from a filelist\n" +
+              "\tmerge\t\t\tmerge MUMs using anchor-based or string-based merging\n",
               file=sys.stderr)
         sys.exit(0)
 
@@ -174,10 +184,12 @@ def main():
         run_convert(args)
     elif command == 'extract':
         run_extract(args)
-    elif command == 'reframe':
-        run_reframe(args)
+    elif command == 'label':
+        run_label(args)
     elif command == 'lengths':
         run_lengths(args)
+    elif command == 'merge':
+        run_merge(args)
     else:
         # If no special command, pass all args to mumemto executable
         run_mumemto(sys.argv[1:])

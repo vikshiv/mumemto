@@ -158,8 +158,9 @@ def serialize_coll_blocks(coll_blocks, num_mums):
     for i in range(num_mums):
         if i > right_block:
             idx += 1
-            left_block, right_block = coll_blocks[idx]
-        if i < left_block:
+            if idx < len(coll_blocks):
+                left_block, right_block = coll_blocks[idx]
+        if i < left_block or i > right_block:
             block_idx.append('-')
         else:
             block_idx.append(str(idx))
@@ -327,8 +328,9 @@ class MUMdata:
                     for i in range(self.num_mums):
                         if i > right_block:
                             idx += 1
-                            left_block, right_block = blocks[idx]
-                        if i < left_block:
+                            if idx < len(blocks):
+                                left_block, right_block = blocks[idx]
+                        if i < left_block or i > right_block:
                             block_idx = '-'
                         else:
                             block_idx = idx

@@ -22,9 +22,14 @@ conda activate mumemto_env
 
 conda install -c bioconda mumemto
 ```
+> [!NOTE]
+>  MacOS is not yet supported for the main Mumemto multi-MUM finding module. The downstream python modules are functional on MacOS, so we include arm and osx-64 Conda installations. However, we recommend using Docker for running Mumemto on MacOS.
+
 
 ### Docker/Singularity
-Mumemto is available on `docker` and `singularity`. Note: this will only install the main mumemto tool, not the python scripts (which can be run separately from the `mumemto/` directory).
+Mumemto is available on `docker` and `singularity`. 
+> [!TIP]
+>  You may need to bind a local directory to access files in the container, which may cause issues when globbing input files. Input filelist + docker/singularity bind mount is recommended.
 ```sh
 ### if using docker ###
 docker pull vshiv123/mumemto:latest
@@ -79,7 +84,8 @@ The multi-MUM properties can be loosened to find different types of matches with
 - `-f` controls the maximum number of occurences in _each_ sequence (e.g. finding duplication regions)
 - `-F` controls the total number of occurences in the collection (e.g. filtering out matches that occur frequently due to low complexity)
 
-`-k` is flexible in input format. The user can specify a positive integer, indicating the minimum number of sequences a match should appear in. Passing a negative integer indicates a subset size relative to N, the number of sequences in the collection (i.e. N - k). For instance, to specify a match must appear in at least all sequences _except_ one, we could pass `-k -1`. Similarly, passing negative values to `-F` specifies limits relative to N. Note: when setting `-F` and `-f` together, the max total limit will be the smaller of `F` and `N * f`.
+>[!TIP] 
+> `-k` is flexible in input format. The user can specify a positive integer, indicating the minimum number of sequences a match should appear in. Passing a negative integer indicates a subset size relative to N, the number of sequences in the collection (i.e. N - k). For instance, to specify a match must appear in at least all sequences _except_ one, we could pass `-k -1`. Similarly, passing negative values to `-F` specifies limits relative to N. Note: when setting `-F` and `-f` together, the max total limit will be the smaller of `F` and `N * f`.
 
 Here are some example use cases:
 
@@ -93,15 +99,35 @@ Here are some example use cases:
 	 # Find all MEMs that appear at most 100 times within a collection
      mumemto -f 0 -k 2 -F 100 [OPTIONS] [input_fasta [...]]
 ```
+
+### Multi-MUM merging (***new in v1.3***)
+
+The output multi-MUMs from Mumemto can be merged between runs in v1.3. There are two methods to do this: anchor-based (`-Mn`) and string-based (`-M`). Anchor-based merging requires the *first* sequence in each partition to be the same. String-based merging does not require any overlap between partitions, however is generally slower.
+
+Running Mumemto with `-M` or `-Mn` generates a threshold file, `*.thresh` and `*.thresh_rev` for string-based merging and `*.athresh` for anchor-based merging. To merge partitions, run:
+```
+mumemto merge p1.mums p2.mums <...> -o <out_prefix>.mums
+```
+The merge script automatically detects which type of merging is possible and creates an output using `out_prefix` which is identical to if Mumemto was run on the union of the input partitions.
+
+> [!NOTE]
+>  Merging is currently limited to strict multi-MUMs. However, partial multi-MUMs for local partitions can be found using string-based merging incrementally.
+
+> [!TIP] 
+> Using either merge mode enables a dynamic updating of multi-MUMs. You can incrementally add assemblies as the pangenome grows and update the global set of multi-MUMs across the collection.
+
 ### I/O format
-The `mumemto` command takes in a list of fasta files as positional arguments and then generates output files using the output prefix. Alternatively, you can provide a file-list, which specifies a list of fastas and which document/class each file belongs in. Passing in fastas as positional arguments will auto-generate a filelist that defines the order of the sequences in the output.
+The `mumemto` command takes in a list of fasta files as positional arguments and then generates output files using the output prefix. Alternatively, you can provide a file-list, which specifies a list of fastas (one per line). Passing in fastas as positional arguments will auto-generate a filelist that defines the order of the sequences in the output. 
+
+> [!TIP]
+> The output `*.lengths` file can also serve as an input filelist to re-run expts.
 
 **Example of file-list file:**
 ```sh
-/path/to/ecoli_1.fna 1
-/path/to/salmonella_1.fna 2
-/path/to/bacillus_1.fna 3
-/path/to/staph_2.fna 4
+/path/to/ecoli_1.fna
+/path/to/salmonella_1.fna
+/path/to/bacillus_1.fna
+/path/to/staph_2.fna
 ```
 
 **Format of the output \*.mums file:**
