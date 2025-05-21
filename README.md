@@ -22,7 +22,7 @@ conda activate mumemto_env
 
 conda install -c bioconda mumemto
 ```
-> [!TIP]
+> [!NOTE]
 >  MacOS is not yet supported for the main Mumemto multi-MUM finding module. The downstream python modules are functional on MacOS, so we include arm and osx-64 Conda installations. However, we recommend using Docker for running Mumemto on MacOS.
 
 
