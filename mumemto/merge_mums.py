@@ -8,7 +8,35 @@ import os
 import sys
 import subprocess
 from tqdm.auto import tqdm
+import shutil
 
+
+def parse_arguments(args=None):  
+    parser = argparse.ArgumentParser(description='Merge MUMs files')
+    parser.add_argument('--merged_mums', '-m', help='Path to MUMs of MUMs file (only for string merging)')
+    parser.add_argument('mum_files', metavar='MUM_FILES', nargs='+', help='Paths to MUMs files to merge')
+    parser.add_argument('--output', '-o', help='Path to output merged MUMs file', default='merged.mums')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Print verbose output')
+    
+    if args is None:
+        args = parser.parse_args()
+    else:
+        args = parser.parse_args(args)
+    
+    assert len(args.mum_files) >= 2, "At least two MUMs files are required for merging"
+    
+    for i in range(len(args.mum_files)):
+        if not args.mum_files[i].endswith('.mums'):
+            args.mum_files[i] += '.mums'
+            
+    if args.merged_mums is not None and not args.merged_mums.endswith('.mums'):
+        args.merged_mums += '.mums'
+        
+    if args.merged_mums is not None and not os.path.exists(args.merged_mums):
+        print(f"Error: MUMs of MUMs file {args.merged_mums} does not exist. Omit -m to run merge from start.", file=sys.stderr)
+        sys.exit(1)
+    return args
+    
 def remove_start_dollar(mums, s1_bv):
     new_mums = []
     l, starts, strands = mums
@@ -33,12 +61,15 @@ def remove_start_dollar(mums, s1_bv):
 
 def run_merger(args):
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    extract_script = os.path.join(script_dir, '../extract_mums')
-    mumemto_script = os.path.join(script_dir, '../mumemto_exec')
-    if not os.path.exists(extract_script) or not os.path.exists(mumemto_script):
-        print("Error: mumemto not installed. Please use make to install mumemto first", file=sys.stderr)
-        sys.exit(1)
-        
+    if not shutil.which('extract_mums') or not shutil.which('mumemto_exec'):
+        extract_script = os.path.join(script_dir, '../extract_mums')
+        mumemto_script = os.path.join(script_dir, '../mumemto_exec')
+        if not os.path.exists(extract_script) or not os.path.exists(mumemto_script):
+            print("Error: mumemto not installed. Please use make to install mumemto first", file=sys.stderr)
+            sys.exit(1)
+    else:
+        extract_script = 'extract_mums'
+        mumemto_script = 'mumemto_exec'
     for f in tqdm(args.mum_files, desc="Extracting MUM sequences", disable=not args.verbose):
         cmd = [extract_script, '-m', f]
         subprocess.run(cmd)
@@ -54,7 +85,9 @@ def run_anchor_merger(args):
     if args.verbose:
         print("*.athresh files detected, running anchor merging...", file=sys.stderr)
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    anchor_merge_script = os.path.realpath(os.path.join(script_dir, '../anchor_merge'))
+    anchor_merge_script = 'anchor_merge'
+    if not shutil.which(anchor_merge_script):
+        anchor_merge_script = os.path.realpath(os.path.join(script_dir, '../anchor_merge'))
     cmd = [anchor_merge_script] + args.mum_files + ['-o', args.output]
     if args.verbose:
         cmd.append('-v')
@@ -62,27 +95,7 @@ def run_anchor_merger(args):
         print(f"Running command: {' '.join(cmd)}", file=sys.stderr)
     subprocess.run(cmd)
 
-def main():
-    parser = argparse.ArgumentParser(description='Merge MUMs files')
-    parser.add_argument('--merged_mums', '-m', help='Path to MUMs of MUMs file (only for string merging)')
-    parser.add_argument('mum_files', metavar='MUM_FILES', nargs='+', help='Paths to MUMs files to merge')
-    parser.add_argument('--output', '-o', help='Path to output merged MUMs file', default='merged.mums')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Print verbose output')
-    
-    args = parser.parse_args()
-    
-    assert len(args.mum_files) >= 2, "At least two MUMs files are required for merging"
-    
-    for i in range(len(args.mum_files)):
-        if not args.mum_files[i].endswith('.mums'):
-            args.mum_files[i] += '.mums'
-            
-    if args.merged_mums is not None and not args.merged_mums.endswith('.mums'):
-        args.merged_mums += '.mums'
-        
-    if args.merged_mums is not None and not os.path.exists(args.merged_mums):
-        print(f"Error: MUMs of MUMs file {args.merged_mums} does not exist. Omit -m to run merge from start.", file=sys.stderr)
-        sys.exit(1)
+def main(args):
     anchor_merge = all([os.path.exists(m.replace('.mums', '.athresh')) for m in args.mum_files])
     if anchor_merge:
         if args.merged_mums is not None:
@@ -209,4 +222,5 @@ def main():
         os.remove(args.merged_mums.replace('.mums', '.lengths'))
         
 if __name__ == "__main__":
-    main()
+    args = parse_arguments()
+    main(args)

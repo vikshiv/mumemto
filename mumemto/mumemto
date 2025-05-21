@@ -139,7 +139,8 @@ def run_merge(args):
     """Run the merge executable with given args"""
     try:
         merge = import_module('mumemto.merge_mums')
-        merge.main()
+        parsed_args = merge.parse_arguments(args)
+        merge.main(parsed_args)
     except ImportError:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         script = os.path.join(script_dir, '_mumemto', 'merge_mums.py')

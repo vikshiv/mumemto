@@ -39,8 +39,8 @@ class CMakeBuild(Command):
         executables = [
             (os.path.join(self.build_temp, 'mumemto_exec'), 'mumemto_exec'),
             (os.path.join(self.build_temp, 'compute_lengths'), 'compute_lengths'),
-            (os.path.join(self.build_temp, 'compute_lengths'), 'extract_mums'),
-            (os.path.join(self.build_temp, 'compute_lengths'), 'anchor_merge'),
+            (os.path.join(self.build_temp, 'extract_mums'), 'extract_mums'),
+            (os.path.join(self.build_temp, 'anchor_merge'), 'anchor_merge'),
             (os.path.join(self.build_temp, 'install', 'bin', 'newscanNT.x'), 'newscanNT.x'),
         ]
         
