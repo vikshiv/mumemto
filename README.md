@@ -111,7 +111,7 @@ mumemto merge p1.mums p2.mums <...> -o <out_prefix>.mums
 The merge script automatically detects which type of merging is possible and creates an output using `out_prefix` which is identical to if Mumemto was run on the union of the input partitions.
 
 > [!NOTE]
->  Merging is currently limited to strict multi-MUMs. However, partial multi-MUMs for local paritions can be found using string-based merging incrementally.
+>  Merging is currently limited to strict multi-MUMs. However, partial multi-MUMs for local partitions can be found using string-based merging incrementally.
 
 > [!TIP] 
 > Using either merge mode enables a dynamic updating of multi-MUMs. You can incrementally add assemblies as the pangenome grows and update the global set of multi-MUMs across the collection.
