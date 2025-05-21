@@ -39,6 +39,8 @@ class CMakeBuild(Command):
         executables = [
             (os.path.join(self.build_temp, 'mumemto_exec'), 'mumemto_exec'),
             (os.path.join(self.build_temp, 'compute_lengths'), 'compute_lengths'),
+            (os.path.join(self.build_temp, 'compute_lengths'), 'extract_mums'),
+            (os.path.join(self.build_temp, 'compute_lengths'), 'anchor_merge'),
             (os.path.join(self.build_temp, 'install', 'bin', 'newscanNT.x'), 'newscanNT.x'),
         ]
         
@@ -87,7 +89,7 @@ def read_requirements():
 
 setup(
     name="mumemto",
-    version="1.2.2",
+    version="1.3.0",
     packages=find_packages(),
     install_requires=read_requirements(),
     scripts=['mumemto/mumemto'],  # Only include the Python script here
