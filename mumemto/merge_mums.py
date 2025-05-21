@@ -55,7 +55,9 @@ def run_anchor_merger(args):
         print("*.athresh files detected, running anchor merging...", file=sys.stderr)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     anchor_merge_script = os.path.realpath(os.path.join(script_dir, '../anchor_merge'))
-    cmd = [anchor_merge_script] + args.mum_files + ['-o', args.output] + ['-v'] if args.verbose else []
+    cmd = [anchor_merge_script] + args.mum_files + ['-o', args.output]
+    if args.verbose:
+        cmd.append('-v')
     if args.verbose:
         print(f"Running command: {' '.join(cmd)}", file=sys.stderr)
     subprocess.run(cmd)
