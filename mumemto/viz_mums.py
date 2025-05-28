@@ -22,7 +22,8 @@ def parse_arguments(args=None):
     
     parser.add_argument('--lengths','-l', dest='lens', help='lengths file, first column is seq length in order of filelist')
     
-    parser.add_argument('--filelist', '-f', dest='filelist', help='if the filelist is provided, then FASTA filenames are used as labels')
+    parser.add_argument('--filelist', '-f', dest='filelist', help='filelist defines the order of seqs in the plot. First col = full path from lengths file, second col = label in plot')
+    parser.add_argument('--labels', '-n', dest='labels', help='labels for each sequence in the plot, one a line, matching the order of the filelist (if given) or the lengths file')
     parser.add_argument('--len-filter','-L', dest='lenfilter', help='only plot MUMs longer than threshold', default=0, type=int)
     parser.add_argument('--subsample','-s', dest='subsample', help='subsample every Nth mum', default=1, type=int)
     parser.add_argument('--center','-c', dest='center', action='store_true', help='center plot', default=False)
@@ -190,7 +191,7 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
     ax.yaxis.set_ticks(list(range(len(genome_lengths))))
     ax.tick_params(axis='y', which='both',length=0)
     if genomes:
-        ax.set_yticklabels(genomes)
+        ax.set_yticklabels(genomes, fontsize=8)
     else:
         ax.yaxis.set_ticklabels([])
     if args.mode == 'gapped':
@@ -288,18 +289,37 @@ def main(args):
     
     if args.mode == 'gapped':
         args.spacer = args.spacer * args.multilengths.max(axis=0).max()
-    if args.filelist:
-        genome_names = get_seq_paths(args.filelist)
-        genome_names = [os.path.splitext(os.path.basename(l))[0] for l in genome_names]
-    else:
-        genome_names = None
+    
     max_length = max(seq_lengths)
     
+    if args.filelist:
+        cur_order = get_seq_paths(args.lens)
+        file_order = open(args.filelist, 'r').read().splitlines()
+        try:
+            order = np.array([cur_order.index(l) for l in file_order])
+        except ValueError:
+            print(f'Error: sequence in filelist not found in lengths file. Ensure the filelist paths match the lengths file paths exactly.', file=sys.stderr)
+            sys.exit(1)
+    
+    if args.labels:
+        if args.labels.endswith('.lengths'):
+            genome_names = [os.path.splitext(os.path.basename(l))[0] for l in get_seq_paths(args.labels)]
+            if args.filelist:
+                genome_names = [genome_names[i] for i in order]
+        else:
+            genome_names = open(args.labels, 'r').read().splitlines()
+    else:
+        genome_names = None
+        
     # Use new MUM class
     mums = MUMdata(args.mumfile, lenfilter=args.lenfilter, subsample=args.subsample, verbose=args.verbose)
     if args.verbose:
         print(f'Found {mums.num_mums} MUMs', file=sys.stderr)
 
+    if args.filelist:
+        mums.starts = mums.starts[:, order]
+        mums.strands = mums.strands[:, order]
+        
     centering = [0] * len(seq_lengths)
     if args.center:
         centering = [(max_length - g) / 2 for g in seq_lengths]
