@@ -290,8 +290,6 @@ def main(args):
     if args.mode == 'gapped':
         args.spacer = args.spacer * args.multilengths.max(axis=0).max()
     
-    max_length = max(seq_lengths)
-    
     if args.filelist:
         cur_order = get_seq_paths(args.lens)
         file_order = open(args.filelist, 'r').read().splitlines()
@@ -300,6 +298,7 @@ def main(args):
         except ValueError:
             print(f'Error: sequence in filelist not found in lengths file. Ensure the filelist paths match the lengths file paths exactly.', file=sys.stderr)
             sys.exit(1)
+        seq_lengths = [seq_lengths[i] for i in order]
     
     if args.labels:
         if args.labels.endswith('.lengths'):
@@ -320,6 +319,8 @@ def main(args):
         mums.starts = mums.starts[:, order]
         mums.strands = mums.strands[:, order]
         
+    max_length = max(seq_lengths)
+    
     centering = [0] * len(seq_lengths)
     if args.center:
         centering = [(max_length - g) / 2 for g in seq_lengths]
