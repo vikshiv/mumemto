@@ -174,7 +174,7 @@ int RefBuilder::build_input_file() {
                 name_vec.push_back(seq->name.s);
                 // Added dollar sign as separator, and added 1 to length
                 // output_fd << '>' << seq->name.s << '\n' << seq->seq.s << '\n';
-                curr_id_seq_length += seq->seq.l;
+                curr_id_seq_length += seq->seq.l + 10;
                 temp_lengths.push_back(seq->seq.l);
                 temp_names.push_back(seq->name.s);
             }
@@ -206,11 +206,11 @@ int RefBuilder::build_input_file() {
                 for (auto i = seq_vec.size(); i-- != 1; ) {
                     rev_comp(seq_vec.at(i));
                     output_fd << '>' << name_vec.at(i) << "_rev_comp" << '\n' << seq_vec.at(i) << '\n';
-                    curr_id_seq_length += seq_vec.at(i).length();
+                    curr_id_seq_length += seq_vec.at(i).length() + 10;
                 }
                 rev_comp(seq_vec.at(0));
                 output_fd << '>' << name_vec.at(0) << "_rev_comp" << '\n' << seq_vec.at(0) << '$' << '\n';
-                curr_id_seq_length += seq_vec.at(0).length();
+                curr_id_seq_length += seq_vec.at(0).length() + 10;
                 curr_id_seq_length += 1;
             }
             // for (auto s = seq_vec.begin(); s != seq_vec.end(); ++s) {
