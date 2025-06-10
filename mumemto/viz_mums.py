@@ -149,23 +149,23 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
     fig, ax = plt.subplots()
     max_length = max(genome_lengths)
     # Plot genome lines based on mode
-    if args.mode == 'normal':
+    if args.mode == 'normal' or args.mode == 'delineated':
         # Just plot simple genome lines
         for idx, g in enumerate(genome_lengths):
             ax.plot([centering[idx] + 0, centering[idx] + g], [idx, idx], 
                     alpha=0.2, linewidth=0.75, c='black')
             
-    elif args.mode == 'delineated':
-        # Plot lines with delineators for multifasta
-        for idx in range(len(args.multilengths)):
-            cur_offsets = np.cumsum(args.multilengths[idx])
-            last_offset = 0
-            for i, offset in enumerate([0] + cur_offsets[:-1]):
-                # ax.plot([centering[idx] + offset, centering[idx] + offset], 
-                #         [idx - 0.25, idx + 0.25], alpha=1, linewidth=0.25, color=cm.tab20((i+1) % 20))
-                ax.plot([centering[idx] + last_offset, centering[idx] + offset], 
-                        [idx, idx], alpha=0.2, linewidth=0.75, color=cm.tab20(i % 20))
-                last_offset = offset
+    # elif args.mode == 'delineated':
+    #     # Plot lines with delineators for multifasta
+    #     for idx in range(len(args.multilengths)):
+    #         cur_offsets = np.cumsum(args.multilengths[idx])
+    #         last_offset = 0
+    #         for i, offset in enumerate([0] + cur_offsets[:-1]):
+    #             # ax.plot([centering[idx] + offset, centering[idx] + offset], 
+    #             #         [idx - 0.25, idx + 0.25], alpha=1, linewidth=0.25, color=cm.tab20((i+1) % 20))
+    #             ax.plot([centering[idx] + last_offset, centering[idx] + offset], 
+    #                     [idx, idx], alpha=0.2, linewidth=0.75, color=cm.tab20(i % 20))
+    #             last_offset = offset
                 
     elif args.mode == 'gapped':
         # Plot with gaps between subsequences
