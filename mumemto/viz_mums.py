@@ -307,13 +307,17 @@ def main(args):
     
     if args.filelist:
         cur_order = get_seq_paths(args.lens)
-        file_order = open(args.filelist, 'r').read().splitlines()
+        file_order = [l.split()[0] for l in open(args.filelist, 'r').read().splitlines()]
         try:
             order = np.array([cur_order.index(l) for l in file_order])
         except ValueError:
             print(f'Error: sequence in filelist not found in lengths file. Ensure the filelist paths match the lengths file paths exactly.', file=sys.stderr)
             sys.exit(1)
         seq_lengths = [seq_lengths[i] for i in order]
+        if args.mode == 'gapped':
+            args.multilengths = args.multilengths[order]
+        elif args.mode == 'delineated':
+            args.multilengths = [args.multilengths[i] for i in order]
     
     if args.labels:
         if args.labels.endswith('.lengths'):
