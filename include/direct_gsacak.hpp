@@ -90,12 +90,14 @@ public:
 
     template <class T>
     size_t process(T &match_finder) {
-        size_t count;
+        size_t count = 0;
         size_t doc_i;
-        for (auto j = 0; j < text.size(); j++)
+        for (size_t j = 0; j < text.size(); j++)
         {    
-            if (j % (text.size() / PBWIDTH) == 0)
-                        printProgress((double) j / text.size());
+            if (j % (text.size() / PBWIDTH) == 0){
+                printProgress((double) j / text.size());
+            }
+                        
             // Start of MUM computation code
             doc_i = ref_build->doc_ends_rank(sa[j]);
             count += match_finder.update(j, bwt[j], doc_i, sa[j], lcp[j]);
