@@ -57,7 +57,7 @@ public:
 
         gsacak(&text[0], &sa[0], &lcp[0], nullptr, text.size());
         
-        bwt.resize(text.size()-1);
+        bwt.resize(text.size());
         for (size_t i = 0; i < text.size(); ++i) {
             bwt[i] = text[(sa[i] == 0 ? sa.size() : sa[i]) - 1];
         }
