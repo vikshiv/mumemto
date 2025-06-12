@@ -26,6 +26,7 @@
 #include <getopt.h>
 #include <queue>
 #include <read_arrays.hpp>
+#include <array>
 
 int build_main(int argc, char** argv) {
     /* main method for finding matches */
