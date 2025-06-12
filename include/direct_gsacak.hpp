@@ -92,10 +92,12 @@ public:
     size_t process(T &match_finder) {
         size_t count = 0;
         size_t doc_i;
-        for (size_t j = 0; j < text.size(); j++)
+        size_t text_size = text.size();
+        size_t pb_inc = text_size / PBWIDTH;
+        for (size_t j = 0; j < text_size; j++)
         {    
-            if (j % (text.size() / PBWIDTH) == 0){
-                printProgress((double) j / text.size());
+            if (j % pb_inc == 0){
+                printProgress((double) j / text_size);
             }
                         
             // Start of MUM computation code
