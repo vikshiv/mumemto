@@ -44,7 +44,7 @@ int build_main(int argc, char** argv) {
 
     // Declare ref_build first
     RefBuilder ref_build = (build_opts.from_parse_flag || build_opts.arrays_in_flag)
-        ? RefBuilder(build_opts.from_parse_flag ? build_opts.parse_prefix : build_opts.arrays_in, build_opts.use_rcomp)
+        ? RefBuilder(build_opts.from_parse_flag ? build_opts.parse_prefix.substr(0, build_opts.parse_prefix.length() - 4) : build_opts.arrays_in, build_opts.use_rcomp)
         : RefBuilder(build_opts.input_list, build_opts.output_prefix, build_opts.use_rcomp);
 
     // normalize and reconcile the input parameters
