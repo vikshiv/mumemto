@@ -178,13 +178,13 @@ void run_build_parse_cmd(BuildOptions* build_opts, HelperPrograms* helper_bins) 
     //     // command_stream << " -t " << build_opts->threads;
     // }
     // else {
-        std::string curr_exe = "";
-        command_stream << helper_bins->parseNT_bin << " "; // << " -i ";
-        command_stream << build_opts->output_ref << " ";
-        command_stream << "-w " << build_opts->pfp_w;
-        command_stream << " -p " << build_opts->hash_mod;
+        command_stream << helper_bins->parseNT_bin;
+        command_stream << " -f";
+        command_stream << " -w " << build_opts->pfp_w;
+        command_stream << " -p " << build_opts->hash_mod << " ";
+        command_stream << build_opts->output_ref;
+        
     // }
-    if (build_opts->is_fasta) {command_stream << " -f";}
 
     // std::cout << command_stream.str() << std::endl;
     // std::cout << "Executing this command: " << command_stream.str().c_str() << std::endl;

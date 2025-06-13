@@ -62,7 +62,6 @@ struct BuildOptions {
         size_t pfp_w = 10;
         size_t hash_mod = 100;
         // size_t threads = 0;
-        bool is_fasta = true;
         bool arrays_out = false;
         std::string  arrays_in = "";
         bool arrays_in_flag = false;
