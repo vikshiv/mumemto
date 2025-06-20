@@ -1,7 +1,7 @@
 import numpy as np
 from tqdm.auto import tqdm
 from collections import namedtuple
-import sys
+import sys, os
 
 MUM = namedtuple('MUM', ['length', 'starts', 'strands'])
 MUM_BLOCK = namedtuple('MUM_BLOCK', ['length', 'starts', 'strands', 'block'])
@@ -126,7 +126,7 @@ def unpack_flags(packed_value):
     """
     Unpack a uint16 value into individual flags.
     """
-    flag_labels = ['partial', 'coll_blocks', 'merge']
+    flag_labels = ['partial', 'coll_blocks', 'length32']
     # Convert uint16 to 16-bit binary representation
     bits = np.unpackbits(np.array([packed_value], dtype=np.uint16).view(np.uint8), bitorder='little')
     # Extract the last `len(flag_labels)` flags
@@ -137,7 +137,7 @@ def pack_flags(flags):
     """
     Pack flags into a single uint16 value.
     """
-    flag_labels = ['partial', 'coll_blocks', 'merge']
+    flag_labels = ['partial', 'coll_blocks', 'length32']
     bits = ([0] * (16 - len(flag_labels))) + [int(flags[f]) for f in flag_labels]
     # Pack into bytes and convert to uint16
     packed = np.packbits(bits, bitorder='little')
@@ -168,6 +168,13 @@ def serialize_coll_blocks(coll_blocks, num_mums):
 
 class MUMdata:
     def __init__(self, mumfile, lenfilter=0, subsample=1, sort=True, verbose=False):
+        ### set types for each data type
+        self.length_dtype = np.uint16
+        self.offset_dtype = np.int64
+        self.max_length = np.iinfo(self.length_dtype).max
+        self.max_offset = np.iinfo(self.offset_dtype).max
+        
+        ### parse input file
         if mumfile.endswith('.bumbl'):
             self.lengths, self.starts, self.strands, self.blocks = self.parse_bums(
                 mumfile, 
@@ -210,7 +217,7 @@ class MUMdata:
         """
         instance = cls.__new__(cls)
         instance.lengths = lengths
-        instance.starts = starts 
+        instance.starts = starts.astype(np.int64, copy=False) 
         instance.strands = strands
         instance.num_mums = len(lengths)
         instance.num_seqs = starts.shape[1] if instance.num_mums > 0 else 0
@@ -218,8 +225,7 @@ class MUMdata:
         instance.partial = -1 in starts
         return instance
         
-    @staticmethod
-    def parse_mums(mumfile, lenfilter=0, subsample=1, verbose=False):
+    def parse_mums(self, mumfile, lenfilter=0, subsample=1, verbose=False):
         count = 0
         lengths, starts, strands, coll_blocks, extra_fields = [], [], [], [], []
         with open(mumfile, 'r') as f:
@@ -238,13 +244,14 @@ class MUMdata:
                             coll_blocks.append(line[3])
                         if len(line) > 4:
                             extra_fields.append('\t'.join(line[4:]))
+                        if length > self.max_length:
+                            self.length_dtype = np.uint32
+                            self.max_length = np.iinfo(self.length_dtype).max
                 count += 1
+                
+        lengths = np.array(lengths, dtype=self.length_dtype)
         try:
-            lengths = np.array(lengths, dtype=np.uint16)
-        except OverflowError:
-            raise ValueError("MUM length must be less than 65,535bp")
-        try:
-            starts = np.array(starts, dtype=np.int64)
+            starts = np.array(starts, dtype=self.offset_dtype)
         except OverflowError:
             raise ValueError("MUM start position must be less than 2^63")
 
@@ -258,15 +265,17 @@ class MUMdata:
         
         return lengths, starts, np.array(strands, dtype=bool), blocks, extra_fields
         
-    @staticmethod
-    def parse_bums(bumfile, lenfilter=0, subsample=1):
+    def parse_bums(self, bumfile, lenfilter=0, subsample=1):
+        filesize = os.path.getsize(bumfile)
         with open(bumfile, 'rb') as f:
             flags = np.fromfile(f, count = 1, dtype=np.uint16)
             n_seqs, n_mums = np.fromfile(f, count = 2, dtype=np.uint64)
             flags = unpack_flags(flags)
-            start_dtype = np.int64
-            mum_lengths = np.fromfile(f, count = n_mums, dtype=np.uint16)
-            mum_starts = np.fromfile(f, count = n_seqs * n_mums, dtype=start_dtype).reshape(n_mums, n_seqs)
+            if flags['length32']:
+                self.length_dtype = np.uint32
+                self.max_length = np.iinfo(self.length_dtype).max
+            mum_lengths = np.fromfile(f, count = n_mums, dtype=self.length_dtype)
+            mum_starts = np.fromfile(f, count = n_seqs * n_mums, dtype=self.offset_dtype).reshape(n_mums, n_seqs)
             mum_strands = np.fromfile(f, count=np.ceil(n_seqs*n_mums/8).astype(int), dtype=np.uint8)
             mum_strands = np.unpackbits(mum_strands, count=n_mums * n_seqs).reshape(n_mums, n_seqs).astype(bool)
             if flags['coll_blocks']:
@@ -342,7 +351,9 @@ class MUMdata:
     
     def write_bums(self, filename, blocks=None):
         with open(filename, 'wb') as f:
-            f.write(pack_flags({'partial': self.partial, 'coll_blocks': True if blocks is not None else False, 'merge': False}).tobytes())
+            f.write(pack_flags({'partial': self.partial, 
+                                'coll_blocks': blocks is not None, 
+                                'length32': self.length_dtype == np.uint32}).tobytes())
             f.write(np.uint64(self.num_seqs).tobytes())
             f.write(np.uint64(self.num_mums).tobytes())
             f.write(self.lengths.tobytes())

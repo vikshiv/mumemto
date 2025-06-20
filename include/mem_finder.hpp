@@ -392,10 +392,10 @@ private:
         }
         
         if (binary) {
-            uint16_t length_uint16 = static_cast<uint16_t>(length);
-            bums_lengths.write(reinterpret_cast<const char*>(&length_uint16), sizeof(length_uint16));
-            std::vector<uint64_t> converted(offsets.begin(), offsets.end());
-            bums_starts.write(reinterpret_cast<const char*>(converted.data()), sizeof(uint64_t) * offsets.size());
+            uint32_t length_uint32 = static_cast<uint32_t>(length);
+            bums_lengths.write(reinterpret_cast<const char*>(&length_uint32), sizeof(length_uint32));
+            std::vector<int64_t> converted(offsets.begin(), offsets.end());
+            bums_starts.write(reinterpret_cast<const char*>(converted.data()), sizeof(int64_t) * offsets.size());
             bums_strands_vec.push_back(strand);
         }
         else {
@@ -447,7 +447,9 @@ private:
     inline uint16_t get_flags() {
         uint16_t flags = 0;
         if (num_distinct < num_docs)
-            flags |= 1 << 0; 
+            flags |= 1 << 2; 
+        // length32 flag is always set
+        flags |= 1 << 0;
         return flags;
     }
 
