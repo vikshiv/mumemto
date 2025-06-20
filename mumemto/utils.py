@@ -179,7 +179,9 @@ class MUMdata:
             self.lengths, self.starts, self.strands, self.blocks = self.parse_bums(
                 mumfile, 
                 lenfilter, 
-                subsample
+                subsample,
+                length_dtype=self.length_dtype,
+                offset_dtype=self.offset_dtype
             )
             self.extra_fields = None
         else:
@@ -187,7 +189,9 @@ class MUMdata:
                 mumfile, 
                 lenfilter, 
                 subsample,
-                verbose
+                verbose,
+                length_dtype=self.length_dtype,
+                offset_dtype=self.offset_dtype
             )
         self.num_mums = len(self.lengths)
         self.num_seqs = self.starts.shape[1] if self.num_mums > 0 else 0
@@ -207,7 +211,7 @@ class MUMdata:
         self.partial = -1 in self.starts
     
     @classmethod
-    def from_arrays(cls, lengths, starts, strands):
+    def from_arrays(cls, lengths, starts, strands, blocks=None):
         """Create a MUMdata object directly from arrays.
         
         Args:
@@ -221,11 +225,12 @@ class MUMdata:
         instance.strands = strands
         instance.num_mums = len(lengths)
         instance.num_seqs = starts.shape[1] if instance.num_mums > 0 else 0
-        instance.blocks = None
+        instance.blocks = blocks
         instance.partial = -1 in starts
         return instance
         
-    def parse_mums(self, mumfile, lenfilter=0, subsample=1, verbose=False):
+    @staticmethod
+    def parse_mums(mumfile, lenfilter=0, subsample=1, verbose=False, length_dtype=np.uint32, offset_dtype=np.int64):
         count = 0
         lengths, starts, strands, coll_blocks, extra_fields = [], [], [], [], []
         with open(mumfile, 'r') as f:
@@ -247,12 +252,12 @@ class MUMdata:
                 count += 1
                 
         try:
-            lengths = np.array(lengths, dtype=self.length_dtype)
+            lengths = np.array(lengths, dtype=length_dtype)
         except OverflowError:
             raise ValueError("MUM length must be less than 2^32")
         
         try:
-            starts = np.array(starts, dtype=self.offset_dtype)
+            starts = np.array(starts, dtype=offset_dtype)
         except OverflowError:
             raise ValueError("MUM start position must be less than 2^63")
 
@@ -265,15 +270,16 @@ class MUMdata:
             extra_fields = None
         
         return lengths, starts, np.array(strands, dtype=bool), blocks, extra_fields
-        
-    def parse_bums(self, bumfile, lenfilter=0, subsample=1):
+    
+    @staticmethod
+    def parse_bums(bumfile, lenfilter=0, subsample=1, length_dtype=np.uint32, offset_dtype=np.int64):
         filesize = os.path.getsize(bumfile)
         with open(bumfile, 'rb') as f:
             flags = np.fromfile(f, count = 1, dtype=np.uint16)
             n_seqs, n_mums = np.fromfile(f, count = 2, dtype=np.uint64)
             flags = unpack_flags(flags)
-            mum_lengths = np.fromfile(f, count = n_mums, dtype=self.length_dtype)
-            mum_starts = np.fromfile(f, count = n_seqs * n_mums, dtype=self.offset_dtype).reshape(n_mums, n_seqs)
+            mum_lengths = np.fromfile(f, count = n_mums, dtype=length_dtype)
+            mum_starts = np.fromfile(f, count = n_seqs * n_mums, dtype=offset_dtype).reshape(n_mums, n_seqs)
             mum_strands = np.fromfile(f, count=np.ceil(n_seqs*n_mums/8).astype(int), dtype=np.uint8)
             mum_strands = np.unpackbits(mum_strands, count=n_mums * n_seqs).reshape(n_mums, n_seqs).astype(bool)
             if flags['coll_blocks']:
@@ -351,7 +357,7 @@ class MUMdata:
         with open(filename, 'wb') as f:
             f.write(pack_flags({'partial': self.partial, 
                                 'coll_blocks': blocks is not None, 
-                                'length32': self.length_dtype == np.uint32}).tobytes())
+                                'length32': self.lengths.dtype == np.uint32}).tobytes())
             f.write(np.uint64(self.num_seqs).tobytes())
             f.write(np.uint64(self.num_mums).tobytes())
             f.write(self.lengths.tobytes())

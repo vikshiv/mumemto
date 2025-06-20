@@ -5,15 +5,15 @@ import numpy as np
 import argparse
 from tqdm.auto import tqdm
 try:
-    from utils import parse_mums_generator, unpack_flags, pack_flags, deserialize_coll_blocks, serialize_coll_blocks
+    from utils import parse_mums_generator, unpack_flags, pack_flags, deserialize_coll_blocks, serialize_coll_blocks, MUMdata
 except ImportError:
-    from mumemto.utils import parse_mums_generator, unpack_flags, pack_flags, deserialize_coll_blocks, serialize_coll_blocks
+    from mumemto.utils import parse_mums_generator, unpack_flags, pack_flags, deserialize_coll_blocks, serialize_coll_blocks, MUMdata
 
 def parse_arguments(args=None):    
     parser = argparse.ArgumentParser(description="Converts Mumemto mum and bumbl formats")
     parser.add_argument('--mums', '-m', dest='mumfile', help='path to *.mum file from mumemto')
     parser.add_argument('--bumbl', '-b', dest='bumfile', help='path to *.bumbl file from mumemto')
-
+    parser.add_argument('--length-upsize', '-l', dest='length_upsize', action='store_true', help='convert bumbl with 16 bit length to 32 bit (v1.3.1 onwards)')
     parser.add_argument('--fout','-o', dest='out', help='output fname')
     parser.add_argument('--verbose','-v', dest='verbose', help='verbose mode', action='store_true', default=False)
     parser.add_argument('--chunk-size','-c', dest='chunk_size', help='chunk size for writing output MUM file', default=8, type=int)
@@ -175,8 +175,21 @@ def bum_to_mum(bumfile, outfile, verbose=False, chunk_size=8):
         sys.stdout = os.fdopen(sys.stdout.fileno(), 'wb', 0)
         sys.exit(0)
 
+def length_upsize(args):
+    if args.out == "-":
+        args.out = args.bumfile.replace('.bumbl', '_32bit.bumbl')
+    mum_lengths, mum_starts, mum_strands, blocks = MUMdata.parse_bums(args.bumfile, length_dtype=np.uint16, offset_dtype=np.int64)
+    mum_lengths = mum_lengths.astype(np.uint32)
+    mumdata = MUMdata.from_arrays(mum_lengths, mum_starts, mum_strands, blocks=blocks)
+    if blocks is not None:
+        mumdata.write_bums(args.out)
+    else:
+        mumdata.write_bums(args.out)
+
 def main(args): 
-    if args.to_bum:
+    if args.length_upsize:
+        length_upsize(args)
+    elif args.to_bum:
         mum_to_bum(args.mumfile, args.out, verbose=args.verbose)
     else:
         bum_to_mum(args.bumfile, args.out, verbose=args.verbose, chunk_size=args.chunk_size)
