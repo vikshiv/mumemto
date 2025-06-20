@@ -169,7 +169,7 @@ def serialize_coll_blocks(coll_blocks, num_mums):
 class MUMdata:
     def __init__(self, mumfile, lenfilter=0, subsample=1, sort=True, verbose=False):
         ### set types for each data type
-        self.length_dtype = np.uint16
+        self.length_dtype = np.uint32
         self.offset_dtype = np.int64
         self.max_length = np.iinfo(self.length_dtype).max
         self.max_offset = np.iinfo(self.offset_dtype).max
@@ -244,12 +244,13 @@ class MUMdata:
                             coll_blocks.append(line[3])
                         if len(line) > 4:
                             extra_fields.append('\t'.join(line[4:]))
-                        if length > self.max_length:
-                            self.length_dtype = np.uint32
-                            self.max_length = np.iinfo(self.length_dtype).max
                 count += 1
                 
-        lengths = np.array(lengths, dtype=self.length_dtype)
+        try:
+            lengths = np.array(lengths, dtype=self.length_dtype)
+        except OverflowError:
+            raise ValueError("MUM length must be less than 2^32")
+        
         try:
             starts = np.array(starts, dtype=self.offset_dtype)
         except OverflowError:
@@ -271,9 +272,6 @@ class MUMdata:
             flags = np.fromfile(f, count = 1, dtype=np.uint16)
             n_seqs, n_mums = np.fromfile(f, count = 2, dtype=np.uint64)
             flags = unpack_flags(flags)
-            if flags['length32']:
-                self.length_dtype = np.uint32
-                self.max_length = np.iinfo(self.length_dtype).max
             mum_lengths = np.fromfile(f, count = n_mums, dtype=self.length_dtype)
             mum_starts = np.fromfile(f, count = n_seqs * n_mums, dtype=self.offset_dtype).reshape(n_mums, n_seqs)
             mum_strands = np.fromfile(f, count=np.ceil(n_seqs*n_mums/8).astype(int), dtype=np.uint8)

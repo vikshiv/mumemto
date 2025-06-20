@@ -54,7 +54,7 @@ def parse_arguments(args=None):
     return args
 
 def mum_to_bum(mumfile, outfile, verbose=False):
-    length_dtype = np.uint16
+    length_dtype = np.uint32
     start_dtype = np.int64
     
     parser = parse_mums_generator(mumfile, verbose=verbose, return_blocks=True)
@@ -67,8 +67,8 @@ def mum_to_bum(mumfile, outfile, verbose=False):
     is_partial = False
     for l, starts, strands, block in parser:
         # Write length as uint64
-        if l > 65535:
-            raise ValueError("MUM length must be less than 65535")
+        if l > np.iinfo(length_dtype).max:
+            raise ValueError("MUM length must be less than 2^32")
         lengths_out.write(length_dtype(l).tobytes())
         
         # Write starts as packed int64 array
@@ -93,7 +93,7 @@ def mum_to_bum(mumfile, outfile, verbose=False):
     starts_out.close()
     strands_out.close()
     
-    flags = pack_flags({'partial': is_partial, 'coll_blocks': len(blocks_list) > 0, 'merge': False})
+    flags = pack_flags({'partial': is_partial, 'coll_blocks': len(blocks_list) > 0, 'length32': True})
     
     with open(outfile, 'wb') as out:
         out.write(flags.tobytes())
@@ -117,8 +117,8 @@ def mum_to_bum(mumfile, outfile, verbose=False):
     os.remove(outfile + '.strands')
 
 def bum_to_mum(bumfile, outfile, verbose=False, chunk_size=8):
-    length_size = 2
-    length_dtype = np.uint16
+    length_size = 4
+    length_dtype = np.uint32
     if outfile == "-":
         outfile = sys.stdout
     else:
