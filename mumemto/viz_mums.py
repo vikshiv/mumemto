@@ -52,10 +52,13 @@ def parse_arguments(args=None):
         args.prefix = os.path.splitext(args.mumfile)[0]
     elif args.prefix:
         if args.prefix.endswith('.mums') or args.prefix.endswith('.bumbl'):
-            args.mumfile = args.prefix
             args.prefix = os.path.splitext(args.prefix)[0]
-        else:
+        if os.path.exists(args.prefix + '.mums'):
             args.mumfile = args.prefix + '.mums'
+        elif os.path.exists(args.prefix + '.bumbl'):
+            args.mumfile = args.prefix + '.bumbl' 
+        else:
+            parser.error("No *.mums or *.bumbl file found for prefix %s" % args.prefix)
     else:
         parser.error("Either --mums or --prefix must be provided")
         

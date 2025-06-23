@@ -250,11 +250,9 @@ std::vector<std::string> split(std::string input, char delim) {
 
 int is_file(std::string path) {
     /* Checks if the path is a valid file-path */
-    std::ifstream test_file(path.data());
-    if (test_file.fail()) {return 0;}
-    
-    test_file.close();
-    return 1;
+    std::cout << "Checking if " << path << " is a valid file-path" << std::endl;
+    std::cout << "is_regular_file: " << std::filesystem::is_regular_file(path) << std::endl;
+    return std::filesystem::is_regular_file(path);
 }
 
 int is_dir(std::string path) {
