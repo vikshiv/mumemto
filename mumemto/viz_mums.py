@@ -17,12 +17,13 @@ def parse_arguments(args=None):
     # parser.add_argument('--mums', '-m', dest='mumfile', help='path to *.mum file from mumemto', required=True)
     # parser.add_argument('--lengths','-l', dest='lens', help='lengths file, first column is seq length in order of filelist', required=True)
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--input-prefix', '-i', dest='prefix', help='prefix for filelist, mums, and lengths files')
-    group.add_argument('--mums', '-m', dest='mumfile', help='path to *.mum file from mumemto')
+    group.add_argument('--input-prefix', '-i', dest='prefix', help='prefix for filelist, mums, and lengths files (uses *.mums file over *.bumbl file if both exist)')
+    group.add_argument('--mums', '-m', dest='mumfile', help='path to *.mums (or *.bumbl) file from mumemto')
     
     parser.add_argument('--lengths','-l', dest='lens', help='lengths file, first column is seq length in order of filelist')
     
-    parser.add_argument('--filelist', '-f', dest='filelist', help='if the filelist is provided, then FASTA filenames are used as labels')
+    parser.add_argument('--filelist', '-f', dest='filelist', help='filelist defines the order of seqs in the plot. First col = full path from lengths file, second col = label in plot')
+    parser.add_argument('--labels', '-n', dest='labels', help='labels for each sequence in the plot, one a line, matching the order of the filelist (if given) or the lengths file')
     parser.add_argument('--len-filter','-L', dest='lenfilter', help='only plot MUMs longer than threshold', default=0, type=int)
     parser.add_argument('--subsample','-s', dest='subsample', help='subsample every Nth mum', default=1, type=int)
     parser.add_argument('--center','-c', dest='center', action='store_true', help='center plot', default=False)
@@ -50,9 +51,14 @@ def parse_arguments(args=None):
     if args.mumfile:
         args.prefix = os.path.splitext(args.mumfile)[0]
     elif args.prefix:
-        if args.prefix.endswith('.mums'):
-            args.prefix = args.prefix[:-5]
-        args.mumfile = args.prefix + '.mums'
+        if args.prefix.endswith('.mums') or args.prefix.endswith('.bumbl'):
+            args.prefix = os.path.splitext(args.prefix)[0]
+        if os.path.exists(args.prefix + '.mums'):
+            args.mumfile = args.prefix + '.mums'
+        elif os.path.exists(args.prefix + '.bumbl'):
+            args.mumfile = args.prefix + '.bumbl' 
+        else:
+            parser.error("No *.mums or *.bumbl file found for prefix %s" % args.prefix)
     else:
         parser.error("Either --mums or --prefix must be provided")
         
@@ -148,23 +154,23 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
     fig, ax = plt.subplots()
     max_length = max(genome_lengths)
     # Plot genome lines based on mode
-    if args.mode == 'normal':
+    if args.mode == 'normal' or args.mode == 'delineated':
         # Just plot simple genome lines
         for idx, g in enumerate(genome_lengths):
             ax.plot([centering[idx] + 0, centering[idx] + g], [idx, idx], 
                     alpha=0.2, linewidth=0.75, c='black')
             
-    elif args.mode == 'delineated':
-        # Plot lines with delineators for multifasta
-        for idx in range(len(args.multilengths)):
-            cur_offsets = np.cumsum(args.multilengths[idx])
-            last_offset = 0
-            for i, offset in enumerate([0] + cur_offsets[:-1]):
-                ax.plot([centering[idx] + offset, centering[idx] + offset], 
-                        [idx - 0.25, idx + 0.25], alpha=0.5, linewidth=0.25, color=cm.tab20((i+1) % 20))
-                ax.plot([centering[idx] + last_offset, centering[idx] + offset], 
-                        [idx, idx], alpha=0.2, linewidth=0.75, color=cm.tab20(i % 20))
-                last_offset = offset
+    # elif args.mode == 'delineated':
+    #     # Plot lines with delineators for multifasta
+    #     for idx in range(len(args.multilengths)):
+    #         cur_offsets = np.cumsum(args.multilengths[idx])
+    #         last_offset = 0
+    #         for i, offset in enumerate([0] + cur_offsets[:-1]):
+    #             # ax.plot([centering[idx] + offset, centering[idx] + offset], 
+    #             #         [idx - 0.25, idx + 0.25], alpha=1, linewidth=0.25, color=cm.tab20((i+1) % 20))
+    #             ax.plot([centering[idx] + last_offset, centering[idx] + offset], 
+    #                     [idx, idx], alpha=0.2, linewidth=0.75, color=cm.tab20(i % 20))
+    #             last_offset = offset
                 
     elif args.mode == 'gapped':
         # Plot with gaps between subsequences
@@ -187,10 +193,22 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
 
     ax.add_collection(PolyCollection(polygons, linewidths=args.linewidth, alpha=args.alpha, edgecolors=colors, facecolors=colors))
     
+    
+    if args.mode == 'delineated':
+        # Plot lines with delineators for multifasta
+        for idx in range(len(args.multilengths)):
+            cur_offsets = np.cumsum(args.multilengths[idx])
+            last_offset = 0
+            for i, offset in enumerate([0] + cur_offsets[:-1]):
+                ax.plot([centering[idx] + offset, centering[idx] + offset], 
+                        [idx - 0.25, idx + 0.25], alpha=1, linewidth=0.25, color='red')
+                last_offset = offset
+            
+            
     ax.yaxis.set_ticks(list(range(len(genome_lengths))))
     ax.tick_params(axis='y', which='both',length=0)
     if genomes:
-        ax.set_yticklabels(genomes)
+        ax.set_yticklabels(genomes, fontsize=8)
     else:
         ax.yaxis.set_ticklabels([])
     if args.mode == 'gapped':
@@ -277,8 +295,11 @@ def main(args):
             if args.mode == 'gapped' and len(set([len(o) for o in offset])) > 1:
                 print('Warning: gapped mode requires the same number of sequences per input FASTA file. Using delineated mode instead.', file=sys.stderr)
                 args.mode = 'delineated'
-            else:   
+                args.multilengths = offset
+            elif args.mode == 'gapped':   
                 args.multilengths = np.array(offset)
+            else:
+                args.multilengths = offset
         except ValueError:
             print('Warning: Multi-FASTA lengths not available in %s. Treating input FASTAs as a single sequence instead.' % args.lens, file=sys.stderr)
             args.mode = 'normal'
@@ -288,18 +309,42 @@ def main(args):
     
     if args.mode == 'gapped':
         args.spacer = args.spacer * args.multilengths.max(axis=0).max()
+    
     if args.filelist:
-        genome_names = get_seq_paths(args.filelist)
-        genome_names = [os.path.splitext(os.path.basename(l))[0] for l in genome_names]
+        cur_order = get_seq_paths(args.lens)
+        file_order = [l.split()[0] for l in open(args.filelist, 'r').read().splitlines()]
+        try:
+            order = np.array([cur_order.index(l) for l in file_order])
+        except ValueError:
+            print(f'Error: sequence in filelist not found in lengths file. Ensure the filelist paths match the lengths file paths exactly.', file=sys.stderr)
+            sys.exit(1)
+        seq_lengths = [seq_lengths[i] for i in order]
+        if args.mode == 'gapped':
+            args.multilengths = args.multilengths[order]
+        elif args.mode == 'delineated':
+            args.multilengths = [args.multilengths[i] for i in order]
+    
+    if args.labels:
+        if args.labels.endswith('.lengths'):
+            genome_names = [os.path.splitext(os.path.basename(l))[0] for l in get_seq_paths(args.labels)]
+            if args.filelist:
+                genome_names = [genome_names[i] for i in order]
+        else:
+            genome_names = open(args.labels, 'r').read().splitlines()
     else:
         genome_names = None
-    max_length = max(seq_lengths)
-    
+        
     # Use new MUM class
     mums = MUMdata(args.mumfile, lenfilter=args.lenfilter, subsample=args.subsample, verbose=args.verbose)
     if args.verbose:
         print(f'Found {mums.num_mums} MUMs', file=sys.stderr)
 
+    if args.filelist:
+        mums.starts = mums.starts[:, order]
+        mums.strands = mums.strands[:, order]
+        
+    max_length = max(seq_lengths)
+    
     centering = [0] * len(seq_lengths)
     if args.center:
         centering = [(max_length - g) / 2 for g in seq_lengths]

@@ -26,6 +26,7 @@
 #include <getopt.h>
 #include <queue>
 #include <read_arrays.hpp>
+#include <array>
 
 int build_main(int argc, char** argv) {
     /* main method for finding matches */
@@ -44,7 +45,7 @@ int build_main(int argc, char** argv) {
 
     // Declare ref_build first
     RefBuilder ref_build = (build_opts.from_parse_flag || build_opts.arrays_in_flag)
-        ? RefBuilder(build_opts.from_parse_flag ? build_opts.parse_prefix : build_opts.arrays_in, build_opts.use_rcomp)
+        ? RefBuilder(build_opts.from_parse_flag ? build_opts.parse_prefix.substr(0, build_opts.parse_prefix.length() - 4) : build_opts.arrays_in, build_opts.use_rcomp)
         : RefBuilder(build_opts.input_list, build_opts.output_prefix, build_opts.use_rcomp);
 
     // normalize and reconcile the input parameters
@@ -177,13 +178,13 @@ void run_build_parse_cmd(BuildOptions* build_opts, HelperPrograms* helper_bins) 
     //     // command_stream << " -t " << build_opts->threads;
     // }
     // else {
-        std::string curr_exe = "";
-        command_stream << helper_bins->parseNT_bin << " "; // << " -i ";
-        command_stream << build_opts->output_ref << " ";
-        command_stream << "-w " << build_opts->pfp_w;
-        command_stream << " -p " << build_opts->hash_mod;
+        command_stream << helper_bins->parseNT_bin;
+        command_stream << " -f";
+        command_stream << " -w " << build_opts->pfp_w;
+        command_stream << " -p " << build_opts->hash_mod << " ";
+        command_stream << build_opts->output_ref;
+        
     // }
-    if (build_opts->is_fasta) {command_stream << " -f";}
 
     // std::cout << command_stream.str() << std::endl;
     // std::cout << "Executing this command: " << command_stream.str().c_str() << std::endl;
@@ -249,11 +250,9 @@ std::vector<std::string> split(std::string input, char delim) {
 
 int is_file(std::string path) {
     /* Checks if the path is a valid file-path */
-    std::ifstream test_file(path.data());
-    if (test_file.fail()) {return 0;}
-    
-    test_file.close();
-    return 1;
+    std::cout << "Checking if " << path << " is a valid file-path" << std::endl;
+    std::cout << "is_regular_file: " << std::filesystem::is_regular_file(path) << std::endl;
+    return std::filesystem::is_regular_file(path);
 }
 
 int is_dir(std::string path) {

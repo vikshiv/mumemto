@@ -111,7 +111,7 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
 RefBuilder::RefBuilder(std::string output_prefix, bool use_rcomp): use_revcomp(use_rcomp), output_prefix(output_prefix) {
     /* Alternative constructor for running from the lengths file */
     from_parse = true;
-    std::string lengths_fname = output_prefix.substr(0, output_prefix.length() - 4) + ".lengths";
+    std::string lengths_fname = output_prefix + ".lengths";
     if (!is_file(lengths_fname)) {
         FATAL_ERROR("Lengths file required for using intermediate PFP files. File should match parse prefix: %s", lengths_fname.data());}
     std::ifstream lengths_fd(lengths_fname.data(), std::ifstream::in);

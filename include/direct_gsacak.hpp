@@ -57,7 +57,7 @@ public:
 
         gsacak(&text[0], &sa[0], &lcp[0], nullptr, text.size());
         
-        bwt.resize(text.size()-1);
+        bwt.resize(text.size());
         for (size_t i = 0; i < text.size(); ++i) {
             bwt[i] = text[(sa[i] == 0 ? sa.size() : sa[i]) - 1];
         }
@@ -90,12 +90,16 @@ public:
 
     template <class T>
     size_t process(T &match_finder) {
-        size_t count;
+        size_t count = 0;
         size_t doc_i;
-        for (auto j = 0; j < text.size(); j++)
+        size_t text_size = text.size();
+        size_t pb_inc = text_size / PBWIDTH;
+        for (size_t j = 0; j < text_size; j++)
         {    
-            if (j % (text.size() / PBWIDTH) == 0)
-                        printProgress((double) j / text.size());
+            if (j % pb_inc == 0){
+                printProgress((double) j / text_size);
+            }
+                        
             // Start of MUM computation code
             doc_i = ref_build->doc_ends_rank(sa[j]);
             count += match_finder.update(j, bwt[j], doc_i, sa[j], lcp[j]);

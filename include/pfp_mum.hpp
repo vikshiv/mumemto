@@ -30,7 +30,7 @@
                                   std::fprintf(stderr, "\n");} while (0)
 
 // Defintions
-#define PFPMUM_VERSION "1.3.0"
+#define PFPMUM_VERSION "1.3.1"
 
 #define MAXLCPVALUE 65535 // 2^16 - 1
 #define MAXDOCS 65535
@@ -62,7 +62,6 @@ struct BuildOptions {
         size_t pfp_w = 10;
         size_t hash_mod = 100;
         // size_t threads = 0;
-        bool is_fasta = true;
         bool arrays_out = false;
         std::string  arrays_in = "";
         bool arrays_in_flag = false;

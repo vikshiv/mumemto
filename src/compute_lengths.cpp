@@ -33,11 +33,7 @@ bool endsWith(const std::string& str, const std::string& suffix) {
 
 int is_file(std::string path) {
     /* Checks if the path is a valid file-path */
-    std::ifstream test_file(path.data());
-    if (test_file.fail()) {return 0;}
-    
-    test_file.close();
-    return 1;
+    return std::filesystem::is_regular_file(path);
 }
 
 void write_length_files(const std::vector<std::string>& files,

@@ -72,10 +72,11 @@ public:
     template <class T>
     size_t process(T &match_finder) {
         size_t count;
+        size_t pb_inc = ref_build->total_length / PBWIDTH;
         for (auto j = 0; j < ref_build->total_length; j++)
         {    
-            if (j % (ref_build->total_length / PBWIDTH) == 0)
-                        printProgress((double) j / ref_build->total_length);
+            if (j % pb_inc == 0)
+                printProgress((double) j / ref_build->total_length);
             // Start of MUM computation code
             uint8_t bwt_i = get_BWT_offset();
             size_t sa_i = get_SA_offset();

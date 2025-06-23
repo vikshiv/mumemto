@@ -37,6 +37,37 @@ def parse_arguments(args=None):
         sys.exit(1)
     return args
     
+def merge_lengths(args):
+    if not args.output.endswith('.mums'):
+        args.output += '.mums'
+    out = open(args.output.replace('.mums', '.lengths'), 'w')
+    with open(args.mum_files[0].replace('.mums', '.lengths'), 'r') as f:
+        anchor_path = f.readline().split()[0]
+    first_file = True
+    lines = []
+    for m in args.mum_files:
+        with open(m.replace('.mums', '.lengths'), 'r') as f:                
+            for l in f.read().splitlines():
+                l = l.split()
+                if first_file or l[0] != anchor_path:
+                    lines.append(l)
+        first_file = False
+    entry_count = np.array([len(l) for l in lines])
+    # all complex or simple lengths, just concatenate them
+    if np.all(entry_count == 3) or np.all(entry_count == 2):
+        out.write('\n'.join([' '.join(l) for l in lines]))
+    # mix of simple and complex, convert simple to complex entries
+    else:
+        new_lines = []
+        for l in lines:
+            if len(l) == 3:
+                new_lines.append(l)
+            else:
+                new_lines.append([l[0], '*', l[1]])
+                new_lines.append([l[0], os.path.basename(l[0]), l[1]])
+        out.write('\n'.join([' '.join(l) for l in new_lines]))
+    out.close()
+    
 def remove_start_dollar(mums, s1_bv):
     new_mums = []
     l, starts, strands = mums
@@ -101,6 +132,7 @@ def main(args):
         if args.merged_mums is not None:
             print("Error: -m is only for string merging, but anchor-based merging detected. Ignoring -m.", file=sys.stderr)
         run_anchor_merger(args)
+        merge_lengths(args)
         sys.exit(0)
 
     threshold_exists = all([os.path.exists(m.replace('.mums', '.thresh')) for m in args.mum_files])
@@ -212,10 +244,13 @@ def main(args):
     #     except BrokenPipeError:
     #         sys.stdout = os.fdopen(sys.stdout.fileno(), 'wb', 0)
     #         sys.exit(0)
-    with open(args.output.replace('.mums', '.lengths'), 'w') as out:
-        for m in args.mum_files:
-            with open(m.replace('.mums', '.lengths'), 'r') as f:
-                out.write(f.read().strip() + '\n')
+    
+    # with open(args.output.replace('.mums', '.lengths'), 'w') as out:
+    #     for m in args.mum_files:
+    #         with open(m.replace('.mums', '.lengths'), 'r') as f:
+    #             out.write(f.read().strip() + '\n')
+    merge_lengths(args)
+    
     if cleanup:
         for f in args.mum_files:
             os.remove(f.replace('.mums', '_mums.fa'))

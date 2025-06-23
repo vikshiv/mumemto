@@ -107,6 +107,7 @@ public:
         phrase_suffix_t curr;
         phrase_suffix_t prev;
         size_t count = 0;
+        size_t pb_inc = pf.n / PBWIDTH;
         inc(curr);
         while (curr.i < pf.dict.saD.size())
         {
@@ -156,7 +157,7 @@ public:
                 bool first = true;
                 while (!pq.empty())
                 {
-                    if (j % (pf.n / PBWIDTH) == 0)
+                    if (j % pb_inc == 0)
                         printProgress((double) j / pf.n);
                     auto curr_occ = pq.top();
                     pq.pop();
