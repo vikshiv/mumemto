@@ -17,8 +17,8 @@ def parse_arguments(args=None):
     # parser.add_argument('--mums', '-m', dest='mumfile', help='path to *.mum file from mumemto', required=True)
     # parser.add_argument('--lengths','-l', dest='lens', help='lengths file, first column is seq length in order of filelist', required=True)
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--input-prefix', '-i', dest='prefix', help='prefix for filelist, mums, and lengths files')
-    group.add_argument('--mums', '-m', dest='mumfile', help='path to *.mum file from mumemto')
+    group.add_argument('--input-prefix', '-i', dest='prefix', help='prefix for filelist, mums, and lengths files (uses *.mums file over *.bumbl file if both exist)')
+    group.add_argument('--mums', '-m', dest='mumfile', help='path to *.mums (or *.bumbl) file from mumemto')
     
     parser.add_argument('--lengths','-l', dest='lens', help='lengths file, first column is seq length in order of filelist')
     
@@ -51,9 +51,11 @@ def parse_arguments(args=None):
     if args.mumfile:
         args.prefix = os.path.splitext(args.mumfile)[0]
     elif args.prefix:
-        if args.prefix.endswith('.mums'):
-            args.prefix = args.prefix[:-5]
-        args.mumfile = args.prefix + '.mums'
+        if args.prefix.endswith('.mums') or args.prefix.endswith('.bumbl'):
+            args.mumfile = args.prefix
+            args.prefix = os.path.splitext(args.prefix)[0]
+        else:
+            args.mumfile = args.prefix + '.mums'
     else:
         parser.error("Either --mums or --prefix must be provided")
         
