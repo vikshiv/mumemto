@@ -22,7 +22,7 @@ def parse_arguments(args=None):
     
     parser.add_argument('--lengths','-l', dest='lens', help='lengths file, first column is seq length in order of filelist')
     
-    parser.add_argument('--filelist', '-f', dest='filelist', help='filelist defines the order of seqs in the plot. First col = full path from lengths file, second col = label in plot')
+    parser.add_argument('--filelist', '-f', dest='filelist', help='filelist defines the order of seqs in the plot. First col = full path from lengths file')
     parser.add_argument('--labels', '-n', dest='labels', help='labels for each sequence in the plot, one a line, matching the order of the filelist (if given) or the lengths file')
     parser.add_argument('--len-filter','-L', dest='lenfilter', help='only plot MUMs longer than threshold', default=0, type=int)
     parser.add_argument('--subsample','-s', dest='subsample', help='subsample every Nth mum', default=1, type=int)
