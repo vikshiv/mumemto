@@ -23,7 +23,7 @@ conda activate mumemto_env
 conda install -c bioconda mumemto
 ```
 > [!NOTE]
->  MacOS is not yet supported for the main Mumemto multi-MUM finding module. The downstream python modules are functional on MacOS, so we include arm and osx-64 Conda installations. However, we recommend using Docker for running Mumemto on MacOS.
+>  When running Mumemto on MacOS, the environment variable `PFPMUM_BUILD_DIR` must be set manually to the path where Mumemto is installed. This can be done with `export PFPMUM_BUILD_DIR=$(dirname $(which mumemto))`.
 
 
 ### Docker/Singularity
