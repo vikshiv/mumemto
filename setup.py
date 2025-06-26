@@ -89,7 +89,7 @@ def read_requirements():
 
 setup(
     name="mumemto",
-    version="1.3.1",
+    version="1.3.2",
     packages=find_packages(),
     install_requires=read_requirements(),
     scripts=['mumemto/mumemto'],  # Only include the Python script here

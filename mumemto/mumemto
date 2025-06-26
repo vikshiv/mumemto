@@ -5,7 +5,7 @@ import subprocess
 import os
 from importlib import import_module
 
-MUMEMTO_VERSION = "1.3.1"
+MUMEMTO_VERSION = "1.3.2"
 
 def run_mumemto(args):
     """Run the C++ executable with given args"""
@@ -148,7 +148,21 @@ def run_merge(args):
             print(f"Error: mumemto not installed. Please run mumemto/merge_mums.py directly.", file=sys.stderr)
             sys.exit(1)
         subprocess.run([sys.executable, script] + args)
-        
+      
+def run_bed(args):
+    """Convert MUM file to BED file"""
+    try:
+        bed = import_module('mumemto.mum_to_bed')
+        parsed_args = bed.parse_arguments(args)
+        bed.main(parsed_args)
+    except ImportError:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        script = os.path.join(script_dir, '_mumemto', 'mum_to_bed.py')
+        if not os.path.exists(script):
+            print(f"Error: mumemto not installed. Please run mumemto/mum_to_bed.py directly.", file=sys.stderr)
+            sys.exit(1)
+        subprocess.run([sys.executable, script] + args)
+          
 def main():
     if len(sys.argv) == 1:
         print("\nmumemto - find maximal [unique | exact] matches using PFP.\n", file=sys.stderr)
@@ -163,7 +177,8 @@ def main():
               "\textract\t\t\textract MUMs to a FASTA file\n" + 
               "\tlabel\t\t\tlabel MUMs with contig information\n" +
               "\tlengths\t\t\trecompute sequence lengths from a filelist\n" +
-              "\tmerge\t\t\tmerge MUMs using anchor-based or string-based merging\n",
+              "\tmerge\t\t\tmerge MUMs using anchor-based or string-based merging\n" +
+              "\tbed\t\t\tconvert MUMs to BED file\n",
               file=sys.stderr)
         sys.exit(0)
 
@@ -191,6 +206,8 @@ def main():
         run_lengths(args)
     elif command == 'merge':
         run_merge(args)
+    elif command == 'bed':
+        run_bed(args)
     else:
         # If no special command, pass all args to mumemto executable
         run_mumemto(sys.argv[1:])
