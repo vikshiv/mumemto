@@ -179,7 +179,7 @@ void run_build_parse_cmd(BuildOptions* build_opts, HelperPrograms* helper_bins) 
     // }
     // else {
         command_stream << helper_bins->parseNT_bin;
-        command_stream << " -f";
+        command_stream << " -f -P";
         command_stream << " -w " << build_opts->pfp_w;
         command_stream << " -p " << build_opts->hash_mod << " ";
         command_stream << build_opts->output_ref;
