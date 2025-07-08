@@ -148,7 +148,7 @@ def main(args):
     premerge_mums = [list(parse_mums_generator(m)) for m in args.mum_files]
     
     ### get lengths
-    mum_lens = get_sequence_lengths(args.merged_mums.replace('.mums', '.lengths'), multilengths=True)
+    mum_lens = get_sequence_lengths(args.merged_mums[:-5] + '.lengths', multilengths=True)
 
     NUM_SETS = len(mum_lens)
     
