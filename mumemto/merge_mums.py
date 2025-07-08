@@ -254,7 +254,8 @@ def main(args):
     if cleanup:
         for f in args.mum_files:
             os.remove(f.replace('.mums', '_mums.fa'))
-        os.remove(args.merged_mums.replace('.mums', '.lengths'))
+        os.remove(args.merged_mums)
+        os.remove(args.merged_mums[:-5] + '.lengths')
         
 if __name__ == "__main__":
     args = parse_arguments()
