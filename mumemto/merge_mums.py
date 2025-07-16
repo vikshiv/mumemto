@@ -135,11 +135,13 @@ def run_merger(args):
     else:
         extract_script = 'extract_mums'
         mumemto_script = 'mumemto_exec'
-    for f in tqdm(args.mum_files, desc="Extracting MUM sequences", disable=not args.verbose):
+    pbar = tqdm(args.mum_files, desc="Extracting MUM sequences", disable=not args.verbose)
+    for f in pbar:
         cmd = [extract_script, '-m', f]
         result = subprocess.run(cmd)
         if result.returncode == 1:
-            print("Error: Cannot merge partial MUMs. Filter the *.mums file to only include strict MUMs before merging. Cleaning up...", file=sys.stderr)
+            pbar.close()
+            print("Error: Partial MUMs detected. Aborting merge. Cleaning up...", file=sys.stderr)
             for f in args.mum_files:
                 if os.path.exists(f.replace('.mums', '_mums.fa')):
                     os.remove(f.replace('.mums', '_mums.fa'))

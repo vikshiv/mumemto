@@ -81,13 +81,19 @@ std::vector<std::pair<size_t, size_t>> parse_mums(std::string mum_file_path) {
     // read in the mum file
     size_t cur_len;
     size_t cur_start;
+    std::string offset_string;
     size_t tab_index;
     size_t comma_index;
     while (std::getline(mum_file, line)) {
         tab_index = line.find_first_of("\t");
         comma_index = line.find_first_of(",");
         cur_len = std::stoul(line.substr(0, tab_index));
-        cur_start = std::stoul(line.substr(tab_index + 1, comma_index));
+        offset_string = line.substr(tab_index + 1, comma_index - (tab_index + 1));
+        if (offset_string.empty()) {
+            std::cerr << "Error: Cannot extract sequences from partial MUMs. Filter the *.mums file to only include strict MUMs before extracting." << std::endl;
+            exit(1);
+        }
+        cur_start = std::stoul(offset_string);
         mum_list.push_back(std::make_pair(cur_start, cur_len));
     }
     return mum_list;

@@ -19,7 +19,7 @@ def parse_arguments(args=None):
     parser.add_argument('--fout','-o', dest='filename', help='plot fname (default: input_prefix + _sorted)')
     parser.add_argument('--max-gap-len','-g', dest='max_break', help='maximum break between collinear mums within a collinear block (default: 1kbp)', default=1000, type=int)
     parser.add_argument('--verbose','-v', dest='verbose', help='verbose mode', action='store_true', default=False)
-    parser.add_argument('--min-singleton-length', '-m', dest='min_singleton_length', type=int, default=None, help='Minimum length of singleton blocks to include (default: no singletons)')
+    parser.add_argument('--min-singleton-length', dest='min_singleton_length', type=int, default=None, help='Minimum length of singleton blocks to include (default: no singletons)')
     
     if args is None:
         args = parser.parse_args()
@@ -37,7 +37,7 @@ def parse_arguments(args=None):
             args.mumfile = args.prefix + '.mums'
         else:
             parser.error("Either --mums or --prefix must be provided")
-            
+
     if args.filename is None:
         args.filename = os.path.splitext(args.mumfile)[0] + '_sorted' + os.path.splitext(args.mumfile)[1]
     
