@@ -44,6 +44,9 @@ public:
     std::vector<int_t> lcp;
     std::vector<uint8_t> bwt;
 
+    // Default constructor
+    gsacak_lcp() {}
+    
     gsacak_lcp(std::string filename, RefBuilder* ref_build, bool write_arrays = false) : 
                 ref_build(ref_build)
     {
