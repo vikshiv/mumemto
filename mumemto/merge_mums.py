@@ -190,7 +190,7 @@ def main(args):
     premerge_mums = [list(parse_mums_generator(m)) for m in args.mum_files]
     
     ### get lengths
-    mum_lens = get_sequence_lengths(args.merged_mums[:-5] + '.lengths', multilengths=True)
+    mum_lens = get_sequence_lengths(os.path.splitext(args.merged_mums)[0] + '.lengths', multilengths=True)
 
     NUM_SETS = len(mum_lens)
     
@@ -297,7 +297,7 @@ def main(args):
         for f in args.mum_files:
             os.remove(f.replace('.mums', '_mums.fa'))
         os.remove(args.merged_mums)
-        os.remove(args.merged_mums[:-5] + '.lengths')
+        os.remove(os.path.splitext(args.merged_mums)[0] + '.lengths')
         
 if __name__ == "__main__":
     args = parse_arguments()
