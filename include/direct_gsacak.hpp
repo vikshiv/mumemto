@@ -86,13 +86,14 @@ public:
             outfile = filename + std::string(".bwt");
             write_file(outfile.c_str(), bwt);
         }    
+        std::vector<uint8_t>().swap(text);
     }
 
     template <class T>
     size_t process(T &match_finder) {
         size_t count = 0;
         size_t doc_i;
-        size_t text_size = text.size();
+        size_t text_size = bwt.size();
         size_t pb_inc = text_size / PBWIDTH;
         for (size_t j = 0; j < text_size; j++)
         {    
