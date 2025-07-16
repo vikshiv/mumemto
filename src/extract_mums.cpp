@@ -23,6 +23,7 @@ void print_usage() {
     std::fprintf(stderr, "Options:\n");
     std::fprintf(stderr, "\t%-32sprints this usage message\n", "-h, --help");
     std::fprintf(stderr, "\t%-22s%-10spath to a mum file\n", "-m, --mums", "[FILE]");
+    std::fprintf(stderr, "\t%-22s%-10spath to a length file (optional, uses associated length file if not provided)\n", "-l, --lengths", "[FILE]");
     std::fprintf(stderr, "\t%-22s%-10soutput path\n", "-o, --output", "[FILE]");
     std::fprintf(stderr, "\t%-32sdo not add terminator (#) to end of each MUM sequence\n", "-t, --no-terminator");
 }
@@ -80,13 +81,19 @@ std::vector<std::pair<size_t, size_t>> parse_mums(std::string mum_file_path) {
     // read in the mum file
     size_t cur_len;
     size_t cur_start;
+    std::string offset_string;
     size_t tab_index;
     size_t comma_index;
     while (std::getline(mum_file, line)) {
         tab_index = line.find_first_of("\t");
         comma_index = line.find_first_of(",");
         cur_len = std::stoul(line.substr(0, tab_index));
-        cur_start = std::stoul(line.substr(tab_index + 1, comma_index));
+        offset_string = line.substr(tab_index + 1, comma_index - (tab_index + 1));
+        if (offset_string.empty()) {
+            std::cerr << "Error: Cannot extract sequences from partial MUMs. Filter the *.mums file to only include strict MUMs before extracting." << std::endl;
+            exit(1);
+        }
+        cur_start = std::stoul(offset_string);
         mum_list.push_back(std::make_pair(cur_start, cur_len));
     }
     return mum_list;
@@ -108,8 +115,9 @@ int extract_mums(std::string mum_file_path, std::string length_file_path, std::s
         output_file << ">mum_" << count << "\n";
         output_file << ref_seq.substr(mum.first, mum.second);
         if (add_terminator) {
-            output_file << "#\n";
+            output_file << "#";
         }
+        output_file << "\n";
         count++;
     }
     output_file.close();
@@ -126,10 +134,12 @@ int main(int argc, char** argv) {
     std::string mum_file_path;
     std::string output_path = "";
     bool add_terminator = true;  // default is true
+    std::string length_file_path = "";
 
     static struct option long_options[] = {
         {"help",          no_argument,       NULL, 'h'},
         {"mums",          required_argument, NULL, 'm'},
+        {"lengths",       required_argument, NULL, 'l'},
         {"output",        required_argument, NULL, 'o'},
         {"no-terminator", no_argument,       NULL, 't'},
         {0, 0, 0, 0}
@@ -140,6 +150,7 @@ int main(int argc, char** argv) {
         switch(c) {
             case 'h': print_usage(); return 0;
             case 'm': mum_file_path.assign(optarg); break;
+            case 'l': length_file_path.assign(optarg); break;
             case 'o': output_path.assign(optarg); break;
             case 't': add_terminator = false; break;
             default: print_usage(); return 1;
@@ -162,10 +173,12 @@ int main(int argc, char** argv) {
         std::cerr << "Error: Invalid mum file provided: " << mum_file_path << std::endl;
         return 1;
     }
-    
-    std::string length_file_path = mum_file_path.substr(0, mum_file_path.find_last_of(".")) + ".lengths";
+    if (length_file_path.empty()) {
+        length_file_path = mum_file_path.substr(0, mum_file_path.find_last_of(".")) + ".lengths";
+    }
     if (!is_file(length_file_path)) {
-        std::cerr << "Error: Invalid length file provided: " << length_file_path << std::endl;
+        std::cerr << "Error: Invalid lengths file: " << length_file_path << std::endl;
+        std::cerr << "Provide a lengths file with the -l option or ensure the mum file has an associated lengths file" << std::endl;
         return 1;
     }
 

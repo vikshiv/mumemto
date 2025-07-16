@@ -37,21 +37,55 @@ def parse_arguments(args=None):
         sys.exit(1)
     return args
     
-def merge_lengths(args):
+def merge_anchor_lengths(args):
+    length_files = [m.replace('.mums', '.lengths') for m in args.mum_files]
     if not args.output.endswith('.mums'):
         args.output += '.mums'
     out = open(args.output.replace('.mums', '.lengths'), 'w')
-    with open(args.mum_files[0].replace('.mums', '.lengths'), 'r') as f:
+    with open(length_files[0], 'r') as f:
         anchor_path = f.readline().split()[0]
+    for m in length_files:
+        with open(m, 'r') as f:
+            first_line = f.readline().split()[0]
+            if first_line != anchor_path:
+                print(f"Error: Cannot perform anchor-merge. Anchor sequence is not identical in each partition. Ensure paths are identical in the first line of each lengths file.", file=sys.stderr)
+                sys.exit(1)
+    
     first_file = True
     lines = []
-    for m in args.mum_files:
-        with open(m.replace('.mums', '.lengths'), 'r') as f:                
+    for m in length_files:
+        with open(m, 'r') as f:                
             for l in f.read().splitlines():
                 l = l.split()
                 if first_file or l[0] != anchor_path:
                     lines.append(l)
         first_file = False
+    entry_count = np.array([len(l) for l in lines])
+    # all complex or simple lengths, just concatenate them
+    if np.all(entry_count == 3) or np.all(entry_count == 2):
+        out.write('\n'.join([' '.join(l) for l in lines]))
+    # mix of simple and complex, convert simple to complex entries
+    else:
+        new_lines = []
+        for l in lines:
+            if len(l) == 3:
+                new_lines.append(l)
+            else:
+                new_lines.append([l[0], '*', l[1]])
+                new_lines.append([l[0], os.path.basename(l[0]), l[1]])
+        out.write('\n'.join([' '.join(l) for l in new_lines]))
+    out.close()
+    
+def merge_lengths(args):
+    if not args.output.endswith('.mums'):
+        args.output += '.mums'
+    out = open(args.output.replace('.mums', '.lengths'), 'w')
+    lines = []
+    for m in args.mum_files:
+        with open(m.replace('.mums', '.lengths'), 'r') as f:                
+            for l in f.read().splitlines():
+                l = l.split()
+                lines.append(l)
     entry_count = np.array([len(l) for l in lines])
     # all complex or simple lengths, just concatenate them
     if np.all(entry_count == 3) or np.all(entry_count == 2):
@@ -101,9 +135,17 @@ def run_merger(args):
     else:
         extract_script = 'extract_mums'
         mumemto_script = 'mumemto_exec'
-    for f in tqdm(args.mum_files, desc="Extracting MUM sequences", disable=not args.verbose):
+    pbar = tqdm(args.mum_files, desc="Extracting MUM sequences", disable=not args.verbose)
+    for f in pbar:
         cmd = [extract_script, '-m', f]
-        subprocess.run(cmd)
+        result = subprocess.run(cmd)
+        if result.returncode == 1:
+            pbar.close()
+            print("Error: Partial MUMs detected. Aborting merge. Cleaning up...", file=sys.stderr)
+            for f in args.mum_files:
+                if os.path.exists(f.replace('.mums', '_mums.fa')):
+                    os.remove(f.replace('.mums', '_mums.fa'))
+            sys.exit(1)
     
     cmd = [mumemto_script] + [f.replace('.mums', '_mums.fa') for f in args.mum_files] + ['-o', args.output + '_temp_merged']
     if args.verbose:
@@ -131,8 +173,8 @@ def main(args):
     if anchor_merge:
         if args.merged_mums is not None:
             print("Error: -m is only for string merging, but anchor-based merging detected. Ignoring -m.", file=sys.stderr)
+        merge_anchor_lengths(args)
         run_anchor_merger(args)
-        merge_lengths(args)
         sys.exit(0)
 
     threshold_exists = all([os.path.exists(m.replace('.mums', '.thresh')) for m in args.mum_files])
@@ -148,7 +190,7 @@ def main(args):
     premerge_mums = [list(parse_mums_generator(m)) for m in args.mum_files]
     
     ### get lengths
-    mum_lens = get_sequence_lengths(args.merged_mums.replace('.mums', '.lengths'), multilengths=True)
+    mum_lens = get_sequence_lengths(os.path.splitext(args.merged_mums)[0] + '.lengths', multilengths=True)
 
     NUM_SETS = len(mum_lens)
     
@@ -254,7 +296,8 @@ def main(args):
     if cleanup:
         for f in args.mum_files:
             os.remove(f.replace('.mums', '_mums.fa'))
-        os.remove(args.merged_mums.replace('.mums', '.lengths'))
+        os.remove(args.merged_mums)
+        os.remove(os.path.splitext(args.merged_mums)[0] + '.lengths')
         
 if __name__ == "__main__":
     args = parse_arguments()

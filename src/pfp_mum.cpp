@@ -124,7 +124,6 @@ int build_main(int argc, char** argv) {
     }
     STATUS_LOG("build_main", "building the parse and dictionary objects");
     start = std::chrono::system_clock::now();
-    
     pf_parsing pf = build_opts.from_parse_flag
         ? pf_parsing(build_opts.parse_prefix, build_opts.pfp_w)
         : pf_parsing(build_opts.output_ref, build_opts.pfp_w);

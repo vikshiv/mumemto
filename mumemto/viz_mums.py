@@ -270,7 +270,6 @@ def offset_mums(args, mums, spacer=None, blocks=None):
                         continue
                     cur = old_l + s
                     if l < cur - 1 and cur - 1 <= r:
-                        print(l, cur-1)
                         new_blocks.append((l, cur - 1))
                         l = cur + 1
                 if l < r:
