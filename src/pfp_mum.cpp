@@ -81,7 +81,13 @@ int build_main(int argc, char** argv) {
     if (build_opts.use_gsacak) {
         STATUS_LOG("build_main", "computing LCP, BWT, SA with gsacak");
         start = std::chrono::system_clock::now();
-        gsacak_lcp gsacak(build_opts.output_prefix, &ref_build, build_opts.arrays_out);
+        try {
+            gsacak_lcp gsacak(build_opts.output_prefix, &ref_build, build_opts.arrays_out);
+        } catch (const std::bad_alloc& e) {
+            std::cerr << "Error: Not enough memory to compute LCP, BWT, SA with gsacak. Cleaning up..." << std::endl;
+            remove_temp_files(build_opts.output_prefix);
+            return 1;
+        }
         auto sec = std::chrono::duration<double>((std::chrono::system_clock::now() - start)); std::fprintf(stderr, " done.  (%.3f sec)\n", sec.count());
 
         STATUS_LOG("build_main", "finding multi-%ss", mum_mode ? "MUM" : "MEM");
@@ -124,10 +130,16 @@ int build_main(int argc, char** argv) {
     }
     STATUS_LOG("build_main", "building the parse and dictionary objects");
     start = std::chrono::system_clock::now();
-    
-    pf_parsing pf = build_opts.from_parse_flag
-        ? pf_parsing(build_opts.parse_prefix, build_opts.pfp_w)
-        : pf_parsing(build_opts.output_ref, build_opts.pfp_w);
+    try {
+        pf_parsing pf = build_opts.from_parse_flag
+            ? pf_parsing(build_opts.parse_prefix, build_opts.pfp_w)
+            : pf_parsing(build_opts.output_ref, build_opts.pfp_w);
+    } catch (const std::bad_alloc& e) {
+        std::cerr << "Error: Not enough memory to compute LCP, BWT, SA over PFP. Cleaning up..." << std::endl;
+        if (!build_opts.keep_temp && !build_opts.from_parse_flag)
+            remove_temp_files(build_opts.output_prefix);
+        return 1;
+    }
 
     DONE_LOG((std::chrono::system_clock::now() - start));
 
