@@ -253,41 +253,41 @@ int main(int argc, char* argv[]) {
     const vector<uint16_t>& new_nb = std::get<2>(left_mums);
     thresh_file.write(reinterpret_cast<const char*>(new_nb.data()), new_nb.size() * sizeof(uint16_t));
 
-    ofstream lengths_file(output_prefix + ".lengths");
-    ifstream input_lengths;
-    bool simple;
-    std::vector<std::string> split_line;
-    std::string line;
-    for (auto i = 0; i < paths.size(); ++i) {
-        if (i == 0) {
-            input_lengths.open(paths[i] + ".lengths");
-            getline(input_lengths, line);
-            input_lengths.seekg(0);
-            lengths_file << input_lengths.rdbuf();
-            split_line = split_by_whitespace(line);
-            simple = !(split_line.size() > 2 && split_line[1] == "*");
-            input_lengths.close();
-        } else {
-            input_lengths.open(paths[i] + ".lengths");
-            getline(input_lengths, line);
-            if (simple) {
-                lengths_file << input_lengths.rdbuf();
-            }
-            else {
-                bool anchor = true;
-                while (anchor) {
-                    getline(input_lengths, line);
-                    split_line = split_by_whitespace(line);
-                    if (split_line[1] == "*") {
-                        anchor = false;
-                        lengths_file << line << std::endl;
-                    }
-                }
-                lengths_file << input_lengths.rdbuf();           
-            }
-        input_lengths.close();
-        }
-    }
+    // ofstream lengths_file(output_prefix + ".lengths");
+    // ifstream input_lengths;
+    // bool simple;
+    // std::vector<std::string> split_line;
+    // std::string line;
+    // for (auto i = 0; i < paths.size(); ++i) {
+    //     if (i == 0) {
+    //         input_lengths.open(paths[i] + ".lengths");
+    //         getline(input_lengths, line);
+    //         input_lengths.seekg(0);
+    //         lengths_file << input_lengths.rdbuf();
+    //         split_line = split_by_whitespace(line);
+    //         simple = !(split_line.size() > 2 && split_line[1] == "*");
+    //         input_lengths.close();
+    //     } else {
+    //         input_lengths.open(paths[i] + ".lengths");
+    //         getline(input_lengths, line);
+    //         if (simple) {
+    //             lengths_file << input_lengths.rdbuf();
+    //         }
+    //         else {
+    //             bool anchor = true;
+    //             while (anchor) {
+    //                 getline(input_lengths, line);
+    //                 split_line = split_by_whitespace(line);
+    //                 if (split_line[1] == "*") {
+    //                     anchor = false;
+    //                     lengths_file << line << std::endl;
+    //                 }
+    //             }
+    //             lengths_file << input_lengths.rdbuf();           
+    //         }
+    //     input_lengths.close();
+    //     }
+    // }
 
     std::cerr << "done." << std::endl;
 

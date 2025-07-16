@@ -37,7 +37,7 @@ def parse_arguments(args=None):
         sys.exit(1)
     return args
     
-def merge_lengths(args):
+def merge_anchor_lengths(args):
     if not args.output.endswith('.mums'):
         args.output += '.mums'
     out = open(args.output.replace('.mums', '.lengths'), 'w')
@@ -52,6 +52,32 @@ def merge_lengths(args):
                 if first_file or l[0] != anchor_path:
                     lines.append(l)
         first_file = False
+    entry_count = np.array([len(l) for l in lines])
+    # all complex or simple lengths, just concatenate them
+    if np.all(entry_count == 3) or np.all(entry_count == 2):
+        out.write('\n'.join([' '.join(l) for l in lines]))
+    # mix of simple and complex, convert simple to complex entries
+    else:
+        new_lines = []
+        for l in lines:
+            if len(l) == 3:
+                new_lines.append(l)
+            else:
+                new_lines.append([l[0], '*', l[1]])
+                new_lines.append([l[0], os.path.basename(l[0]), l[1]])
+        out.write('\n'.join([' '.join(l) for l in new_lines]))
+    out.close()
+    
+def merge_lengths(args):
+    if not args.output.endswith('.mums'):
+        args.output += '.mums'
+    out = open(args.output.replace('.mums', '.lengths'), 'w')
+    lines = []
+    for m in args.mum_files:
+        with open(m.replace('.mums', '.lengths'), 'r') as f:                
+            for l in f.read().splitlines():
+                l = l.split()
+                lines.append(l)
     entry_count = np.array([len(l) for l in lines])
     # all complex or simple lengths, just concatenate them
     if np.all(entry_count == 3) or np.all(entry_count == 2):
@@ -138,7 +164,7 @@ def main(args):
         if args.merged_mums is not None:
             print("Error: -m is only for string merging, but anchor-based merging detected. Ignoring -m.", file=sys.stderr)
         run_anchor_merger(args)
-        merge_lengths(args)
+        merge_anchor_lengths(args)
         sys.exit(0)
 
     threshold_exists = all([os.path.exists(m.replace('.mums', '.thresh')) for m in args.mum_files])
