@@ -38,15 +38,23 @@ def parse_arguments(args=None):
     return args
     
 def merge_anchor_lengths(args):
+    length_files = [m.replace('.mums', '.lengths') for m in args.mum_files]
     if not args.output.endswith('.mums'):
         args.output += '.mums'
     out = open(args.output.replace('.mums', '.lengths'), 'w')
-    with open(args.mum_files[0].replace('.mums', '.lengths'), 'r') as f:
+    with open(length_files[0], 'r') as f:
         anchor_path = f.readline().split()[0]
+    for m in length_files:
+        with open(m, 'r') as f:
+            first_line = f.readline().split()[0]
+            if first_line != anchor_path:
+                print(f"Error: Cannot perform anchor-merge. Anchor sequence is not identical in each partition. Ensure paths are identical in the first line of each lengths file.", file=sys.stderr)
+                sys.exit(1)
+    
     first_file = True
     lines = []
-    for m in args.mum_files:
-        with open(m.replace('.mums', '.lengths'), 'r') as f:                
+    for m in length_files:
+        with open(m, 'r') as f:                
             for l in f.read().splitlines():
                 l = l.split()
                 if first_file or l[0] != anchor_path:
@@ -163,8 +171,8 @@ def main(args):
     if anchor_merge:
         if args.merged_mums is not None:
             print("Error: -m is only for string merging, but anchor-based merging detected. Ignoring -m.", file=sys.stderr)
-        run_anchor_merger(args)
         merge_anchor_lengths(args)
+        run_anchor_merger(args)
         sys.exit(0)
 
     threshold_exists = all([os.path.exists(m.replace('.mums', '.thresh')) for m in args.mum_files])
