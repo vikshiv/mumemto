@@ -53,6 +53,10 @@ tuple<vector<Mum>, vector<bool>, vector<uint16_t>> parse_candidate(const string&
         stringstream offsets_stream(offsets_str);
         string offset;
         while (getline(offsets_stream, offset, ',')) {
+            if (offset.empty()) {
+                std::cerr << "Error: Cannot merge partial MUMs. Filter the *.mums file to only include strict MUMs before merging." << std::endl;
+                exit(1);
+            }
             offsets.push_back(stoul(offset));
         }
 
