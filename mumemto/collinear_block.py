@@ -19,6 +19,7 @@ def parse_arguments(args=None):
     parser.add_argument('--fout','-o', dest='filename', help='plot fname (default: input_prefix + _sorted)')
     parser.add_argument('--max-gap-len','-g', dest='max_break', help='maximum break between collinear mums within a collinear block (default: 1kbp)', default=1000, type=int)
     parser.add_argument('--verbose','-v', dest='verbose', help='verbose mode', action='store_true', default=False)
+    parser.add_argument('--min-singleton-length', '-m', dest='min_singleton_length', type=int, default=None, help='Minimum length of singleton blocks to include (default: no singletons)')
     
     if args is None:
         args = parser.parse_args()
@@ -52,7 +53,7 @@ def main(args):
     if len(mums) == 0:
         print('No strict MUMs found after filtering partial MUMs.', file=sys.stderr)
         return
-    collinear_blocks = find_coll_blocks(mums, max_break=args.max_break, verbose=args.verbose)
+    collinear_blocks = find_coll_blocks(mums, max_break=args.max_break, verbose=args.verbose, min_singleton_length=args.min_singleton_length)
     if args.verbose:
         print(f'found {len(collinear_blocks)} collinear blocks', file=sys.stderr)
     

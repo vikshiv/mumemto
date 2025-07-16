@@ -6,7 +6,7 @@ import sys, os
 MUM = namedtuple('MUM', ['length', 'starts', 'strands'])
 MUM_BLOCK = namedtuple('MUM_BLOCK', ['length', 'starts', 'strands', 'block'])
 
-def find_coll_blocks(mums, max_break=0, verbose=False, return_order=False):
+def find_coll_blocks(mums, max_break=0, verbose=False, return_order=False, min_singleton_length=None):
     def find_blocks(coll_mums):
         diffs = np.diff(np.concatenate(([False], coll_mums, [False])).astype(int))
         starts = np.where(diffs == 1)[0]
@@ -47,6 +47,17 @@ def find_coll_blocks(mums, max_break=0, verbose=False, return_order=False):
         blocks = small_blocks
     else:
         blocks = large_blocks
+        
+    if min_singleton_length is not None:
+        ### find singleton mums that are long enough to be single blocks    
+        is_coll = np.zeros(len(lengths), dtype=bool)
+        for s, e in blocks:
+            is_coll[s:e+1] = True
+        singleton = np.where((~is_coll) & (lengths >= min_singleton_length))
+        for i in singleton[0]:
+            blocks.append((i, i))
+    
+    blocks = sorted(blocks, key=lambda x: x[0])
     if return_order:
         order = mum_order_pos[:,[b[0] for b in blocks]].argsort(axis=1)
         return blocks, order
