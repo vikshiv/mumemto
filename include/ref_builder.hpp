@@ -27,12 +27,21 @@ public:
     
     RefBuilder(std::string input_data, std::string output_prefix, bool use_rcomp);
     RefBuilder(std::string output_prefix, bool use_rcomp);
-    int build_input_file();
+    int build_input_file(size_t w, size_t p, bool probing, bool keep_seqs);
+    
+    // only used for direct_gsacak
+    std::vector<uint8_t> text;
 
 private:
     std::vector<std::string> input_files;
     std::string output_prefix;
     bool from_parse = false;
+    std::vector<std::vector<size_t>> multifasta_lengths;
+    std::vector<std::vector<std::string>> multifasta_names;
+    
+
+    void build_bv();
+    void write_lengths_file(bool multi);
 }; // end of RefBuilder class
 
 

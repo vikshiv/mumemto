@@ -32,9 +32,6 @@
 #ifdef GZSTREAM
 #include <gzstream.h>
 #endif
-extern "C" {
-#include "utils.h"
-}
 #include <stdio.h>
 using namespace std;
 
@@ -47,6 +44,14 @@ typedef uint32_t word_int_t;
 typedef uint32_t occ_int_t;
 
 
+// =============== constants ===================
+#define Dollar 2     // special char for the parsing algorithm, must be the highest special char 
+#define EndOfWord 1  // word delimiter for the plain dictionary file
+#define EndOfDict 0  // end of dictionary delimiter
+#define EXTPARSE "parse"
+#define EXTPARS0 "parse_old"
+#define EXTDICT  "dict"
+
 // values of the wordFreq map: word, its number of occurrences, and its rank
 struct word_stats {
   string str;
@@ -54,6 +59,17 @@ struct word_stats {
   word_int_t rank=0;
 };
 
+void die(const string& message) {
+  cerr << message << endl;
+  exit(1);
+}
+FILE *open_aux_file(const char *base, const char *ext, const char *mode)
+{
+  std::string filename = std::string(base) + "." + std::string(ext);
+  FILE *f = fopen(filename.c_str(),mode);
+  if(f==NULL) die(filename);  
+  return f;
+}
 
 // -----------------------------------------------------------------
 // class to maintain a window in a string and its KR fingerprint
@@ -61,7 +77,7 @@ struct KR_window {
   int wsize;
   int *window;
   int asize;
-  const uint64_t prime = 27162335252586509; //old 1999999973
+  const uint64_t prime = 1999999973; //old 1999999973
   uint64_t hash;
   uint64_t tot_char;
   uint64_t asize_pot;   // asize^(wsize-1) mod prime
@@ -135,7 +151,7 @@ bool pword_statsCompare(const word_stats *a, const word_stats *b)
 
 // given the sorted dictionary and the frequency map write the dictionary and occ files
 // also compute the 1-based rank for each hash
-void writeDictOcc(string &inputFileName, map<uint64_t,word_stats> &wfreq, vector<const word_stats *> &sortedDict)
+void writeDictOcc(string &inputFileName, map<uint64_t,word_stats> &wfreq, vector<word_stats *> &sortedDict)
 {
   assert(sortedDict.size() == wfreq.size());
   FILE *fdict;
@@ -146,7 +162,6 @@ void writeDictOcc(string &inputFileName, map<uint64_t,word_stats> &wfreq, vector
   for(auto x: sortedDict) {
     const char *word = x->str.data();       // current dictionary word
     size_t len = x->str.size();             // length of word
-    assert(len>(size_t)w);
     size_t s = fwrite(word, 1, len, fdict);
     if(s!=len) die("Error writing to DICT file");
     if(fputc(EndOfWord,fdict)==EOF) die("Error writing EndOfWord to DICT file");
@@ -157,30 +172,29 @@ void writeDictOcc(string &inputFileName, map<uint64_t,word_stats> &wfreq, vector
   if(fclose(fdict)!=0) die("Error closing DICT file");
 }
 
-void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq)
+void remapParse(std::string &inputFileName, map<uint64_t,word_stats> &wfreq)
 {
   // open parse files. the old parse can be stored in a single file or in multiple files
-  mFile *moldp = mopen_aux_file(arg.inputFileName.c_str(), EXTPARS0, arg.th);
-  FILE *newp = open_aux_file(arg.inputFileName.c_str(), EXTPARSE, "wb");
+  FILE *old_parse_file = open_aux_file(inputFileName.c_str(),EXTPARS0,"rb");
+  FILE *new_parse_file = open_aux_file(inputFileName.c_str(),EXTPARSE,"wb");
 
   // recompute occ as an extra check
   uint64_t hash;
   while(true) {
-    size_t s = mfread(&hash,sizeof(hash),1,moldp);
+    size_t s = fread(&hash,sizeof(hash),1,old_parse_file);
     if(s==0) break;
     if(s!=1) die("Unexpected parse EOF");
     word_int_t rank = wfreq.at(hash).rank;
-    s = fwrite(&rank,sizeof(rank),1,newp);
+    s = fwrite(&rank,sizeof(rank),1,new_parse_file);
     if(s!=1) die("Error writing to new parse file");
   }
-  if(fclose(newp)!=0) die("Error closing new parse file");
-  if(mfclose(moldp)!=0) die("Error closing old parse segment");
+  if(fclose(new_parse_file)!=0) die("Error closing new parse file");
+  if(fclose(old_parse_file)!=0) die("Error closing old parse file");
 }
 
 // =============== pfparser class ===================
 class pfparser {
 private:
-    Args args;
     map<uint64_t, word_stats> wordFreq;
     string file_prefix;
     FILE* tmp_parse_file;
@@ -195,14 +209,14 @@ private:
     size_t p;
     
     // Helper method to save and update words
-    void save_update_word(string& w, unsigned int minsize, FILE *tmp_parse_file, bool probing);
+    void save_update_word(string& window, uint64_t hash);
 
 public:
     pfparser(string file_prefix, size_t w, size_t p, bool probing);
     ~pfparser();
     
     // Process a single string and accumulate results
-    uint64_t process_string(const string& input_string);
+    void process_string(const string& input_string);
         
     // Run the second pass (dictionary construction and remapping)
     void finish_parse();
@@ -211,21 +225,20 @@ public:
 
 // Constructor
 pfparser::pfparser(string file_prefix, size_t w, size_t p, bool probing) :
+      file_prefix(file_prefix),
       w(w), 
       p(p), 
-      probing(probing) {
+      probing(probing),
+      krw(w) {
     // Initialize any necessary state
-    tmp_parse_file = open_aux_file(file_prefix.c_str(), EXTPARS0, "wb");
-    krw = KR_window(w); // init window
+    
+    tmp_parse_file = open_aux_file(file_prefix.c_str(),EXTPARS0,"wb");
     // init first word in the parsing with a Dollar char
     word.append(1,Dollar);
 }
 
 // Destructor - clean up any open files
-pfparser::~pfparser() {
-    // Close any remaining open files
-    if (tmp_parse_file) fclose(tmp_parse_file);
-}
+pfparser::~pfparser() {}
 
 // Modified save_update_word as a member function
 void pfparser::save_update_word(string& window, uint64_t hash) {
@@ -258,7 +271,7 @@ void pfparser::save_update_word(string& window, uint64_t hash) {
                 cerr << MAX_WORD_OCC << ") exceeded\n";
                 exit(1);
             }
-            if(wordFreq[hash].str != w) {
+            if(wordFreq[hash].str != window) {
                 cerr << "Emergency exit! Hash collision for strings:\n";
                 cerr << wordFreq[hash].str << "\n  vs\n" <<  window << endl;
                 exit(1);
@@ -275,10 +288,11 @@ void pfparser::save_update_word(string& window, uint64_t hash) {
 // Modified process_string as a member function - takes a string instead of filename
 void pfparser::process_string(const string& input_string) {
     uint64_t hash;
+    int c;
     // Main processing logic for the input string    
     // Process each character in the input string
     for (size_t i = 0; i < input_string.length(); i++) {
-        int c = (unsigned char)input_string[i];
+        c = input_string[i];
         if(c <= Dollar) { cerr << "Invalid char found in input string: no additional chars will be read\n"; break;}
         word.append(1, c);
         hash = krw.addchar(c);
@@ -295,7 +309,7 @@ void pfparser::finish_parse() {
     uint64_t hash = kr_hash(word);
     save_update_word(word, hash);
     // close input and output files
-    if(fclose(g)!=0) die("Error closing parse file");
+    if(fclose(tmp_parse_file)!=0) die("Error closing parse file");
     
     // Check # distinct words
     uint64_t totDWord = wordFreq.size();
@@ -306,7 +320,7 @@ void pfparser::finish_parse() {
     }
     
     // Create array of dictionary words
-    vector<const word_stats *> dictArray;
+    vector<word_stats *> dictArray;
     dictArray.reserve(totDWord);
     
     // Fill array
@@ -318,13 +332,11 @@ void pfparser::finish_parse() {
     sort(dictArray.begin(), dictArray.end(), pword_statsCompare);
     
     // Write plain dictionary and occ file, also compute rank for each hash
-    cout << "Writing plain dictionary and occ file\n";
-    writeDictOcc(args, wordFreq, dictArray);
+    writeDictOcc(file_prefix, wordFreq, dictArray);
     dictArray.clear(); // reclaim memory
     
     // Remap parse file
-    cout << "Generating remapped parse file\n";
-    remapParse(args, wordFreq);
+    remapParse(file_prefix, wordFreq);
 }
 
 

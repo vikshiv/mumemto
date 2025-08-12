@@ -57,7 +57,7 @@ int build_main(int argc, char** argv) {
     // Build the input reference file, and bitvector labeling the end for each doc
     STATUS_LOG("build_main", "building the reference file based on file-list");
     auto start = std::chrono::system_clock::now();
-    int input_file_status = ref_build.build_input_file();
+    int input_file_status = ref_build.build_input_file(build_opts.pfp_w, build_opts.hash_mod, true, build_opts.use_gsacak);
     if (input_file_status == 1) {
         remove_temp_files(build_opts.output_prefix);
         FATAL_ERROR("Please check the input files and ensure that it contains valid FASTA files. Cleaning up...");
@@ -114,14 +114,15 @@ int build_main(int argc, char** argv) {
         return 0;
     }
 
-    if (!build_opts.from_parse_flag){
-        // Parse the input text with BigBWT, and load it into pf object
-        STATUS_LOG("build_main", "generating the prefix-free parse for given reference");
-        start = std::chrono::system_clock::now();
+    // if (!build_opts.from_parse_flag){
+    //     // Parse the input text with BigBWT, and load it into pf object
+    //     STATUS_LOG("build_main", "generating the prefix-free parse for given reference");
+    //     start = std::chrono::system_clock::now();
 
-        run_build_parse_cmd(&build_opts, &helper_bins);
-        DONE_LOG((std::chrono::system_clock::now() - start));
-    }
+    //     run_build_parse_cmd(&build_opts, &helper_bins);
+    //     DONE_LOG((std::chrono::system_clock::now() - start));
+    // }
+    
     STATUS_LOG("build_main", "building the parse and dictionary objects");
     start = std::chrono::system_clock::now();
     pf_parsing pf = build_opts.from_parse_flag
