@@ -17,10 +17,10 @@ Preprint available at [https://doi.org/10.1101/2025.01.05.631388](https://doi.or
 Mumemto is available on `bioconda`. Note conda installation requires python 3.9+. We recommend using a new environment:
 ```sh
 ### conda ###
-conda create -n mumemto_env python=3.9 # or higher
+conda create -n mumemto_env python #3.10 or higher
 conda activate mumemto_env
 
-conda install -c bioconda mumemto
+conda install -c conda-forge bioconda::mumemto
 ```
 > [!NOTE]
 >  When running Mumemto on MacOS, the environment variable `PFPMUM_BUILD_DIR` must be set manually to the path where Mumemto is installed. This can be done with `export PFPMUM_BUILD_DIR=$(dirname $(which mumemto))`.
