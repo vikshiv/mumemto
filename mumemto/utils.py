@@ -356,43 +356,40 @@ class MUMdata:
         return self
 
     def slice(self, indices, copy=False):
-        """Create a new MUMdata object with a subset of MUMs.
+        """Create a new MUMdata object with numpy-style slicing.
+           Supports: mumdata[rows], mumdata[:, cols], mumdata[rows, cols]
            The new MUMdata object will not have blocks
         
         Args:
-            indices: Integer, slice, list, array, or boolean array of indices to select
+            indices: Single index/slice/mask for rows, or tuple (rows, cols) for 2D slicing
+            copy: If True, create copies of the arrays instead of views
             
         Returns:
-            MUMdata: New MUMdata object containing only the selected MUMs
+            MUMdata: New MUMdata object containing only the selected MUMs and sequences
         """
-        # Handle boolean arrays
-        if isinstance(indices, np.ndarray) and indices.dtype == bool:
-            # Convert boolean array to integer indices
-            indices = np.where(indices)[0]
-        
-        # Convert indices to numpy array for consistent handling
-        if isinstance(indices, (int, np.integer)):
-            # Single index - convert to array with one element
-            indices = np.array([indices])
-        elif isinstance(indices, slice):
-            # Slice object - convert to array of indices
-            indices = np.arange(self.num_mums)[indices]
+        # Handle tuple indexing (2D slicing)
+        if isinstance(indices, tuple):
+            if len(indices) == 2:
+                row_indices, col_indices = indices
+            elif len(indices) == 1:
+                row_indices = indices[0]
+                col_indices = slice(None)
+            else:
+                raise ValueError("Too many indices for 2D slicing")
         else:
-            # List, tuple, or array - convert to numpy array
-            indices = np.array(indices)
+            # Single index - slice only rows
+            row_indices = indices
+            col_indices = slice(None)
         
-        # Handle negative indices
-        indices = np.where(indices < 0, indices + self.num_mums, indices)
-        
-        # Create new MUMdata object with subset
-        new_lengths = self.lengths[indices]
-        new_starts = self.starts[indices]
-        new_strands = self.strands[indices]
+        # Apply indexing directly (numpy handles all the cases)
+        new_lengths = self.lengths[row_indices]
+        new_starts = self.starts[row_indices, col_indices]
+        new_strands = self.strands[row_indices, col_indices]
         
         # Handle extra_fields if present
         new_extra_fields = None
         if self.extra_fields is not None:
-            new_extra_fields = [self.extra_fields[i] for i in indices]
+            new_extra_fields = [self.extra_fields[i] for i in np.arange(self.num_mums)[row_indices]]
         
         # Create new instance using from_arrays class method
         new_mumdata = MUMdata.from_arrays(new_lengths, new_starts, new_strands, extra_fields=new_extra_fields)
@@ -400,6 +397,24 @@ class MUMdata:
             new_mumdata = new_mumdata.copy()
             
         return new_mumdata
+
+    def __getitem__(self, idx):
+        """Get MUM(s) by index, slice, or list of indices.
+        Supports numpy-style slicing: mumdata[rows], mumdata[:, cols], mumdata[rows, cols]
+        
+        Args:
+            idx: Integer, slice, list, array, boolean array, or tuple for 2D slicing
+            
+        Returns:
+            MUM: Single MUM if idx is integer
+            MUMdata: New MUMdata object if idx is slice/list/array/tuple
+        """
+        if isinstance(idx, (int, np.integer)):
+            # Single MUM access - return MUM object
+            return MUM(self.lengths[idx], self.starts[idx], self.strands[idx])
+        else:
+            # Multiple MUMs access - return new MUMdata object using slice method
+            return self.slice(idx)
 
     def __repr__(self):
         """String representation"""
@@ -435,23 +450,6 @@ class MUMdata:
         # Create new instance
         new_mumdata = MUMdata.from_arrays(new_lengths, new_starts, new_strands)
         return new_mumdata
-
-    def __getitem__(self, idx):
-        """Get MUM(s) by index, slice, or list of indices.
-        
-        Args:
-            idx: Integer, slice, list, or array of indices
-            
-        Returns:
-            MUM: Single MUM if idx is integer
-            MUMdata: New MUMdata object if idx is slice/list/array
-        """
-        if isinstance(idx, (int, np.integer)):
-            # Single MUM access - return MUM object
-            return MUM(self.lengths[idx], self.starts[idx], self.strands[idx])
-        else:
-            # Multiple MUMs access - return new MUMdata object
-            return self.slice(idx)
 
     def __len__(self):
         """Return number of MUMs"""
