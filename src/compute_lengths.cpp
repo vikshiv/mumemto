@@ -8,13 +8,14 @@
 #include <string>
 #include <getopt.h>
 #include <filesystem>
+#include <zlib.h>
 #include <kseq.h>
 #include <unistd.h>
 #include <vector>
 #include <fstream>
 #include <sstream>
 
-KSEQ_INIT(int, read);
+KSEQ_INIT(gzFile, gzread);
 
 /* Complement Table from: https://github.com/lh3/seqtk/blob/master/seqtk.c */
 char comp_tab[] = {
@@ -60,6 +61,10 @@ int is_file(std::string path) {
     return std::filesystem::is_regular_file(path);
 }
 
+bool is_compressed(const std::string& filename) {
+    return endsWith(filename, ".gz");
+}
+
 void write_length_files(const std::vector<std::string>& files,
                         const std::vector<std::vector<size_t>>& multifasta_lengths,
                         const std::vector<std::vector<std::string>>& multifasta_names,
@@ -92,6 +97,7 @@ void write_length_files(const std::vector<std::string>& files,
 
 int compute_lengths(std::vector<std::string>& input_files, std::string output_prefix, bool print_fasta) {
     FILE* fp;
+    gzFile gzfp;
     kseq_t* seq;
     std::vector<std::vector<size_t>> multifasta_lengths;
     std::vector<std::vector<std::string>> multifasta_names;
@@ -111,13 +117,22 @@ int compute_lengths(std::vector<std::string>& input_files, std::string output_pr
             output_filename = output_prefix + "_file" + std::to_string(i + 1) + ".fna";
         }
         
-        fp = fopen(input_file.data(), "r");
-        if (fp == 0) {
-            std::cerr << "Error opening file: " << input_file << std::endl;
-            return 1;
+        bool compressed = is_compressed(input_file);
+        if (compressed) {
+            gzfp = gzopen(input_file.data(), "r");
+            if (gzfp == 0) {
+                std::cerr << "Error opening file: " << input_file << std::endl;
+                return 1;
+            }
+            seq = kseq_init(gzfp);
+        } else {
+            fp = fopen(input_file.data(), "r");
+            if (fp == 0) {
+                std::cerr << "Error opening file: " << input_file << std::endl;
+                return 1;
+            }
+            seq = kseq_init(fileno(fp));
         }
-
-        seq = kseq_init(fileno(fp));
         
         // For FASTA output, we need to concatenate sequences
         std::string concatenated_seq;
@@ -170,7 +185,11 @@ int compute_lengths(std::vector<std::string>& input_files, std::string output_pr
         }
 
         kseq_destroy(seq);
-        fclose(fp);
+        if (compressed) {
+            gzclose(gzfp);
+        } else {
+            fclose(fp);
+        }
     }
 
     // Write lengths files
@@ -245,7 +264,8 @@ int main(int argc, char** argv) {
             std::cerr << "The following path in the input list is not valid: " << input_file << std::endl;
             return 1;
         }
-        if (!endsWith(input_file, ".fa") && !endsWith(input_file, ".fasta") && !endsWith(input_file, ".fna")) {
+        if (!endsWith(input_file, ".fa") && !endsWith(input_file, ".fasta") && !endsWith(input_file, ".fna") &&
+            !endsWith(input_file, ".fa.gz") && !endsWith(input_file, ".fasta.gz") && !endsWith(input_file, ".fna.gz")) {
             std::cerr << "The following input-file is not a FASTA file: " << input_file << std::endl;
             return 1;
         }
