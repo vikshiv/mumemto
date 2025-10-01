@@ -222,7 +222,7 @@ class MUMdata:
         self.partial = -1 in self.starts
     
     @classmethod
-    def from_arrays(cls, lengths, starts, strands, blocks=None):
+    def from_arrays(cls, lengths, starts, strands, blocks=None, extra_fields=None):
         """Create a MUMdata object directly from arrays.
         
         Args:
@@ -237,8 +237,35 @@ class MUMdata:
         instance.num_mums = len(lengths)
         instance.num_seqs = starts.shape[1] if instance.num_mums > 0 else 0
         instance.blocks = blocks
+        instance.extra_fields = extra_fields
         instance.partial = -1 in starts
         return instance
+    
+    def copy(self):
+        """Create a deep copy of this MUMdata object with independent arrays.
+        
+        Returns:
+            MUMdata: New MUMdata object with copied arrays
+        """
+        # Create copies of all arrays
+        new_lengths = self.lengths.copy()
+        new_starts = self.starts.copy()
+        new_strands = self.strands.copy()
+        
+        # Handle extra_fields if present
+        new_extra_fields = None
+        if self.extra_fields is not None:
+            new_extra_fields = self.extra_fields.copy()
+        
+        # Handle blocks if present
+        new_blocks = None
+        if self.blocks is not None:
+            new_blocks = self.blocks.copy()
+        
+        # Create new instance using from_arrays class method
+        new_mumdata = MUMdata.from_arrays(new_lengths, new_starts, new_strands, 
+                                         blocks=new_blocks, extra_fields=new_extra_fields)
+        return new_mumdata
         
     @staticmethod
     def parse_mums(mumfile, lenfilter=0, subsample=1, verbose=False, length_dtype=np.uint32, offset_dtype=np.int64):
@@ -323,19 +350,112 @@ class MUMdata:
                 self.extra_fields = [self.extra_fields[i] for i in valid_rows]
         return self
 
+    def slice(self, indices, copy=False):
+        """Create a new MUMdata object with a subset of MUMs.
+           The new MUMdata object will not have blocks
+        
+        Args:
+            indices: Integer, slice, list, array, or boolean array of indices to select
+            
+        Returns:
+            MUMdata: New MUMdata object containing only the selected MUMs
+        """
+        # Handle boolean arrays
+        if isinstance(indices, np.ndarray) and indices.dtype == bool:
+            # Convert boolean array to integer indices
+            indices = np.where(indices)[0]
+        
+        # Convert indices to numpy array for consistent handling
+        if isinstance(indices, (int, np.integer)):
+            # Single index - convert to array with one element
+            indices = np.array([indices])
+        elif isinstance(indices, slice):
+            # Slice object - convert to array of indices
+            indices = np.arange(self.num_mums)[indices]
+        else:
+            # List, tuple, or array - convert to numpy array
+            indices = np.array(indices)
+        
+        # Handle negative indices
+        indices = np.where(indices < 0, indices + self.num_mums, indices)
+        
+        # Create new MUMdata object with subset
+        new_lengths = self.lengths[indices]
+        new_starts = self.starts[indices]
+        new_strands = self.strands[indices]
+        
+        # Handle extra_fields if present
+        new_extra_fields = None
+        if self.extra_fields is not None:
+            new_extra_fields = [self.extra_fields[i] for i in indices]
+        
+        # Create new instance using from_arrays class method
+        new_mumdata = MUMdata.from_arrays(new_lengths, new_starts, new_strands, extra_fields=new_extra_fields)
+        if copy:
+            new_mumdata = new_mumdata.copy()
+            
+        return new_mumdata
+
+    def __repr__(self):
+        """String representation"""
+        return (f"MUMdata(num_mums={self.num_mums}, num_seqs={self.num_seqs}, "
+                f"partial={self.partial}, has_blocks={self.blocks is not None})")
+    
+    def __str__(self):
+        """Human-readable string representation"""
+        return f"MUMdata with {self.num_mums} MUMs across {self.num_seqs} sequences"
+    
+    def __bool__(self):
+        """Boolean evaluation - True if has MUMs, False if empty"""
+        return self.num_mums > 0
+    
     def __iter__(self):
         """Iterate over MUMs, yielding (length, starts, strands) for each"""
         for i in range(self.num_mums):
             yield self[i]
+            
+    def __add__(self, other):
+        """Concatenate two MUMdata objects. Will ignore extra fields."""
+        if not isinstance(other, MUMdata):
+            raise TypeError("Can only concatenate MUMdata objects")
+        
+        if self.num_seqs != other.num_seqs:
+            raise ValueError("Cannot concatenate MUMdata objects with different numbers of sequences")
+        
+        # Concatenate arrays
+        new_lengths = np.concatenate([self.lengths, other.lengths])
+        new_starts = np.vstack([self.starts, other.starts])
+        new_strands = np.vstack([self.strands, other.strands])
+        
+        # Create new instance
+        new_mumdata = MUMdata.from_arrays(new_lengths, new_starts, new_strands)
+        return new_mumdata
 
     def __getitem__(self, idx):
-        """Get a single MUM as (length, starts, strands)"""
-        return MUM(self.lengths[idx], self.starts[idx], self.strands[idx])
+        """Get MUM(s) by index, slice, or list of indices.
+        
+        Args:
+            idx: Integer, slice, list, or array of indices
+            
+        Returns:
+            MUM: Single MUM if idx is integer
+            MUMdata: New MUMdata object if idx is slice/list/array
+        """
+        if isinstance(idx, (int, np.integer)):
+            # Single MUM access - return MUM object
+            return MUM(self.lengths[idx], self.starts[idx], self.strands[idx])
+        else:
+            # Multiple MUMs access - return new MUMdata object
+            return self.slice(idx)
 
     def __len__(self):
         """Return number of MUMs"""
         return self.num_mums
     
+    def filter_length(self, length):
+        """Filter MUMs < length threshold"""
+        return self[self.lengths < length]
+        
     def write_mums(self, filename, blocks=None):
         with open(filename, 'w') as f:
             if blocks is None:
