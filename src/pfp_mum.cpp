@@ -55,7 +55,10 @@ int build_main(int argc, char** argv) {
     print_build_status_info(build_opts, ref_build, mum_mode);
 
     // Build the input reference file, and bitvector labeling the end for each doc
-    STATUS_LOG("build_main", "building the reference file based on file-list");
+    if (build_opts.use_gsacak)
+        STATUS_LOG("build_main", "parsing input files");
+    else
+        STATUS_LOG("build_main", "computing PFP over input files");
     auto start = std::chrono::system_clock::now();
     int input_file_status = ref_build.build_input_file(build_opts.pfp_w, build_opts.hash_mod, true, build_opts.use_gsacak);
     if (input_file_status == 1) {
@@ -122,6 +125,10 @@ int build_main(int argc, char** argv) {
     //     run_build_parse_cmd(&build_opts, &helper_bins);
     //     DONE_LOG((std::chrono::system_clock::now() - start));
     // }
+
+    if (build_opts.only_parse) {
+        return 0;
+    }
     
     STATUS_LOG("build_main", "building the parse and dictionary objects");
     start = std::chrono::system_clock::now();
@@ -339,6 +346,7 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
         {"no-overlap",   no_argument, NULL,  's'},
         {"modulus", required_argument, NULL, 'm'},
         {"from-parse",   no_argument, NULL,  'p'},
+        {"only-parse",   no_argument, NULL,  'P'},
         {"min-match-len",   required_argument, NULL,  'l'},
         {"max-freq",   required_argument, NULL,  'F'},
         {"arrays-out",   no_argument, NULL,  'A'},
@@ -355,7 +363,7 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
     int c = 0;
     int long_index = 0;
     
-    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:bgMn", long_options, &long_index)) >= 0) {
+    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:bgMnP", long_options, &long_index)) >= 0) {
         switch(c) {
             case 'h': mumemto_usage(); std::exit(0);
             case 'i': opts->input_list.assign(optarg); break;
@@ -376,6 +384,7 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
             case 'M': opts->merge = true; break;
             case 'n': opts->anchor_merge = true; break;
             case 'g': opts->use_gsacak = true; break;
+            case 'P': opts->only_parse = true; break;
             default: mumemto_usage(); std::exit(1);
         }
     }
@@ -416,6 +425,7 @@ int mumemto_usage() {
     std::fprintf(stderr, "\t%-32suse pre-computed pf-parse\n", "-p, --from-parse");
     std::fprintf(stderr, "\t%-32skeep PFP files\n\n", "-K, --keep-temp-files");
     std::fprintf(stderr, "\t%-32sskip PFP and use gsacak directly to compute LCP, BWT, SA\n", "-g, --use-gsacak");
+    std::fprintf(stderr, "\t%-32sonly compute PFP over the input files and do not compute matches\n", "-P, --only-parse");
 
     std::fprintf(stderr, "Overview:\n");
         std::fprintf(stderr, "\tBy default, Mumemto computes multi-MUMs. Exact match parameters can be additionally tuned in three main ways:\n");
