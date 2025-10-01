@@ -204,8 +204,6 @@ class MUMdata:
                 length_dtype=self.length_dtype,
                 offset_dtype=self.offset_dtype
             )
-        self.num_mums = len(self.lengths)
-        self.num_seqs = self.starts.shape[1] if self.num_mums > 0 else 0
         if sort:
             sorted = np.all(np.diff(self.starts[:,0]) >= 0)
             if self.blocks is not None and not sorted:
@@ -221,6 +219,16 @@ class MUMdata:
                     self.extra_fields = [self.extra_fields[i] for i in order]
         self.partial = -1 in self.starts
     
+    @property
+    def num_mums(self):
+        """Number of MUMs in the dataset"""
+        return len(self.lengths)
+    
+    @property
+    def num_seqs(self):
+        """Number of sequences in the dataset"""
+        return self.starts.shape[1] if self.num_mums > 0 else 0
+    
     @classmethod
     def from_arrays(cls, lengths, starts, strands, blocks=None, extra_fields=None):
         """Create a MUMdata object directly from arrays.
@@ -234,8 +242,6 @@ class MUMdata:
         instance.lengths = lengths
         instance.starts = starts.astype(np.int64, copy=False) 
         instance.strands = strands
-        instance.num_mums = len(lengths)
-        instance.num_seqs = starts.shape[1] if instance.num_mums > 0 else 0
         instance.blocks = blocks
         instance.extra_fields = extra_fields
         instance.partial = -1 in starts
@@ -344,7 +350,6 @@ class MUMdata:
             self.lengths = self.lengths[valid_rows]
             self.starts = self.starts[valid_rows]
             self.strands = self.strands[valid_rows]
-            self.num_mums = len(self.lengths)
             self.partial = False
             if self.extra_fields is not None:
                 self.extra_fields = [self.extra_fields[i] for i in valid_rows]
