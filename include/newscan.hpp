@@ -77,7 +77,7 @@ struct KR_window {
   int wsize;
   int *window;
   int asize;
-  const uint64_t prime = 27162335252586509; //old 1999999973
+  const uint64_t prime = 1999999973; //old 1999999973
   uint64_t hash;
   uint64_t tot_char;
   uint64_t asize_pot;   // asize^(wsize-1) mod prime
@@ -209,7 +209,7 @@ private:
     size_t p;
     
     // Helper method to save and update words
-    void save_update_word(string& window, uint64_t hash);
+    void save_update_word(string& window);
 
 public:
     pfparser(string file_prefix, size_t w, size_t p, bool probing);
@@ -241,9 +241,9 @@ pfparser::pfparser(string file_prefix, size_t w, size_t p, bool probing) :
 pfparser::~pfparser() {}
 
 // Modified save_update_word as a member function
-void pfparser::save_update_word(string& window, uint64_t hash) {
+void pfparser::save_update_word(string& window) {
     if(window.size() <= w) return;
-        
+    uint64_t hash = kr_hash(window);
     // Update frequency table for current hash
     if (probing) {
         auto slot = wordFreq.find(hash);
@@ -297,7 +297,7 @@ void pfparser::process_string(const string& input_string) {
         word.append(1, c);
         hash = krw.addchar(c);
         if(hash % p == 0) {
-            save_update_word(word, hash);
+            save_update_word(word);
         }
     }
 }
@@ -307,7 +307,7 @@ void pfparser::finish_parse() {
     // virtually add w null chars at the end of the file and add the last word in the dict
     word.append(w, Dollar);
     uint64_t hash = kr_hash(word);
-    save_update_word(word, hash);
+    save_update_word(word);
     // close input and output files
     if(fclose(tmp_parse_file)!=0) die("Error closing parse file");
     
@@ -337,6 +337,9 @@ void pfparser::finish_parse() {
     
     // Remap parse file
     remapParse(file_prefix, wordFreq);
+    
+    // Clear memory after parsing is complete
+    wordFreq.clear();
 }
 
 
