@@ -20,6 +20,7 @@ set_arch_specific_flags(compute_lengths)
 
 # Add extract_mums executable
 add_executable(extract_mums extract_mums.cpp)
+target_link_libraries(extract_mums z)
 target_include_directories(extract_mums PUBLIC "../include/")
 target_compile_options(extract_mums PUBLIC "-std=c++17" "-DM64" "-w")
 set_arch_specific_flags(extract_mums)

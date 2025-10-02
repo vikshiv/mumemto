@@ -7,6 +7,7 @@
 #include <string>
 #include <getopt.h>
 #include <filesystem>
+#include <zlib.h>
 #include <kseq.h>
 #include <unistd.h>
 #include <vector>
@@ -15,7 +16,7 @@
 #include <stdexcept>  // Include this for std::runtime_error
 
 
-KSEQ_INIT(int, read);
+KSEQ_INIT(gzFile, gzread);
 
 void print_usage() {
     std::fprintf(stderr, "\nextract_mums - extract MUMs from a MUM and length file\n");
@@ -51,20 +52,20 @@ int read_ref_file(const std::string& length_file_path, std::string& ref_seq) {
         return 1; // Error: Invalid FASTA path in length file
     }        
 
-    // read in the fasta file
-    FILE* fp = fopen(fasta_path.data(), "r");
-    if (fp == 0) {
+    // read in the fasta file using gzopen for both compressed and uncompressed files
+    gzFile gzfp = gzopen(fasta_path.data(), "r");
+    if (gzfp == 0) {
         std::cerr << "Error: Unable to open FASTA file" << std::endl;
         return 1; // Error opening file
     }
 
-    kseq_t* seq = kseq_init(fileno(fp));
+    kseq_t* seq = kseq_init(gzfp);
     ref_seq.clear();
     while (kseq_read(seq) >= 0) {
         ref_seq += seq->seq.s;
     }
     kseq_destroy(seq);
-    fclose(fp);
+    gzclose(gzfp);
 
     if (ref_seq.empty()) {
         std::cerr << "Error: Empty input file found" << std::endl;
