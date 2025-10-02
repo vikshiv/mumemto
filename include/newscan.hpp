@@ -306,7 +306,6 @@ void pfparser::process_string(const string& input_string) {
 void pfparser::finish_parse() {
     // virtually add w null chars at the end of the file and add the last word in the dict
     word.append(w, Dollar);
-    uint64_t hash = kr_hash(word);
     save_update_word(word);
     // close input and output files
     if(fclose(tmp_parse_file)!=0) die("Error closing parse file");

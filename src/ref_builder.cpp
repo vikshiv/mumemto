@@ -195,7 +195,6 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
         pfparser parser(output_ref, w, p, probing);
         gzFile gzfp; kseq_t* seq;
         std::vector<std::string> seq_vec;
-        std::vector<std::string> name_vec;
         std::vector<size_t> temp_lengths;
         std::vector<std::string> temp_names;
         
@@ -203,9 +202,6 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
         size_t curr_id = 1;
         size_t curr_id_seq_length = 0;
         for (auto iter = input_files.begin(); iter != input_files.end(); ++iter) {
-            temp_lengths = std::vector<size_t>();
-            temp_names = std::vector<std::string>();
-            
             // Use gzopen for both compressed and uncompressed files
             gzfp = gzopen((*iter).data(), "r");
             if (gzfp == 0) {std::exit(1);}
@@ -218,7 +214,6 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
                     seq->seq.s[i] = static_cast<char>(std::toupper(seq->seq.s[i]));
                 }
                 seq_vec.push_back(seq->seq.s);
-                name_vec.push_back(seq->name.s);
                 curr_id_seq_length += seq->seq.l;
                 temp_lengths.push_back(seq->seq.l);
                 temp_names.push_back(seq->name.s);
@@ -228,6 +223,8 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
             }
             multifasta_lengths.push_back(temp_lengths);
             multifasta_names.push_back(temp_names);
+            temp_lengths.clear();
+            temp_names.clear();
 
             kseq_destroy(seq);
             gzclose(gzfp);
@@ -239,6 +236,7 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
             // for the terminating $
             curr_id_seq_length += 1;
             if (keep_seqs) {
+                std::cout << "Keeping sequences" << std::endl;
                 this->text.reserve(this->text.size() + curr_id_seq_length);
                 for (auto i = 0; i < seq_vec.size(); ++i) {
                     this->text.insert(this->text.end(), seq_vec.at(i).begin(), seq_vec.at(i).end());
@@ -246,6 +244,7 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
                 this->text.push_back('$');
             }
             else {
+                std::cout << "Not keeping sequences" << std::endl;
                 for (auto i = 0; i < seq_vec.size(); ++i) {
                     parser.process_string(seq_vec.at(i));
                 }
@@ -278,7 +277,7 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
 
             seq_lengths.push_back(curr_id_seq_length);
             curr_id += 1; curr_id_seq_length = 0;
-            name_vec.clear(); seq_vec.clear();
+            seq_vec.clear();
         }
 
         // Write final phrase to file, sort dictionary, and remap final parse file
@@ -291,6 +290,8 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
 
     // build the bv
     this->build_bv();
+
+    exit(0);
 
     return 0;
 }
