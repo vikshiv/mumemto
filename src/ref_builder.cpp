@@ -236,7 +236,6 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
             // for the terminating $
             curr_id_seq_length += 1;
             if (keep_seqs) {
-                std::cout << "Keeping sequences" << std::endl;
                 this->text.reserve(this->text.size() + curr_id_seq_length);
                 for (auto i = 0; i < seq_vec.size(); ++i) {
                     this->text.insert(this->text.end(), seq_vec.at(i).begin(), seq_vec.at(i).end());
@@ -244,7 +243,6 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
                 this->text.push_back('$');
             }
             else {
-                std::cout << "Not keeping sequences" << std::endl;
                 for (auto i = 0; i < seq_vec.size(); ++i) {
                     parser.process_string(seq_vec.at(i));
                 }
@@ -290,8 +288,6 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
 
     // build the bv
     this->build_bv();
-
-    exit(0);
 
     return 0;
 }
