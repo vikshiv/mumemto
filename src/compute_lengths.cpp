@@ -61,10 +61,6 @@ int is_file(std::string path) {
     return std::filesystem::is_regular_file(path);
 }
 
-bool is_compressed(const std::string& filename) {
-    return endsWith(filename, ".gz");
-}
-
 void write_length_files(const std::vector<std::string>& files,
                         const std::vector<std::vector<size_t>>& multifasta_lengths,
                         const std::vector<std::vector<std::string>>& multifasta_names,
@@ -96,7 +92,6 @@ void write_length_files(const std::vector<std::string>& files,
 
 
 int compute_lengths(std::vector<std::string>& input_files, std::string output_prefix, bool print_fasta) {
-    FILE* fp;
     gzFile gzfp;
     kseq_t* seq;
     std::vector<std::vector<size_t>> multifasta_lengths;
@@ -117,22 +112,13 @@ int compute_lengths(std::vector<std::string>& input_files, std::string output_pr
             output_filename = output_prefix + "_file" + std::to_string(i + 1) + ".fna";
         }
         
-        bool compressed = is_compressed(input_file);
-        if (compressed) {
-            gzfp = gzopen(input_file.data(), "r");
-            if (gzfp == 0) {
-                std::cerr << "Error opening file: " << input_file << std::endl;
-                return 1;
-            }
-            seq = kseq_init(gzfp);
-        } else {
-            fp = fopen(input_file.data(), "r");
-            if (fp == 0) {
-                std::cerr << "Error opening file: " << input_file << std::endl;
-                return 1;
-            }
-            seq = kseq_init(fileno(fp));
+        // Use gzopen for both compressed and uncompressed files
+        gzfp = gzopen(input_file.data(), "r");
+        if (gzfp == 0) {
+            std::cerr << "Error opening file: " << input_file << std::endl;
+            return 1;
         }
+        seq = kseq_init(gzfp);
         
         // For FASTA output, we need to concatenate sequences
         std::string concatenated_seq;
@@ -162,7 +148,7 @@ int compute_lengths(std::vector<std::string>& input_files, std::string output_pr
         if (curr_id_seq_length == 0) {
             std::cerr << std::endl << "Error: Empty input file found: " << input_file << std::endl;
             kseq_destroy(seq);
-            fclose(fp);
+            gzclose(gzfp);
             return 1;
         }
         if (temp_lengths.size() > 1) {
@@ -185,11 +171,7 @@ int compute_lengths(std::vector<std::string>& input_files, std::string output_pr
         }
 
         kseq_destroy(seq);
-        if (compressed) {
-            gzclose(gzfp);
-        } else {
-            fclose(fp);
-        }
+        gzclose(gzfp);
     }
 
     // Write lengths files

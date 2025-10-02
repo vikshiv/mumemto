@@ -49,10 +49,6 @@ void rev_comp(std::string &seq) {
         seq[seq.length()>>1] = comp_tab[static_cast<int>(seq[seq.length()>>1])];
 }
 
-bool is_compressed(const std::string& filename) {
-    return endsWith(filename, ".gz");
-}
-
 RefBuilder::RefBuilder(std::string input_data, std::string output_prefix, 
                         bool use_rcomp): input_file(input_data), use_revcomp(use_rcomp), output_prefix(output_prefix) {
     /* Constructor of RefBuilder - builds input reference and determines size of each class */
@@ -197,7 +193,7 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
         // Declare needed parameters for reading/writing
         output_ref = this->output_prefix + ".fna";
         pfparser parser(output_ref, w, p, probing);
-        FILE* fp; gzFile gzfp; kseq_t* seq;
+        gzFile gzfp; kseq_t* seq;
         std::vector<std::string> seq_vec;
         std::vector<std::string> name_vec;
         std::vector<size_t> temp_lengths;
@@ -210,16 +206,10 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
             temp_lengths = std::vector<size_t>();
             temp_names = std::vector<std::string>();
             
-            bool compressed = is_compressed(*iter);
-            if (compressed) {
-                gzfp = gzopen((*iter).data(), "r");
-                if (gzfp == 0) {std::exit(1);}
-                seq = kseq_init(gzfp);
-            } else {
-                fp = fopen((*iter).data(), "r"); 
-                if(fp == 0) {std::exit(1);}
-                seq = kseq_init(fileno(fp));
-            }
+            // Use gzopen for both compressed and uncompressed files
+            gzfp = gzopen((*iter).data(), "r");
+            if (gzfp == 0) {std::exit(1);}
+            seq = kseq_init(gzfp);
             size_t iter_index = static_cast<size_t>(iter-input_files.begin());
 
             while (kseq_read(seq)>=0) {
@@ -240,11 +230,7 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
             multifasta_names.push_back(temp_names);
 
             kseq_destroy(seq);
-            if (compressed) {
-                gzclose(gzfp);
-            } else {
-                fclose(fp);
-            }
+            gzclose(gzfp);
             if (curr_id_seq_length == 0) {
                 std::cerr << std::endl << "Empty input file found: " + *iter << std::endl;
                 return 1;
