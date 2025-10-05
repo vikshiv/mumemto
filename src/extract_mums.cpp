@@ -166,7 +166,7 @@ int main(int argc, char** argv) {
         std::cerr << "Error: No mum file provided\n";
         return 1;
     }
-    if (!endsWith(mum_file_path, ".mums")) {
+    if (!endsWith(mum_file_path, ".mums") && !endsWith(mum_file_path, ".bumbl")) {
         mum_file_path += ".mums";
     }
     if (!is_file(mum_file_path)) {
