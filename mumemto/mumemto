@@ -5,7 +5,7 @@ import subprocess
 import os
 from importlib import import_module
 
-MUMEMTO_VERSION = "1.3.3"
+MUMEMTO_VERSION = "1.3.4"
 
 def run_mumemto(args):
     """Run the C++ executable with given args"""
