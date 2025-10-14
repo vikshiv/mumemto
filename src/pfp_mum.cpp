@@ -122,6 +122,11 @@ int build_main(int argc, char** argv) {
         run_build_parse_cmd(&build_opts, &helper_bins);
         DONE_LOG((std::chrono::system_clock::now() - start));
     }
+
+    if (build_opts.only_parse) {
+        return 0;
+    }
+
     STATUS_LOG("build_main", "building the parse and dictionary objects");
     start = std::chrono::system_clock::now();
     pf_parsing pf = build_opts.from_parse_flag
@@ -349,12 +354,13 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
         {"merge",   no_argument, NULL,  'M'},
         {"anchor",   no_argument, NULL,  'n'},
         {"use-gsacak",   no_argument, NULL,  'g'},
+        {"only-parse",   no_argument, NULL,  'P'},
         {0, 0, 0,  0}
     };
     int c = 0;
     int long_index = 0;
     
-    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:bgMn", long_options, &long_index)) >= 0) {
+    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:bgMnP", long_options, &long_index)) >= 0) {
         switch(c) {
             case 'h': mumemto_usage(); std::exit(0);
             case 'i': opts->input_list.assign(optarg); break;
@@ -375,6 +381,7 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
             case 'M': opts->merge = true; break;
             case 'n': opts->anchor_merge = true; break;
             case 'g': opts->use_gsacak = true; break;
+            case 'P': opts->only_parse = true; break;
             default: mumemto_usage(); std::exit(1);
         }
     }
@@ -415,7 +422,8 @@ int mumemto_usage() {
     std::fprintf(stderr, "\t%-32suse pre-computed pf-parse\n", "-p, --from-parse");
     std::fprintf(stderr, "\t%-32skeep PFP files\n\n", "-K, --keep-temp-files");
     std::fprintf(stderr, "\t%-32sskip PFP and use gsacak directly to compute LCP, BWT, SA\n", "-g, --use-gsacak");
-
+    std::fprintf(stderr, "\t%-32sonly compute PFP over the input files and do not compute matches\n", "-P, --only-parse");
+    
     std::fprintf(stderr, "Overview:\n");
         std::fprintf(stderr, "\tBy default, Mumemto computes multi-MUMs. Exact match parameters can be additionally tuned in three main ways:\n");
         std::fprintf(stderr, "\t1) Choosing the number of sequences a match must appear in [-k]\n");

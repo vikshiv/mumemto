@@ -77,6 +77,7 @@ struct BuildOptions {
         bool merge = false;
         bool anchor_merge = false;
         bool use_gsacak = false;
+        bool only_parse = false;
 
         bool validate() {
             /* checks the arguments and make sure they are valid 
@@ -113,7 +114,12 @@ struct BuildOptions {
                 FORCE_LOG("build_main", "binary output is not supported for multi-MEMs, ignoring flag");
                 binary = false;
             }
-
+            
+            if ((only_parse && use_gsacak) || (only_parse && arrays_in_flag) || (only_parse && from_parse_flag)) {
+                only_parse = false;
+                FORCE_LOG("build_main", "only-parse flag is not supported with use-gsacak, arrays-in, or from-parse, ignoring flag");
+            }
+            
             return (rare_freq == 1);
         }
 
