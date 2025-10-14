@@ -43,10 +43,10 @@ def merge_anchor_lengths(args):
         args.output += '.mums'
     out = open(args.output.replace('.mums', '.lengths'), 'w')
     with open(length_files[0], 'r') as f:
-        anchor_path = f.readline().split()[0]
+        anchor_path = os.path.basename(f.readline().split()[0])
     for m in length_files:
         with open(m, 'r') as f:
-            first_line = f.readline().split()[0]
+            first_line = os.path.basename(f.readline().split()[0])
             if first_line != anchor_path:
                 print(f"Error: Cannot perform anchor-merge. Anchor sequence is not identical in each partition. Ensure paths are identical in the first line of each lengths file.", file=sys.stderr)
                 sys.exit(1)
