@@ -33,6 +33,9 @@
 #include <gzstream.h>
 #endif
 #include <stdio.h>
+#ifdef __linux__
+#include <malloc.h>
+#endif
 using namespace std;
 
 // =============== algorithm limits ===================
@@ -238,7 +241,12 @@ pfparser::pfparser(string file_prefix, size_t w, size_t p, bool probing) :
 }
 
 // Destructor - clean up any open files
-pfparser::~pfparser() {}
+pfparser::~pfparser() {    
+    // Force memory allocator to return freed memory to OS
+    // #ifdef __linux__
+    // malloc_trim(0);
+    // #endif
+}
 
 // Modified save_update_word as a member function
 void pfparser::save_update_word(string& window) {
@@ -309,7 +317,7 @@ void pfparser::finish_parse() {
     save_update_word(word);
     // close input and output files
     if(fclose(tmp_parse_file)!=0) die("Error closing parse file");
-    
+
     // Check # distinct words
     uint64_t totDWord = wordFreq.size();
     if(totDWord > MAX_DISTINCT_WORDS) {
@@ -336,11 +344,10 @@ void pfparser::finish_parse() {
     
     // Remap parse file
     remapParse(file_prefix, wordFreq);
-    
+
     // Clear memory after parsing is complete
     wordFreq.clear();
 }
 
 
 #endif // NEWSCAN_HPP
-
