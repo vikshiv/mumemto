@@ -315,12 +315,12 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
 int mumemto_usage() {
     /* prints out the usage information for the build method */
     std::fprintf(stderr, "\nmumemto - find maximal [unique | exact] matches using PFP.\n");
-    std::fprintf(stderr, "Usage: mumemto [mum | mem] [options] [input_fasta [...]]\n\n");
+    std::fprintf(stderr, "Usage: mumemto [options] [input_fasta [...]]\n\n");
     std::fprintf(stderr, "*** for all options, N = # of sequences ***\n");
     std::fprintf(stderr, "I/O options:\n");
     std::fprintf(stderr, "\t%-32sprints this usage message\n", "-h, --help");
     std::fprintf(stderr, "\t%-22s%-10spath to a file-list of genomes to use (overrides positional args)\n", "-i, --input", "[FILE]");
-    std::fprintf(stderr, "\t%-22s%-10soutput prefix path\n", "-o, --output", "[arg]");
+    std::fprintf(stderr, "\t%-22s%-10soutput prefix path\n", "-o, --output", "[PREFIX]");
     std::fprintf(stderr, "\t%-32sinclude the reverse complement of the sequences (default: true)\n\n", "-r, --no-revcomp");
     std::fprintf(stderr, "\t%-32soutput binary format (multi-MUMs only)\n\n", "-b, --binary");
 
@@ -340,10 +340,10 @@ int mumemto_usage() {
     std::fprintf(stderr, "PFP options:\n");
     std::fprintf(stderr, "\t%-22s%-10swindow size used for pfp (default: 10)\n", "-w, --window", "[INT]");
     std::fprintf(stderr, "\t%-22s%-10shash-modulus used for pfp (default: 100)\n", "-m, --modulus", "[INT]");
-    std::fprintf(stderr, "\t%-32suse pre-computed pf-parse\n", "-p, --from-parse");
-    std::fprintf(stderr, "\t%-32skeep PFP files\n\n", "-K, --keep-temp-files");
+    std::fprintf(stderr, "\t%-32suse pre-computed pf-parse (with shared PREFIX.parse and PREFIX.dict)\n", "-p, --from-parse", "[PREFIX]");
+    std::fprintf(stderr, "\t%-32skeep PFP files\n", "-K, --keep-temp-files");
     std::fprintf(stderr, "\t%-32sskip PFP and use gsacak directly to compute LCP, BWT, SA\n", "-g, --use-gsacak");
-    std::fprintf(stderr, "\t%-32sonly compute PFP over the input files and do not compute matches\n", "-P, --only-parse");
+    std::fprintf(stderr, "\t%-32sonly compute PFP over the input files and do not compute matches\n\n", "-P, --only-parse");
 
     std::fprintf(stderr, "Overview:\n");
         std::fprintf(stderr, "\tBy default, Mumemto computes multi-MUMs. Exact match parameters can be additionally tuned in three main ways:\n");
