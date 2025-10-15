@@ -38,14 +38,11 @@ int build_main(int argc, char** argv) {
     // print_build_status_info(&build_opts);
     bool mum_mode = build_opts.validate();
 
-    // determine output path for reference, generate and store filelist
-    build_opts.output_ref.assign(build_opts.output_prefix + ".fna");
-
     if ((build_opts.input_list.length() == 0) && !(build_opts.from_parse_flag || build_opts.arrays_in_flag)) {build_opts.input_list = make_filelist(build_opts.files, build_opts.output_prefix);}
 
     // Declare ref_build first
     RefBuilder ref_build = (build_opts.from_parse_flag || build_opts.arrays_in_flag)
-        ? RefBuilder(build_opts.from_parse_flag ? build_opts.parse_prefix.substr(0, build_opts.parse_prefix.length() - 4) : build_opts.arrays_in, build_opts.use_rcomp)
+        ? RefBuilder(build_opts.from_parse_flag ? build_opts.parse_prefix : build_opts.arrays_in, build_opts.use_rcomp)
         : RefBuilder(build_opts.input_list, build_opts.output_prefix, build_opts.use_rcomp);
 
     // normalize and reconcile the input parameters
@@ -107,12 +104,12 @@ int build_main(int argc, char** argv) {
     if (build_opts.only_parse) {
         return 0;
     }
-    
+
     STATUS_LOG("build_main", "building the parse and dictionary objects");
     start = std::chrono::system_clock::now();
     pf_parsing pf = build_opts.from_parse_flag
         ? pf_parsing(build_opts.parse_prefix, build_opts.pfp_w)
-        : pf_parsing(build_opts.output_ref, build_opts.pfp_w);
+        : pf_parsing(build_opts.output_prefix, build_opts.pfp_w);
 
     DONE_LOG((std::chrono::system_clock::now() - start));
 

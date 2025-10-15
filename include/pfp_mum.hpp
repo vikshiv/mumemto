@@ -56,7 +56,6 @@ struct BuildOptions {
     public:
         std::string input_list = "";
         std::string output_prefix = "output";
-        std::string output_ref = "";
         std::vector<std::string> files;
         bool use_rcomp = true;
         size_t pfp_w = 10;
@@ -103,9 +102,6 @@ struct BuildOptions {
             else if (!is_dir(p.parent_path().string()))
                 std::filesystem::create_directories(p.parent_path());
 
-            if (from_parse_flag)
-                parse_prefix = parse_prefix + ".fna";
-
             if ((only_parse && use_gsacak) || (only_parse && arrays_in_flag) || (only_parse && from_parse_flag)) {
                 only_parse = false;
                 FORCE_LOG("build_main", "only-parse flag is not supported with use-gsacak, arrays-in, or from-parse, ignoring flag");
@@ -119,7 +115,7 @@ struct BuildOptions {
             if (from_parse_flag && arrays_in_flag) {
                 FATAL_ERROR("--from-parse flag is incompatible with --arrays-in flag");
             }
-            
+
             // check intermediate file exists for certain options
             if (from_parse_flag) {
                 if (!is_file(parse_prefix + ".dict"))
@@ -143,18 +139,7 @@ struct BuildOptions {
                 FORCE_LOG("build_main", "binary output is not supported for multi-MEMs, ignoring flag");
                 binary = false;
             }
-<<<<<<< HEAD
 
-            
-
-=======
-            
-            if ((only_parse && use_gsacak) || (only_parse && arrays_in_flag) || (only_parse && from_parse_flag)) {
-                only_parse = false;
-                FORCE_LOG("build_main", "only-parse flag is not supported with use-gsacak, arrays-in, or from-parse, ignoring flag");
-            }
-            
->>>>>>> dev
             return (rare_freq == 1);
         }
 

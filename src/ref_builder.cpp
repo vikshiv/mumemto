@@ -191,8 +191,7 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
     bool multi = false;
     if (!from_parse) {
         // Declare needed parameters for reading/writing
-        output_ref = this->output_prefix + ".fna";
-        pfparser parser(output_ref, w, p, probing);
+        pfparser parser(this->output_prefix, w, p, probing);
         gzFile gzfp; kseq_t* seq;
         std::vector<std::string> seq_vec;
         std::vector<size_t> temp_lengths;
