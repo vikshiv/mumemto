@@ -143,9 +143,18 @@ struct BuildOptions {
                 FORCE_LOG("build_main", "binary output is not supported for multi-MEMs, ignoring flag");
                 binary = false;
             }
+<<<<<<< HEAD
 
             
 
+=======
+            
+            if ((only_parse && use_gsacak) || (only_parse && arrays_in_flag) || (only_parse && from_parse_flag)) {
+                only_parse = false;
+                FORCE_LOG("build_main", "only-parse flag is not supported with use-gsacak, arrays-in, or from-parse, ignoring flag");
+            }
+            
+>>>>>>> dev
             return (rare_freq == 1);
         }
 

@@ -276,6 +276,7 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
         {"merge",   no_argument, NULL,  'M'},
         {"anchor",   no_argument, NULL,  'n'},
         {"use-gsacak",   no_argument, NULL,  'g'},
+        {"only-parse",   no_argument, NULL,  'P'},
         {0, 0, 0,  0}
     };
     int c = 0;
