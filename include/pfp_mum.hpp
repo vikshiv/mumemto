@@ -96,6 +96,7 @@ struct BuildOptions {
                     FATAL_ERROR(("The following file path is not valid: " + f).c_str());
                 }
             }
+            
             std::filesystem::path p (output_prefix);
             if (p.parent_path().string().empty() && !p.string().empty())
                 output_prefix = "./" + output_prefix;
@@ -104,16 +105,6 @@ struct BuildOptions {
 
             if (from_parse_flag)
                 parse_prefix = parse_prefix + ".fna";
-            // if (max_mem_freq < -1)
-            //     FATAL_ERROR("Maximum MEM frequency cannot be negative (-1 indicates no limit on MEM frequency)"); 
-
-            if (rare_freq < 0)
-                FATAL_ERROR("Per-sequence MEM frequency must be > 0 (or 0 for no limit)."); 
-
-            if (binary && rare_freq != 1) {
-                FORCE_LOG("build_main", "binary output is not supported for multi-MEMs, ignoring flag");
-                binary = false;
-            }
 
             if ((only_parse && use_gsacak) || (only_parse && arrays_in_flag) || (only_parse && from_parse_flag)) {
                 only_parse = false;
@@ -128,6 +119,32 @@ struct BuildOptions {
             if (from_parse_flag && arrays_in_flag) {
                 FATAL_ERROR("--from-parse flag is incompatible with --arrays-in flag");
             }
+            
+            // check intermediate file exists for certain options
+            if (from_parse_flag) {
+                if (!is_file(parse_prefix + ".dict"))
+                    FATAL_ERROR(("Missing *.dict file. Expected file: " + parse_prefix + ".dict").c_str()); 
+                else if (!is_file(parse_prefix + ".parse"))
+                    FATAL_ERROR(("Missing *.parse file. Expected file: " + parse_prefix + ".parse").c_str()); 
+            }
+            if (arrays_in_flag) {
+                if (!is_file(arrays_in + ".sa"))
+                    FATAL_ERROR(("Missing *.sa file. Expected file: " + arrays_in + ".sa").c_str()); 
+                else if (!is_file(arrays_in + ".lcp"))
+                    FATAL_ERROR(("Missing *.lcp file. Expected file: " + arrays_in + ".lcp").c_str()); 
+                else if (!is_file(arrays_in + ".bwt"))
+                    FATAL_ERROR(("Missing *.bwt file. Expected file: " + arrays_in + ".bwt").c_str()); 
+            }
+
+            if (rare_freq < 0)
+                FATAL_ERROR("Per-sequence MEM frequency must be > 0 (or 0 for no limit)."); 
+
+            if (binary && rare_freq != 1) {
+                FORCE_LOG("build_main", "binary output is not supported for multi-MEMs, ignoring flag");
+                binary = false;
+            }
+
+            
 
             return (rare_freq == 1);
         }
