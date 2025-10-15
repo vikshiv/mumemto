@@ -55,7 +55,7 @@ int build_main(int argc, char** argv) {
     print_build_status_info(build_opts, ref_build, mum_mode);
 
     // Build the input reference file, and bitvector labeling the end for each doc
-    if (build_opts.use_gsacak)
+    if (build_opts.use_gsacak || build_opts.from_parse_flag)
         STATUS_LOG("build_main", "parsing input files");
     else
         STATUS_LOG("build_main", "computing PFP over input files");
@@ -66,19 +66,6 @@ int build_main(int argc, char** argv) {
         FATAL_ERROR("Please check the input files and ensure that it contains valid FASTA files. Cleaning up...");
     }
     DONE_LOG((std::chrono::system_clock::now() - start));
-
-    // Determine the paths to the BigBWT executables
-    HelperPrograms helper_bins;
-    // if (!std::getenv("PFPMUM_BUILD_DIR")) {FATAL_ERROR("Need to set PFPMUM_BUILD_DIR environment variable.");}
-    std::filesystem::path path;
-    if (!std::getenv("PFPMUM_BUILD_DIR")) {
-        path = std::filesystem::canonical("/proc/self/exe").parent_path();
-    }
-    else {
-        path = std::filesystem::path(std::string(std::getenv("PFPMUM_BUILD_DIR")));
-    }
-    helper_bins.build_paths((path / "").string());
-    helper_bins.validate();
 
     // skip PFP altogether, use gsacak directly
     if (build_opts.use_gsacak) {
@@ -116,15 +103,6 @@ int build_main(int argc, char** argv) {
         FORCE_LOG("build_main", "finished computing matches");
         return 0;
     }
-
-    // if (!build_opts.from_parse_flag){
-    //     // Parse the input text with BigBWT, and load it into pf object
-    //     STATUS_LOG("build_main", "generating the prefix-free parse for given reference");
-    //     start = std::chrono::system_clock::now();
-
-    //     run_build_parse_cmd(&build_opts, &helper_bins);
-    //     DONE_LOG((std::chrono::system_clock::now() - start));
-    // }
 
     if (build_opts.only_parse) {
         return 0;
@@ -168,66 +146,6 @@ int build_main(int argc, char** argv) {
     std::cerr << "\n";
     
     return 0;
-}
-
-void run_build_parse_cmd(BuildOptions* build_opts, HelperPrograms* helper_bins) {
-    // Generates and runs the command-line for executing the PFP of the reference 
-    std::ostringstream command_stream;
-    // if (build_opts->threads > 0) {
-    //     std::string curr_exe = "";
-    //     if (build_opts->is_fasta) {curr_exe.assign(helper_bins->parse_fasta_bin);}
-    //     else {curr_exe.assign(helper_bins->parse_bin);}
-
-    //     command_stream << curr_exe << " "; //<< " -i ";
-    //     command_stream << build_opts->output_ref << " ";
-    //     command_stream << "-w " << build_opts->pfp_w;
-    //     command_stream << " -p " << build_opts->hash_mod;
-    //     // command_stream << " -t " << build_opts->threads;
-    // }
-    // else {
-        command_stream << helper_bins->parseNT_bin;
-        command_stream << " -f";
-        command_stream << " -w " << build_opts->pfp_w;
-        command_stream << " -p " << build_opts->hash_mod << " ";
-        command_stream << build_opts->output_ref;
-        
-    // }
-
-    // std::cout << command_stream.str() << std::endl;
-    // std::cout << "Executing this command: " << command_stream.str().c_str() << std::endl;
-    auto parse_log = execute_cmd(command_stream.str().c_str());
-    //OTHER_LOG(parse_log.data());
-}
-
-std::string execute_cmd(const char* cmd) {
-    std::array<char, 256> buffer{};
-    std::string output = "";
-
-    std::string cmd_plus_stderr = std::string(cmd) + " 2>&1";
-    FILE* pipe = popen(cmd_plus_stderr.data(), "r"); // Extract stderr as well
-    if (!pipe) {FATAL_ERROR("popen() failed!");}
-
-    try {
-        std::size_t bytes;
-        while ((bytes = fread(buffer.data(), sizeof(char), sizeof(buffer), pipe))) {
-            output += std::string(buffer.data(), bytes);
-        }
-    } catch (...) {
-        pclose(pipe);
-        FATAL_ERROR("Error occurred while reading popen() stream.");
-    }
-
-    // Correct the usage of pclose and WEXITSTATUS
-    int status = pclose(pipe);
-    size_t exit_code = WEXITSTATUS(status);
-
-    // Check if the command failed
-    if (exit_code != 0) {
-        std::cout << "\n";
-        FATAL_ERROR("external command failed ... here is the error message:\n%s", output.data());
-    }
-
-    return output;
 }
 
 bool endsWith(const std::string& str, const std::string& suffix) {

@@ -119,6 +119,15 @@ struct BuildOptions {
                 only_parse = false;
                 FORCE_LOG("build_main", "only-parse flag is not supported with use-gsacak, arrays-in, or from-parse, ignoring flag");
             }
+            if (use_gsacak && from_parse_flag) {
+                FATAL_ERROR("--use-gsacak flag is incompatible with --from-parse flag");
+            }
+            if (use_gsacak && arrays_in_flag) {
+                FATAL_ERROR("--use-gsacak flag is incompatible with --arrays-in flag");
+            }
+            if (from_parse_flag && arrays_in_flag) {
+                FATAL_ERROR("--from-parse flag is incompatible with --arrays-in flag");
+            }
 
             return (rare_freq == 1);
         }
@@ -168,31 +177,9 @@ struct BuildOptions {
         }
 };
 
-struct HelperPrograms {
-  /* Contains paths to run helper programs */
-  std::string base_path = "";
-  std::string parseNT_bin = "newscanNT.x";
-//   std::string parse_fasta_bin = "newscan.x";
-//   std::string parse_bin = "pscan.x";
-  
-public:
-  void build_paths(std::string base) {
-      /* Takes the base path, and combines it with names to generate executable paths */
-      base_path.assign(base);
-      parseNT_bin.assign(base_path + parseNT_bin);
-  }
-
-  void validate() const {
-      /* Makes sure that each path for an executable is valid */
-      bool invalid_path = !is_file(parseNT_bin);
-      if (invalid_path) {FATAL_ERROR("One or more of helper program paths are invalid.");}
-  }
-};
-
 /* Function Declartions involving structs */
 void parse_build_options(int argc, char** argv, BuildOptions* opts);
 void print_build_status_info(BuildOptions& opts, RefBuilder&ref_build, bool mum_mode);
-void run_build_parse_cmd(BuildOptions* build_opts, HelperPrograms* helper_bins);
 
 const std::string SKULL =
 "                            ,--.   \n"
