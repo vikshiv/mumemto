@@ -193,6 +193,10 @@ void remapParse(std::string &inputFileName, map<uint64_t,word_stats> &wfreq)
   }
   if(fclose(new_parse_file)!=0) die("Error closing new parse file");
   if(fclose(old_parse_file)!=0) die("Error closing old parse file");
+
+  if(std::remove((inputFileName + "." + EXTPARS0).c_str()) != 0) {
+      die("Error deleting old parse file");
+  }
 }
 
 // =============== pfparser class ===================
