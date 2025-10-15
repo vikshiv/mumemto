@@ -243,9 +243,9 @@ pfparser::pfparser(string file_prefix, size_t w, size_t p, bool probing) :
 // Destructor - clean up any open files
 pfparser::~pfparser() {    
     // Force memory allocator to return freed memory to OS
-    // #ifdef __linux__
-    // malloc_trim(0);
-    // #endif
+    #ifdef __linux__
+    malloc_trim(0);
+    #endif
 }
 
 // Modified save_update_word as a member function
