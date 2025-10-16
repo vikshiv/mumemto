@@ -41,7 +41,7 @@ private:
     
 
     void build_bv();
-    void write_lengths_file(bool multi);
+    void write_lengths_file();
 }; // end of RefBuilder class
 
 
