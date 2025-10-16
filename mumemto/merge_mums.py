@@ -1,9 +1,9 @@
 import numpy as np
 import argparse
 try:
-    from utils import get_sequence_lengths, parse_mums_generator
+    from utils import get_sequence_lengths, MUMdata, parse_mums_generator
 except ImportError:
-    from mumemto.utils import get_sequence_lengths, parse_mums_generator
+    from mumemto.utils import get_sequence_lengths, MUMdata, parse_mums_generator
 import os
 import sys
 import subprocess
@@ -186,6 +186,8 @@ def main(args):
         print("Error: *.thresh or *.athresh files required for all inputs for merging.", file=sys.stderr)
         sys.exit(1)
     
+    merge_lengths(args)
+    
     cleanup = args.merged_mums is None
     if args.merged_mums is None:
         run_merger(args)
@@ -295,7 +297,6 @@ def main(args):
     #     for m in args.mum_files:
     #         with open(m.replace('.mums', '.lengths'), 'r') as f:
     #             out.write(f.read().strip() + '\n')
-    merge_lengths(args)
     
     if cleanup:
         for f in args.mum_files:
