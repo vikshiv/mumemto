@@ -144,7 +144,7 @@ inline std::vector<Mum> parse_bumbl(const std::string& path, bool noPartials = t
     if (total > 0) {
         const size_t num_bytes = (total + 7) / 8;
         packed.resize(num_bytes);
-        readOrThrow(reinterpret_cast<char*>(packed.data()), static_cast<std::streamsize>(num_bytes));
+        readExact(in, reinterpret_cast<char*>(packed.data()), static_cast<std::streamsize>(num_bytes));
     }
 
     // optional blocks
@@ -190,8 +190,8 @@ inline std::vector<Mum> parse_bumbl(const std::string& path, bool noPartials = t
 // Text .mums streamer (first offset only)
 inline void stream_mums_first(
         const std::string& path,
-        bool noPartials = true,
-        const std::function<void(uint32_t, int64_t)>& consumer) {
+        const std::function<void(uint32_t, int64_t)>& consumer,
+        bool noPartials = true) {
     std::ifstream in(path);
     if (!in) {
         throw std::runtime_error("Failed to open MUMs file: " + path);
@@ -234,8 +234,8 @@ inline void stream_mums_first(
 // Binary .bumbl streamer (first offset only)
 inline void stream_bumbl_first(
         const std::string& path,
-        bool noPartials = true,
-        const std::function<void(uint32_t, int64_t)>& consumer) {
+        const std::function<void(uint32_t, int64_t)>& consumer,
+        bool noPartials = true) {
     std::ifstream in(path, std::ios::binary);
     if (!in) {
         throw std::runtime_error("Failed to open bumbl file: " + path);

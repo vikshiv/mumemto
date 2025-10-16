@@ -78,11 +78,11 @@ int read_ref_file(const std::string& length_file_path, std::string& ref_seq) {
 std::vector<std::pair<size_t, size_t>> parse_mums(const std::string& path) {
     std::vector<std::pair<size_t, size_t>> mum_list;
     if (endsWith(path, ".bumbl")) {
-        mumsio::stream_bumbl_first(path, /*noPartials=*/true, [&](uint32_t len, int64_t off0){
+        mumsio::stream_bumbl_first(path, [&](uint32_t len, int64_t off0){
             mum_list.emplace_back(static_cast<size_t>(off0), static_cast<size_t>(len));
         });
     } else {
-        mumsio::stream_mums_first(path, /*noPartials=*/true, [&](uint32_t len, int64_t off0){
+        mumsio::stream_mums_first(path, [&](uint32_t len, int64_t off0){
             mum_list.emplace_back(static_cast<size_t>(off0), static_cast<size_t>(len));
         });
     }

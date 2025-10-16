@@ -7,7 +7,7 @@
 #include <cassert>
 #include <tuple>
 #include <filesystem>
-#include "parse_mums.hpp"
+#include <parse_mums.hpp>
 
 using namespace std;
 
@@ -129,15 +129,25 @@ tuple<vector<Mum>, vector<bool>, vector<uint16_t>> merge_partitions(
 }
 
 string get_path(const string& path) {
+    /* by default look for .mums and .athresh files, unless .bumbl specified*/
+    bool is_bumbl = false;
     string base_path = path;
     if (path.size() >= 8 && path.compare(path.size() - 8, 8, ".athresh") == 0) {
         base_path = path.substr(0, path.size() - 8);
     } else if (path.size() >= 5 && path.compare(path.size() - 5, 5, ".mums") == 0) {
         base_path = path.substr(0, path.size() - 5);
+    } else if (path.size() >= 6 && path.compare(path.size() - 6, 6, ".bumbl") == 0) {
+        is_bumbl = true;
+        base_path = path.substr(0, path.size() - 6);
     }
     // Check that both .thresh and .mums files exist
     string thresh_path = base_path + ".athresh";
-    string mums_path = base_path + ".mums";
+    string mums_path;
+    if (!is_bumbl) {
+        mums_path = base_path + ".mums";
+    } else {
+        mums_path = base_path + ".bumbl";
+    }
     
     if (!filesystem::exists(thresh_path)) {
         throw runtime_error("Could not find threshold file: " + thresh_path);

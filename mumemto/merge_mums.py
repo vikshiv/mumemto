@@ -15,7 +15,7 @@ def parse_arguments(args=None):
     parser = argparse.ArgumentParser(description='Merge MUMs files')
     parser.add_argument('--merged_mums', '-m', help='Path to MUMs of MUMs file (only for string merging)')
     parser.add_argument('mum_files', metavar='MUM_FILES', nargs='+', help='Paths to MUMs files to merge')
-    parser.add_argument('--output', '-o', help='Path to output merged MUMs file', default='merged.mums')
+    parser.add_argument('--output', '-o', help='Path to output merged MUMs file', default='merged')
     parser.add_argument('--verbose', '-v', action='store_true', help='Print verbose output')
     
     if args is None:
@@ -25,8 +25,16 @@ def parse_arguments(args=None):
     
     assert len(args.mum_files) >= 2, "At least two MUMs files are required for merging"
     
+    ### build a prefix list and a mums/bumbl path list
+    args.paths = []
     for i in range(len(args.mum_files)):
-        if not args.mum_files[i].endswith('.mums'):
+        if args.mum_files[i].endswith('.mums'):
+            args.paths.append(args.mum_files[i][:-5])
+        elif args.mum_files[i].endswith('.bumbl'):
+            args.paths.append(args.mum_files[i][:-6])
+        else: 
+            ### assume that the input is a prefix, and use .mums by default
+            args.paths.append(args.mum_files[i])
             args.mum_files[i] += '.mums'
             
     if args.merged_mums is not None and not args.merged_mums.endswith('.mums'):
@@ -38,10 +46,8 @@ def parse_arguments(args=None):
     return args
     
 def merge_anchor_lengths(args):
-    length_files = [m.replace('.mums', '.lengths') for m in args.mum_files]
-    if not args.output.endswith('.mums'):
-        args.output += '.mums'
-    out = open(args.output.replace('.mums', '.lengths'), 'w')
+    length_files = [m + '.lengths' for m in args.paths]
+    out = open(args.output + '.lengths', 'w')
     with open(length_files[0], 'r') as f:
         anchor_path = os.path.basename(f.readline().split()[0])
     for m in length_files:
@@ -77,12 +83,10 @@ def merge_anchor_lengths(args):
     out.close()
     
 def merge_lengths(args):
-    if not args.output.endswith('.mums'):
-        args.output += '.mums'
-    out = open(args.output.replace('.mums', '.lengths'), 'w')
+    out = open(args.output + '.lengths', 'w')
     lines = []
-    for m in args.mum_files:
-        with open(m.replace('.mums', '.lengths'), 'r') as f:                
+    for m in args.paths:
+        with open(m + '.lengths', 'r') as f:                
             for l in f.read().splitlines():
                 l = l.split()
                 lines.append(l)
@@ -142,12 +146,12 @@ def run_merger(args):
         if result.returncode == 1:
             pbar.close()
             print("Error: Partial MUMs detected. Aborting merge. Cleaning up...", file=sys.stderr)
-            for f in args.mum_files:
-                if os.path.exists(f.replace('.mums', '_mums.fa')):
-                    os.remove(f.replace('.mums', '_mums.fa'))
+            for f in args.paths:
+                if os.path.exists(f +  '_mums.fa'):
+                    os.remove(f + '_mums.fa')
             sys.exit(1)
     
-    cmd = [mumemto_script] + [f.replace('.mums', '_mums.fa') for f in args.mum_files] + ['-o', args.output + '_temp_merged']
+    cmd = [mumemto_script] + [f + '_mums.fa' for f in args.paths] + ['-o', args.output + '_temp_merged']
     if args.verbose:
         print(f"Running command: {' '.join(cmd)}", file=sys.stderr)
     subprocess.run(cmd)
@@ -169,7 +173,7 @@ def run_anchor_merger(args):
     subprocess.run(cmd)
 
 def main(args):
-    anchor_merge = all([os.path.exists(m.replace('.mums', '.athresh')) for m in args.mum_files])
+    anchor_merge = all([os.path.exists(m + '.athresh') for m in args.paths])
     if anchor_merge:
         if args.merged_mums is not None:
             print("Error: -m is only for string merging, but anchor-based merging detected. Ignoring -m.", file=sys.stderr)
@@ -177,7 +181,7 @@ def main(args):
         run_anchor_merger(args)
         sys.exit(0)
 
-    threshold_exists = all([os.path.exists(m.replace('.mums', '.thresh')) for m in args.mum_files])
+    threshold_exists = all([os.path.exists(m + '.thresh') for m in args.paths])
     if not threshold_exists:
         print("Error: *.thresh or *.athresh files required for all inputs for merging.", file=sys.stderr)
         sys.exit(1)
