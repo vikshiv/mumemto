@@ -446,10 +446,10 @@ private:
 
     inline uint16_t get_flags() {
         uint16_t flags = 0;
+        // use top bits [13=partial, 14=coll_blocks, 15=length32]
         if (num_distinct < num_docs)
-            flags |= 1 << 2; 
-        // length32 flag is always set
-        flags |= 1 << 0;
+            flags |= static_cast<uint16_t>(1u << 13); // partial
+        flags |= static_cast<uint16_t>(1u << 15);     // length32 always set
         return flags;
     }
 
