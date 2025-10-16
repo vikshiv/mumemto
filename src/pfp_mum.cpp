@@ -242,7 +242,7 @@ std::string make_filelist(std::vector<std::string> files, std::string output_pre
 }
 
 void remove_temp_files(std::string filename) {
-    std::vector<std::string> temp_files = {".fna", ".fna.dict", ".fna.occ", ".fna.parse_old", ".fna.last", ".fna.parse", "_filelist.txt"};
+    std::vector<std::string> temp_files = {".dict", ".parse", "_filelist.txt"};
     for (auto &ext : temp_files) {
         std::filesystem::remove(std::filesystem::path(filename + ext));
     }
