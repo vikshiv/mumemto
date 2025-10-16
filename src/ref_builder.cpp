@@ -163,32 +163,25 @@ void RefBuilder::build_bv() {
     doc_ends_rank = sdsl::rank_support_v<1> (&doc_ends); 
 }
 
-void RefBuilder::write_lengths_file(bool multi) {
+void RefBuilder::write_lengths_file() {
     // assuming multifasta_lengths is built correctly
     std::string lengths_fname = output_prefix + ".lengths";
     std::ofstream outfile(lengths_fname);
-    if (multi) {
-        size_t total_file_length = 0;
-        for (size_t i = 0; i < multifasta_lengths.size(); ++i) {
-            total_file_length = 0;
-            for (auto n : multifasta_lengths[i]) {
-                total_file_length += n;
-            }
-            outfile << std::filesystem::absolute(input_files[i]).string() << " * " << total_file_length << std::endl;
-            for (auto idx = 0; idx < multifasta_lengths[i].size(); ++idx) {
-                outfile << std::filesystem::absolute(input_files[i]).string() << " " << multifasta_names[i][idx] << " " << multifasta_lengths[i][idx] << std::endl;
-            }
+    size_t total_file_length = 0;
+    for (size_t i = 0; i < multifasta_lengths.size(); ++i) {
+        total_file_length = 0;
+        for (auto n : multifasta_lengths[i]) {
+            total_file_length += n;
         }
-    } else {
-        for (size_t i = 0; i < multifasta_lengths.size(); ++i) {
-            outfile << std::filesystem::absolute(input_files[i]).string() << " " << multifasta_lengths[i][0] << std::endl;
+        outfile << std::filesystem::absolute(input_files[i]).string() << " * " << total_file_length << std::endl;
+        for (auto idx = 0; idx < multifasta_lengths[i].size(); ++idx) {
+            outfile << std::filesystem::absolute(input_files[i]).string() << " " << multifasta_names[i][idx] << " " << multifasta_lengths[i][idx] << std::endl;
         }
     }
     outfile.close();
 }
 
 int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = false, bool keep_seqs = false) {
-    bool multi = false;
     if (!from_parse) {
         // Declare needed parameters for reading/writing
         pfparser parser(this->output_prefix, w, p, probing);
@@ -216,9 +209,6 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
                 curr_id_seq_length += seq->seq.l;
                 temp_lengths.push_back(seq->seq.l);
                 temp_names.push_back(seq->name.s);
-            }
-            if (temp_lengths.size() > 1) {
-                multi = true;
             }
             multifasta_lengths.push_back(temp_lengths);
             multifasta_names.push_back(temp_names);
@@ -282,7 +272,7 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
             parser.finish_parse();
         }
         // Write out lengths file
-        this->write_lengths_file(multi);
+        this->write_lengths_file();
     }
 
     // build the bv
