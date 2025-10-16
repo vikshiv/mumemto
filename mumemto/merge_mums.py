@@ -288,7 +288,8 @@ def main(args):
     
     ### write output
     with open(args.output + '.mums', 'w') as f:
-        for m in merged:
+        for o in order:
+            m = merged[o]
             f.write('%d\t%s\t%s\n' % (m[0], ','.join(map(str, m[1])), ','.join(['+' if x else '-' for x in m[2]])))
     with open(args.output + '.thresh', 'wb') as f:
         f.write(np.array(new_thresholds_merge, dtype=np.uint16).tobytes())

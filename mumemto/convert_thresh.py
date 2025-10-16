@@ -60,22 +60,26 @@ def convert_threshold(args):
     
     new_thresholds = []
     new_rev_thresholds = []
-    
+
     mums = MUMdata(args.input_file, sort=False)
-    starts = mums[:, 0].starts
     lengths = mums.lengths
+    starts = [0] + np.cumsum(lengths + 1).tolist()
     order = np.argsort(mums[:, 0].starts)
     for o in order:
         new_thresholds.append(thresholds[starts[o] : starts[o] + lengths[o] + 1])
         new_rev_thresholds.append(rev_thresholds[starts[o] : starts[o] + lengths[o] + 1])
+        
     concatenated_thresholds = np.concatenate(new_thresholds)
     concatenated_rev_thresholds = np.concatenate(new_rev_thresholds)
-
+    assert concatenated_thresholds.size == thresholds.size
+    assert concatenated_rev_thresholds.size == rev_thresholds.size
+    
     with open(args.output + '.thresh', 'wb') as f:
         f.write(concatenated_thresholds.astype(np.uint16).tobytes())
     with open(args.output + '.thresh_rev', 'wb') as f:
         f.write(concatenated_rev_thresholds.astype(np.uint16).tobytes())
 
+    mums[order].write_mums(args.output + '.mums')
 
 def main(args):
     """
