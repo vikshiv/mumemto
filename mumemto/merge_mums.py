@@ -193,7 +193,7 @@ def main(args):
         run_merger(args)
     
     
-    premerge_mums = [list(parse_mums_generator(m)) for m in args.mum_files]
+    premerge_mums = [MUMdata(m) for m in args.mum_files]
     
     ### get lengths
     mum_lens = get_sequence_lengths(os.path.splitext(args.merged_mums)[0] + '.lengths', multilengths=True)
@@ -208,10 +208,10 @@ def main(args):
 
     ### get thresholds
     thresholds, rev_thresholds = [], []
-    for m in args.mum_files:
-        with open(m.replace('.mums', '.thresh'), 'rb') as f:
+    for m in args.paths:
+        with open(m + '.thresh', 'rb') as f:
             thresholds.append(np.fromfile(f, dtype=np.uint16))
-        with open(m.replace('.mums', '.thresh_rev'), 'rb') as f:
+        with open(m + '.thresh_rev', 'rb') as f:
             rev_thresholds.append(np.fromfile(f, dtype=np.uint16))
     
     
@@ -253,7 +253,7 @@ def main(args):
         new_strands = []
         for i in range(NUM_SETS):
             mumid = mum_idx[idx, i]
-            for s, strand in zip(premerge_mums[i][mumid][1], premerge_mums[i][mumid][2]): # get matching mum
+            for s, strand in zip(premerge_mums[i][mumid].starts, premerge_mums[i][mumid].strands): # get matching mum
                 new_starts.append(s + offset[i][0] if strand else s + offset[i][1])
                 # the mum in set i matches in the forward direction
                 new_strands.append(strand if strands[i] else not strand)
@@ -275,15 +275,12 @@ def main(args):
         new_thresholds_rev.extend([0])
         
     ### write output
-    # if args.output:
-    if not args.output.endswith('.mums'):
-        args.output += '.mums'
-    with open(args.output, 'w') as f:
+    with open(args.output + '.mums', 'w') as f:
         for m in merged:
             f.write('%d\t%s\t%s\n' % (m[0], ','.join(map(str, m[1])), ','.join(['+' if x else '-' for x in m[2]])))
-    with open(args.output.replace('.mums', '.thresh'), 'wb') as f:
+    with open(args.output + '.thresh', 'wb') as f:
         f.write(np.array(new_thresholds, dtype=np.uint16).tobytes())
-    with open(args.output.replace('.mums', '.thresh_rev'), 'wb') as f:
+    with open(args.output + '.thresh_rev', 'wb') as f:
         f.write(np.array(new_thresholds_rev, dtype=np.uint16).tobytes())
     # else:
     #     try:
@@ -299,8 +296,8 @@ def main(args):
     #             out.write(f.read().strip() + '\n')
     
     if cleanup:
-        for f in args.mum_files:
-            os.remove(f.replace('.mums', '_mums.fa'))
+        for f in args.paths:
+            os.remove(f + '_mums.fa')
         os.remove(args.merged_mums)
         os.remove(os.path.splitext(args.merged_mums)[0] + '.lengths')
         
