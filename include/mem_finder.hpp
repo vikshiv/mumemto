@@ -124,6 +124,10 @@ public:
             std::vector<uint16_t> mum_based_thresh(total_mum_length, 0);
             std::vector<uint16_t> mum_based_thresh_rev(total_mum_length, 0);
             size_t revpos;
+            // write thresholds for MUMs in order of their first sequence occurrence
+            std::sort(mum_positions.begin(), mum_positions.end(), [](const std::pair<size_t, size_t>& a, const std::pair<size_t, size_t>& b) {
+                return a.first < b.first;
+            });
             for (size_t i = 0; i < mum_positions.size(); i++) {
                 // revpos = doc_lens[0] - mum_positions[i].first - mum_positions[i].second - 1;
                 // curpos = doc_lens[curdoc] + doc_lens[curdoc] - curpos - length - 1;

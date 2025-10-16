@@ -232,6 +232,7 @@ def main(args):
     ### main merging algorithm
     new_thresholds = []
     new_thresholds_rev = []
+    mum_positions = []
     merged = []
     for idx, (l, starts, strands) in tqdm(enumerate(dollar_less), total=len(dollar_less), desc="Merging MUMs", disable=not args.verbose):
         # first check if it is no longer unique
@@ -258,7 +259,8 @@ def main(args):
                 # the mum in set i matches in the forward direction
                 new_strands.append(strand if strands[i] else not strand)
         merged.append((int(l), tuple([int(x) for x in new_starts]), tuple(new_strands)))
-    
+        mum_positions.append(merged[-1][1][0])
+        
         cur_thresh = []
         cur_revthresh = []
         for i in range(NUM_SETS):
@@ -269,19 +271,29 @@ def main(args):
                 cur_revthresh.append(thresh[0]); cur_thresh.append(thresh[1])
         cur_thresh = np.array(cur_thresh)
         cur_revthresh = np.array(cur_revthresh)
-        new_thresholds.extend(np.where(np.all(cur_thresh > 0, axis=0), np.max(cur_thresh, axis=0), 0))
-        new_thresholds.extend([0])
-        new_thresholds_rev.extend(np.where(np.all(cur_revthresh > 0, axis=0), np.max(cur_revthresh, axis=0), 0))
-        new_thresholds_rev.extend([0])
-        
+        new_thresholds.append(np.where(np.all(cur_thresh > 0, axis=0), np.max(cur_thresh, axis=0), 0))
+        # new_thresholds.extend([0])
+        new_thresholds_rev.append(np.where(np.all(cur_revthresh > 0, axis=0), np.max(cur_revthresh, axis=0), 0))
+        # new_thresholds_rev.extend([0])
+    
+    ### sort the thresholds according to the MUM order in seq0
+    order = np.argsort(mum_positions)
+    new_thresholds_merge = []
+    new_thresholds_rev_merge = []
+    for o in order:
+        new_thresholds_merge.extend(new_thresholds[o])
+        new_thresholds_merge.extend([0])
+        new_thresholds_rev_merge.extend(new_thresholds_rev[o])
+        new_thresholds_rev_merge.extend([0])
+    
     ### write output
     with open(args.output + '.mums', 'w') as f:
         for m in merged:
             f.write('%d\t%s\t%s\n' % (m[0], ','.join(map(str, m[1])), ','.join(['+' if x else '-' for x in m[2]])))
     with open(args.output + '.thresh', 'wb') as f:
-        f.write(np.array(new_thresholds, dtype=np.uint16).tobytes())
+        f.write(np.array(new_thresholds_merge, dtype=np.uint16).tobytes())
     with open(args.output + '.thresh_rev', 'wb') as f:
-        f.write(np.array(new_thresholds_rev, dtype=np.uint16).tobytes())
+        f.write(np.array(new_thresholds_rev_merge, dtype=np.uint16).tobytes())
     # else:
     #     try:
     #         for m in merged:
