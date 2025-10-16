@@ -35,8 +35,8 @@ def parse_arguments(args=None):
         else: 
             ### assume that the input is a prefix, and use .mums by default
             args.paths.append(args.mum_files[i])
-            args.mum_files[i] += '.mums'
-            
+            args.mum_files[i] += '.mums'     
+    
     if args.merged_mums is not None and not args.merged_mums.endswith('.mums'):
         args.merged_mums += '.mums'
         
@@ -63,7 +63,7 @@ def merge_anchor_lengths(args):
         with open(m, 'r') as f:                
             for l in f.read().splitlines():
                 l = l.split()
-                if first_file or l[0] != anchor_path:
+                if first_file or os.path.basename(l[0]) != anchor_path:
                     lines.append(l)
         first_file = False
     entry_count = np.array([len(l) for l in lines])
