@@ -64,10 +64,7 @@ def find_coll_blocks(mums, max_break=0, verbose=False, return_order=False, min_s
     return blocks
 
 def get_coll_block_order(mums, blocks):
-    mum_orders = mums.starts.transpose().argsort()
-    mum_order_pos = np.argsort(mum_orders, axis=1)
-    order = mum_order_pos[:,[b[0] for b in blocks]].argsort(axis=1)
-    return order
+    return mums.starts[[b[0] for b in blocks],:].transpose().argsort(axis=1)
     
 
 def parse_mums_generator(mumfile, lenfilter=0, subsample=1, verbose=False, return_blocks=False):
