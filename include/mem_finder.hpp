@@ -124,6 +124,10 @@ public:
             std::vector<uint16_t> mum_based_thresh(total_mum_length, 0);
             std::vector<uint16_t> mum_based_thresh_rev(total_mum_length, 0);
             size_t revpos;
+            // write thresholds for MUMs in order of their first sequence occurrence
+            std::sort(mum_positions.begin(), mum_positions.end(), [](const std::pair<size_t, size_t>& a, const std::pair<size_t, size_t>& b) {
+                return a.first < b.first;
+            });
             for (size_t i = 0; i < mum_positions.size(); i++) {
                 // revpos = doc_lens[0] - mum_positions[i].first - mum_positions[i].second - 1;
                 // curpos = doc_lens[curdoc] + doc_lens[curdoc] - curpos - length - 1;
@@ -446,10 +450,10 @@ private:
 
     inline uint16_t get_flags() {
         uint16_t flags = 0;
+        // use top bits [13=partial, 14=coll_blocks, 15=length32]
         if (num_distinct < num_docs)
-            flags |= 1 << 2; 
-        // length32 flag is always set
-        flags |= 1 << 0;
+            flags |= static_cast<uint16_t>(1u << 13); // partial
+        flags |= static_cast<uint16_t>(1u << 15);     // length32 always set
         return flags;
     }
 

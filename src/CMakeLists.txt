@@ -27,6 +27,6 @@ set_arch_specific_flags(extract_mums)
 
 # Add anchor_merge executable
 add_executable(anchor_merge merge_candidates.cpp)
-target_include_directories(anchor_merge PUBLIC)
+target_include_directories(anchor_merge PUBLIC "../include/")
 target_compile_options(anchor_merge PUBLIC "-std=c++17" "-DM64" "-w")
 set_arch_specific_flags(anchor_merge)

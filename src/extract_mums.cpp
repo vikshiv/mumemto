@@ -14,6 +14,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>  // Include this for std::runtime_error
+#include "parse_mums.hpp"
 
 
 KSEQ_INIT(gzFile, gzread);
@@ -74,28 +75,16 @@ int read_ref_file(const std::string& length_file_path, std::string& ref_seq) {
     return 0; // Success
 }
 
-std::vector<std::pair<size_t, size_t>> parse_mums(std::string mum_file_path) {
-    std::ifstream mum_file(mum_file_path);
-    std::string line;
+std::vector<std::pair<size_t, size_t>> parse_mums(const std::string& path) {
     std::vector<std::pair<size_t, size_t>> mum_list;
-
-    // read in the mum file
-    size_t cur_len;
-    size_t cur_start;
-    std::string offset_string;
-    size_t tab_index;
-    size_t comma_index;
-    while (std::getline(mum_file, line)) {
-        tab_index = line.find_first_of("\t");
-        comma_index = line.find_first_of(",");
-        cur_len = std::stoul(line.substr(0, tab_index));
-        offset_string = line.substr(tab_index + 1, comma_index - (tab_index + 1));
-        if (offset_string.empty()) {
-            std::cerr << "Error: Cannot extract sequences from partial MUMs. Filter the *.mums file to only include strict MUMs before extracting." << std::endl;
-            exit(1);
-        }
-        cur_start = std::stoul(offset_string);
-        mum_list.push_back(std::make_pair(cur_start, cur_len));
+    if (endsWith(path, ".bumbl")) {
+        mumsio::stream_bumbl_first(path, [&](uint32_t len, int64_t off0){
+            mum_list.emplace_back(static_cast<size_t>(off0), static_cast<size_t>(len));
+        });
+    } else {
+        mumsio::stream_mums_first(path, [&](uint32_t len, int64_t off0){
+            mum_list.emplace_back(static_cast<size_t>(off0), static_cast<size_t>(len));
+        });
     }
     return mum_list;
 }

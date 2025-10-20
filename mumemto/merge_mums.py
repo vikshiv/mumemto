@@ -1,9 +1,9 @@
 import numpy as np
 import argparse
 try:
-    from utils import get_sequence_lengths, parse_mums_generator
+    from utils import get_sequence_lengths, MUMdata, parse_mums_generator
 except ImportError:
-    from mumemto.utils import get_sequence_lengths, parse_mums_generator
+    from mumemto.utils import get_sequence_lengths, MUMdata, parse_mums_generator
 import os
 import sys
 import subprocess
@@ -15,7 +15,7 @@ def parse_arguments(args=None):
     parser = argparse.ArgumentParser(description='Merge MUMs files')
     parser.add_argument('--merged_mums', '-m', help='Path to MUMs of MUMs file (only for string merging)')
     parser.add_argument('mum_files', metavar='MUM_FILES', nargs='+', help='Paths to MUMs files to merge')
-    parser.add_argument('--output', '-o', help='Path to output merged MUMs file', default='merged.mums')
+    parser.add_argument('--output', '-o', help='Path to output merged MUMs file', default='merged')
     parser.add_argument('--verbose', '-v', action='store_true', help='Print verbose output')
     
     if args is None:
@@ -25,10 +25,18 @@ def parse_arguments(args=None):
     
     assert len(args.mum_files) >= 2, "At least two MUMs files are required for merging"
     
+    ### build a prefix list and a mums/bumbl path list
+    args.paths = []
     for i in range(len(args.mum_files)):
-        if not args.mum_files[i].endswith('.mums'):
-            args.mum_files[i] += '.mums'
-            
+        if args.mum_files[i].endswith('.mums'):
+            args.paths.append(args.mum_files[i][:-5])
+        elif args.mum_files[i].endswith('.bumbl'):
+            args.paths.append(args.mum_files[i][:-6])
+        else: 
+            ### assume that the input is a prefix, and use .mums by default
+            args.paths.append(args.mum_files[i])
+            args.mum_files[i] += '.mums'     
+    
     if args.merged_mums is not None and not args.merged_mums.endswith('.mums'):
         args.merged_mums += '.mums'
         
@@ -38,10 +46,8 @@ def parse_arguments(args=None):
     return args
     
 def merge_anchor_lengths(args):
-    length_files = [m.replace('.mums', '.lengths') for m in args.mum_files]
-    if not args.output.endswith('.mums'):
-        args.output += '.mums'
-    out = open(args.output.replace('.mums', '.lengths'), 'w')
+    length_files = [m + '.lengths' for m in args.paths]
+    out = open(args.output + '.lengths', 'w')
     with open(length_files[0], 'r') as f:
         anchor_path = os.path.basename(f.readline().split()[0])
     for m in length_files:
@@ -57,7 +63,7 @@ def merge_anchor_lengths(args):
         with open(m, 'r') as f:                
             for l in f.read().splitlines():
                 l = l.split()
-                if first_file or l[0] != anchor_path:
+                if first_file or os.path.basename(l[0]) != anchor_path:
                     lines.append(l)
         first_file = False
     entry_count = np.array([len(l) for l in lines])
@@ -77,12 +83,10 @@ def merge_anchor_lengths(args):
     out.close()
     
 def merge_lengths(args):
-    if not args.output.endswith('.mums'):
-        args.output += '.mums'
-    out = open(args.output.replace('.mums', '.lengths'), 'w')
+    out = open(args.output + '.lengths', 'w')
     lines = []
-    for m in args.mum_files:
-        with open(m.replace('.mums', '.lengths'), 'r') as f:                
+    for m in args.paths:
+        with open(m + '.lengths', 'r') as f:                
             for l in f.read().splitlines():
                 l = l.split()
                 lines.append(l)
@@ -142,12 +146,12 @@ def run_merger(args):
         if result.returncode == 1:
             pbar.close()
             print("Error: Partial MUMs detected. Aborting merge. Cleaning up...", file=sys.stderr)
-            for f in args.mum_files:
-                if os.path.exists(f.replace('.mums', '_mums.fa')):
-                    os.remove(f.replace('.mums', '_mums.fa'))
+            for f in args.paths:
+                if os.path.exists(f +  '_mums.fa'):
+                    os.remove(f + '_mums.fa')
             sys.exit(1)
     
-    cmd = [mumemto_script] + [f.replace('.mums', '_mums.fa') for f in args.mum_files] + ['-o', args.output + '_temp_merged']
+    cmd = [mumemto_script] + [f + '_mums.fa' for f in args.paths] + ['-o', args.output + '_temp_merged']
     if args.verbose:
         print(f"Running command: {' '.join(cmd)}", file=sys.stderr)
     subprocess.run(cmd)
@@ -169,7 +173,7 @@ def run_anchor_merger(args):
     subprocess.run(cmd)
 
 def main(args):
-    anchor_merge = all([os.path.exists(m.replace('.mums', '.athresh')) for m in args.mum_files])
+    anchor_merge = all([os.path.exists(m + '.athresh') for m in args.paths])
     if anchor_merge:
         if args.merged_mums is not None:
             print("Error: -m is only for string merging, but anchor-based merging detected. Ignoring -m.", file=sys.stderr)
@@ -177,17 +181,19 @@ def main(args):
         run_anchor_merger(args)
         sys.exit(0)
 
-    threshold_exists = all([os.path.exists(m.replace('.mums', '.thresh')) for m in args.mum_files])
+    threshold_exists = all([os.path.exists(m + '.thresh') for m in args.paths])
     if not threshold_exists:
         print("Error: *.thresh or *.athresh files required for all inputs for merging.", file=sys.stderr)
         sys.exit(1)
+    
+    merge_lengths(args)
     
     cleanup = args.merged_mums is None
     if args.merged_mums is None:
         run_merger(args)
     
     
-    premerge_mums = [list(parse_mums_generator(m)) for m in args.mum_files]
+    premerge_mums = [MUMdata(m) for m in args.mum_files]
     
     ### get lengths
     mum_lens = get_sequence_lengths(os.path.splitext(args.merged_mums)[0] + '.lengths', multilengths=True)
@@ -202,10 +208,10 @@ def main(args):
 
     ### get thresholds
     thresholds, rev_thresholds = [], []
-    for m in args.mum_files:
-        with open(m.replace('.mums', '.thresh'), 'rb') as f:
+    for m in args.paths:
+        with open(m + '.thresh', 'rb') as f:
             thresholds.append(np.fromfile(f, dtype=np.uint16))
-        with open(m.replace('.mums', '.thresh_rev'), 'rb') as f:
+        with open(m + '.thresh_rev', 'rb') as f:
             rev_thresholds.append(np.fromfile(f, dtype=np.uint16))
     
     
@@ -226,6 +232,7 @@ def main(args):
     ### main merging algorithm
     new_thresholds = []
     new_thresholds_rev = []
+    mum_positions = []
     merged = []
     for idx, (l, starts, strands) in tqdm(enumerate(dollar_less), total=len(dollar_less), desc="Merging MUMs", disable=not args.verbose):
         # first check if it is no longer unique
@@ -247,12 +254,13 @@ def main(args):
         new_strands = []
         for i in range(NUM_SETS):
             mumid = mum_idx[idx, i]
-            for s, strand in zip(premerge_mums[i][mumid][1], premerge_mums[i][mumid][2]): # get matching mum
+            for s, strand in zip(premerge_mums[i][mumid].starts, premerge_mums[i][mumid].strands): # get matching mum
                 new_starts.append(s + offset[i][0] if strand else s + offset[i][1])
                 # the mum in set i matches in the forward direction
                 new_strands.append(strand if strands[i] else not strand)
         merged.append((int(l), tuple([int(x) for x in new_starts]), tuple(new_strands)))
-    
+        mum_positions.append(merged[-1][1][0])
+        
         cur_thresh = []
         cur_revthresh = []
         for i in range(NUM_SETS):
@@ -263,22 +271,30 @@ def main(args):
                 cur_revthresh.append(thresh[0]); cur_thresh.append(thresh[1])
         cur_thresh = np.array(cur_thresh)
         cur_revthresh = np.array(cur_revthresh)
-        new_thresholds.extend(np.where(np.all(cur_thresh > 0, axis=0), np.max(cur_thresh, axis=0), 0))
-        new_thresholds.extend([0])
-        new_thresholds_rev.extend(np.where(np.all(cur_revthresh > 0, axis=0), np.max(cur_revthresh, axis=0), 0))
-        new_thresholds_rev.extend([0])
-        
+        new_thresholds.append(np.where(np.all(cur_thresh > 0, axis=0), np.max(cur_thresh, axis=0), 0))
+        # new_thresholds.extend([0])
+        new_thresholds_rev.append(np.where(np.all(cur_revthresh > 0, axis=0), np.max(cur_revthresh, axis=0), 0))
+        # new_thresholds_rev.extend([0])
+    
+    ### sort the thresholds according to the MUM order in seq0
+    order = np.argsort(mum_positions)
+    new_thresholds_merge = []
+    new_thresholds_rev_merge = []
+    for o in order:
+        new_thresholds_merge.extend(new_thresholds[o])
+        new_thresholds_merge.extend([0])
+        new_thresholds_rev_merge.extend(new_thresholds_rev[o])
+        new_thresholds_rev_merge.extend([0])
+    
     ### write output
-    # if args.output:
-    if not args.output.endswith('.mums'):
-        args.output += '.mums'
-    with open(args.output, 'w') as f:
-        for m in merged:
+    with open(args.output + '.mums', 'w') as f:
+        for o in order:
+            m = merged[o]
             f.write('%d\t%s\t%s\n' % (m[0], ','.join(map(str, m[1])), ','.join(['+' if x else '-' for x in m[2]])))
-    with open(args.output.replace('.mums', '.thresh'), 'wb') as f:
-        f.write(np.array(new_thresholds, dtype=np.uint16).tobytes())
-    with open(args.output.replace('.mums', '.thresh_rev'), 'wb') as f:
-        f.write(np.array(new_thresholds_rev, dtype=np.uint16).tobytes())
+    with open(args.output + '.thresh', 'wb') as f:
+        f.write(np.array(new_thresholds_merge, dtype=np.uint16).tobytes())
+    with open(args.output + '.thresh_rev', 'wb') as f:
+        f.write(np.array(new_thresholds_rev_merge, dtype=np.uint16).tobytes())
     # else:
     #     try:
     #         for m in merged:
@@ -291,11 +307,10 @@ def main(args):
     #     for m in args.mum_files:
     #         with open(m.replace('.mums', '.lengths'), 'r') as f:
     #             out.write(f.read().strip() + '\n')
-    merge_lengths(args)
     
     if cleanup:
-        for f in args.mum_files:
-            os.remove(f.replace('.mums', '_mums.fa'))
+        for f in args.paths:
+            os.remove(f + '_mums.fa')
         os.remove(args.merged_mums)
         os.remove(os.path.splitext(args.merged_mums)[0] + '.lengths')
         
