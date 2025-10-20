@@ -66,26 +66,88 @@ def find_coll_blocks(mums, max_break=0, verbose=False, return_order=False, min_s
 def get_coll_block_order(mums, blocks):
     return mums.starts[[b[0] for b in blocks],:].transpose().argsort(axis=1)
     
-
-def parse_mums_generator(mumfile, lenfilter=0, subsample=1, verbose=False, return_blocks=False):
+def parse_mums_generator(mumfile, seq_idx=None, verbose=False, return_blocks=False):
     """Generator that streams MUMs from mumfile"""
-    count = 0
+    if seq_idx == 0 and not return_blocks:
+        yield from parse_first_mum(mumfile)
     with open(mumfile, 'r') as f:
         for line in tqdm(f, desc='parsing MUM file', disable=not verbose):
-            if subsample == 1 or count % subsample == 0:
-                line = line.strip().split()
-                length = int(line[0])
-                if length >= lenfilter:
-                    # Parse the line
-                    strands = [s == '+' for s in line[2].split(',')]
-                    starts = [int(pos) if pos != '' else -1 for pos in line[1].split(',')]
-                    if return_blocks:
-                        block = None if (len(line) < 4 or line[3] == '*') else line[3]
-                        yield MUM_BLOCK(length, starts, strands, block)
-                    else:
-                        yield MUM(length, starts, strands)
-            count += 1
+            line = line.strip().split()
+            length = int(line[0])
+            block = None if (len(line) < 4 or line[3] == '*') else line[3]
+            # parse the full line
+            if seq_idx is None:
+                strands = [s == '+' for s in line[2].split(',')]
+                starts = [int(pos) if pos != '' else -1 for pos in line[1].split(',')]
+                yield MUM_BLOCK(length, starts, strands, block) if return_blocks else MUM(length, starts, strands)
+            else:
+                start = line[1].split(',')[seq_idx]
+                ### only yield if mum appears in seq
+                if start: 
+                    start = int(start) if start != '' else -1
+                    strand = line[2].split(',')[seq_idx] == '+'
+                    yield (length, start, strand)
 
+def parse_first_mum(mumfile, verbose=False):
+    """Special case, optimized parser to get MUM positions in the first sequence"""
+    with open(mumfile, 'r') as f:
+        for line in tqdm(f, desc='parsing MUM file', disable=not verbose):
+            line = line[:line.index(',')].split()
+            length = int(line[0])
+            start = line[1]
+            ### only yield if mum appears in seq
+            if start:
+                start = int(start)
+                yield (length, start, True)
+
+def parse_bumbl_generator(mumfile, seq_idx=None, verbose=False,  chunksize=1024, return_chunk=False):
+    """Generator that streams MUMs from bumbl file"""
+    start_size = 8
+    length_size = 4
+    length_handle = open(mumfile, "rb")
+    starts_handle = open(mumfile, "rb")
+    
+    # Read header information
+    length_handle.seek(2)
+    n_seqs, n_mums = np.fromfile(length_handle, count=2, dtype=np.uint64)
+    
+    # Calculate positions
+    lengths_pos = (8 + 8 + 2)  # Immediately after flags, num_seqs, and num_mums
+    offsets_pos = lengths_pos + (n_mums * length_size)  # After num_mums bytes
+    strands_pos = offsets_pos + (n_mums * n_seqs * start_size)  # After starts data
+
+    starts_handle.seek(offsets_pos)
+    
+    # Read all strands
+    strands_handle = open(mumfile, "rb")
+    strands_handle.seek(strands_pos)
+    strands_bytes = np.fromfile(strands_handle, count=np.ceil(n_seqs * n_mums / 8).astype(int), dtype=np.uint8)
+    all_strands = np.unpackbits(strands_bytes, count=n_mums * n_seqs).reshape((n_mums, n_seqs)).astype(bool)
+    strands_handle.close()
+    
+    chunk = chunksize
+    for idx in tqdm(range(0, n_mums, chunk), desc='parsing bumbl file', disable=not verbose):
+        if idx + chunk > n_mums:
+            chunk = n_mums - idx
+        lengths = np.fromfile(length_handle, count=chunk, dtype=np.uint32)
+        starts = np.fromfile(starts_handle, count=chunk * n_seqs, dtype=np.int64).reshape((chunk, n_seqs))
+        strands = all_strands[idx:idx+chunk]
+        if return_chunk:
+            yield (lengths, starts, strands)
+        else:
+            for i in range(chunk):
+                if seq_idx is None:
+                    yield MUM(lengths[i], starts[i], strands[i])
+                else:
+                    start = starts[i, seq_idx]
+                    if start != -1:  # Only yield if MUM appears in sequence
+                        strand = strands[i, seq_idx]
+                        yield (lengths[i], start, strand)
+    
+    length_handle.close()
+    starts_handle.close()
+
+                    
 def get_sequence_lengths(lengths_file, multilengths=False):
     def get_lengths(lengths_file):
         return [int(l.split()[1]) for l in open(lengths_file, 'r').read().splitlines()]
