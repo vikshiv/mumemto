@@ -95,7 +95,7 @@ def parse_first_mum(mumfile, verbose=False):
             line = line.split()
             length = int(line[0])
             start = line[1][:line[1].index(',')]
-            strand = line[2][:line[2].index(',')] == True
+            strand = line[2][:line[2].index(',')] == '+'
             ### only yield if mum appears in seq
             if start:
                 start = int(start)
@@ -134,7 +134,10 @@ def parse_bumbl_generator(mumfile, seq_idx=None, verbose=False, chunksize=1024, 
         starts = np.fromfile(starts_handle, count=chunk * n_seqs, dtype=np.int64).reshape((chunk, n_seqs))
         strands = all_strands[idx:idx+chunk]
         if return_chunk:
-            yield (lengths, starts, strands)
+            if seq_idx is None:
+                yield (lengths, starts, strands)
+            else:
+                yield (lengths, starts[:, seq_idx], strands[:, seq_idx])
         else:
             for i in range(chunk):
                 if seq_idx is None:
