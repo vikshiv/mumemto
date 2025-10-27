@@ -92,13 +92,14 @@ def parse_first_mum(mumfile, verbose=False):
     """Special case, optimized parser to get MUM positions in the first sequence"""
     with open(mumfile, 'r') as f:
         for line in tqdm(f, desc='parsing MUM file', disable=not verbose):
-            line = line[:line.index(',')].split()
+            line = line.split()
             length = int(line[0])
-            start = line[1]
+            start = line[1][:line[1].index(',')]
+            strand = line[2][:line[2].index(',')] == True
             ### only yield if mum appears in seq
             if start:
                 start = int(start)
-                yield (length, start, True)
+                yield (length, start, strand)
 
 def parse_bumbl_generator(mumfile, seq_idx=None, verbose=False,  chunksize=1024, return_chunk=False):
     """Generator that streams MUMs from bumbl file"""
