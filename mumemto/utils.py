@@ -66,7 +66,7 @@ def find_coll_blocks(mums, max_break=0, verbose=False, return_order=False, min_s
 def get_coll_block_order(mums, blocks):
     return mums.starts[[b[0] for b in blocks],:].transpose().argsort(axis=1)
     
-def parse_mums_generator(mumfile, seq_idx=None, verbose=False, return_blocks=False):
+def parse_mums_generator(mumfile, seq_idx=None, verbose=False, chunksize=1, return_blocks=False):
     """Generator that streams MUMs from mumfile"""
     if seq_idx == 0 and not return_blocks:
         yield from parse_first_mum(mumfile)
@@ -101,7 +101,7 @@ def parse_first_mum(mumfile, verbose=False):
                 start = int(start)
                 yield (length, start, strand)
 
-def parse_bumbl_generator(mumfile, seq_idx=None, verbose=False,  chunksize=1024, return_chunk=False):
+def parse_bumbl_generator(mumfile, seq_idx=None, verbose=False, chunksize=1024, return_chunk=False):
     """Generator that streams MUMs from bumbl file"""
     start_size = 8
     length_size = 4
@@ -277,7 +277,6 @@ class MUMdata:
                 self.strands = self.strands[order]
                 if self.extra_fields is not None:
                     self.extra_fields = [self.extra_fields[i] for i in order]
-        self.partial = -1 in self.starts
     
     @property
     def num_mums(self):
@@ -304,7 +303,6 @@ class MUMdata:
         instance.strands = strands
         instance.blocks = blocks
         instance.extra_fields = extra_fields
-        instance.partial = -1 in starts
         return instance
     
     def copy(self):
@@ -405,12 +403,11 @@ class MUMdata:
     
     def filter_pmums(self):
         """Remove any MUMs that have -1 in their start positions"""
-        if self.partial:
+        if -1 in self.starts:
             valid_rows = ~np.any(self.starts == -1, axis=1)
             self.lengths = self.lengths[valid_rows]
             self.starts = self.starts[valid_rows]
             self.strands = self.strands[valid_rows]
-            self.partial = False
             if self.extra_fields is not None:
                 self.extra_fields = [self.extra_fields[i] for i in valid_rows]
         return self
@@ -478,8 +475,7 @@ class MUMdata:
 
     def __repr__(self):
         """String representation"""
-        return (f"MUMdata(num_mums={self.num_mums}, num_seqs={self.num_seqs}, "
-                f"partial={self.partial}, has_blocks={self.blocks is not None})")
+        return (f"MUMdata(num_mums={self.num_mums}, num_seqs={self.num_seqs}")
     
     def __str__(self):
         """Human-readable string representation"""
@@ -549,7 +545,7 @@ class MUMdata:
     
     def write_bums(self, filename, blocks=None):
         with open(filename, 'wb') as f:
-            f.write(pack_flags({'partial': self.partial, 
+            f.write(pack_flags({'partial': -1 in self.starts, 
                                 'coll_blocks': blocks is not None, 
                                 'length32': self.lengths.dtype == np.uint32}).tobytes())
             f.write(np.uint64(self.num_seqs).tobytes())
