@@ -129,6 +129,12 @@ def get_block_polygons(collinear_blocks, mums, centering, color='#00A2FF', inv_c
         points = []
         left, right = mums[l].starts, mums[r].starts + mums[r].length
         for idx, strand in enumerate(strands):
+            if left[idx] == -1:
+                if len(points) > 2:
+                    polygons.append(points_to_poly(points))
+                    colors.append(color)
+                points = []
+                continue
             points.append(((centering[idx] + left[idx], idx), (centering[idx] + right[idx], idx)))
             if not inverted and not strand:
                 inverted = True
