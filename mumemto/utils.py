@@ -66,7 +66,7 @@ def find_coll_blocks(mums, max_break=0, verbose=False, return_order=False, min_s
 def get_coll_block_order(mums, blocks):
     return mums.starts[[b[0] for b in blocks],:].transpose().argsort(axis=1)
     
-def parse_mums_generator(mumfile, seq_idx=None, verbose=False, chunksize=1, return_blocks=False):
+def parse_mums_generator(mumfile, seq_idx=None, verbose=False, return_blocks=False):
     """Generator that streams MUMs from mumfile"""
     if seq_idx == 0 and not return_blocks:
         yield from parse_first_mum(mumfile)
