@@ -174,14 +174,14 @@ def main():
               "\t[default]\t\tcompute multi-MUMs and MEMS across a collection of sequences\n" +
               "\tviz\t\t\tvisualize multi-MUM synteny\n" +
               "\tcoverage\t\tcompute multi-MUM coverage\n" + 
-              "\tinversion\t\tidentify inversion SVs\n" +
               "\tcollinear\t\tfind collinear blocks of MUMs\n" +
               "\tconvert\t\t\tconvert MUMs to BUMs and vice versa\n" +
               "\textract\t\t\textract MUMs to a FASTA file\n" + 
               "\tlabel\t\t\tlabel MUMs with contig information\n" +
               "\tlengths\t\t\trecompute sequence lengths from a filelist\n" +
               "\tmerge\t\t\tmerge MUMs using anchor-based or string-based merging\n" +
-              "\tbed\t\t\tconvert MUMs to BED file\n",
+              "\tbed\t\t\tconvert MUMs to BED file\n" +
+              "\tinversion\t\tidentify inversion SVs\n",
               file=sys.stderr)
         sys.exit(0)
 
