@@ -22,11 +22,17 @@ def parse_arguments(args=None):
     else:
         args = parser.parse_args(args)
         
-    if not args.mumfile.endswith('.mums') and not os.path.exists(args.mumfile + '.mums'):
+    if not args.mumfile.endswith('.mums') and not args.mumfile.endswith('.bumbl'):
+        if not os.path.exists(args.mumfile + '.mums') and not os.path.exists(args.mumfile + '.bumbl'):
+            print(f"MUM file {args.mumfile} not found.", file=sys.stderr)
+            sys.exit(1)
+        elif os.path.exists(args.mumfile + '.mums'):
+            args.mumfile = args.mumfile + '.mums'
+        elif os.path.exists(args.mumfile + '.bumbl'):
+            args.mumfile = args.mumfile + '.bumbl'
+    elif not os.path.exists(args.mumfile):
         print(f"MUM file {args.mumfile} not found.", file=sys.stderr)
         sys.exit(1)
-    elif not args.mumfile.endswith('.mums'):
-        args.mumfile = args.mumfile + '.mums'
     if args.lengths is None:
         args.lengths = os.path.splitext(args.mumfile)[0] + '.lengths'
     if not os.path.exists(args.lengths):
