@@ -218,6 +218,34 @@ def get_seq_paths(lengths_file):
     else:
         return [l.split()[0] for l in open(lengths_file, 'r').read().splitlines() if l.split()[1] == '*']
 
+def get_contig_names(lengths_file):
+    """
+    Get contig names from a multilengths file.
+    Returns a list of lists where each inner list contains the contig names for one sequence.
+    
+    Args:
+        lengths_file: Path to the lengths file in multilengths format
+        
+    Returns:
+        List of lists where names[i] is the list of contig names for sequence i
+    """
+    names = []
+    cur_name = []
+    first_line = True
+    for l in open(lengths_file, 'r').readlines():
+        l = l.strip().split()
+        if first_line and l[1] != '*':
+            raise ValueError('Lengths file must be formatted as multilengths.')
+        first_line = False
+        if l[1] == '*':
+            if cur_name:
+                names.append(cur_name)
+            cur_name = []
+            continue
+        cur_name.append(l[1])
+    names.append(cur_name)
+    return names
+
 def unpack_flags(packed_value):
     """
     Unpack a uint16 value into individual flags.

@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import argparse
-from mumemto.utils import get_sequence_lengths, stream_mums
+from mumemto.utils import get_sequence_lengths, stream_mums, get_contig_names
 import sys
 
 
@@ -92,26 +92,6 @@ def find_chr(intervals, lengths):
     rel_offsets = starts - left_start[contig_idx]
     return contig_idx, rel_offsets
 
-
-def get_contig_names(lengths_file):
-    ### assumes lengths_file is formatted as multilengths
-    names = []
-    cur_name = []
-    first_line = True
-    for l in open(lengths_file, 'r').readlines():
-        l = l.strip().split()
-        if first_line and l[1] != '*':
-            print('Lengths file must be formatted as multilengths.', file=sys.stderr)
-            sys.exit(1)
-        first_line = False
-        if l[1] == '*':
-            if cur_name:
-                names.append(cur_name)
-            cur_name = []
-            continue
-        cur_name.append(l[1])
-    names.append(cur_name)
-    return names
 
 def main(args):
     lengths = get_sequence_lengths(args.lengths_file, multilengths=True)
