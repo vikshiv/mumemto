@@ -9,13 +9,12 @@ This method is uses the prefix-free parse (PFP) algorithm for suffix array const
 
 ---
 If you use Mumemto, please cite:
-```
-Shivakumar, V. S., & Langmead, B. (2025). Mumemto: efficient maximal matching across pangenomes. Genome Biology, 26(1), 169.
-```
+
+    Shivakumar, V. S., & Langmead, B. (2025). Mumemto: efficient maximal matching across pangenomes. Genome Biology, 26(1), 169.
+
 If you use the partition-merging approach (for parallelization, etc.), please cite:
-```
-Shivakumar, V. S., & Langmead, B. (2025). Partitioned Multi-MUM finding for scalable pangenomics. bioRxiv, 2025-05.
-```
+
+    Shivakumar, V. S., & Langmead, B. (2025). Partitioned Multi-MUM finding for scalable pangenomics. bioRxiv, 2025-05.
 
 Paper available at [https://genomebiology.biomedcentral.com/articles/10.1186/s13059-025-03644-0](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-025-03644-0).
 
