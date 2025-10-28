@@ -113,6 +113,9 @@ The merge script automatically detects which type of merging is possible and cre
 > [!NOTE]
 >  Merging is currently limited to strict multi-MUMs. However, partial multi-MUMs for local partitions can be found using string-based merging incrementally.
 
+> [!NOTE]
+>  In v1.3.4, the string-based threshold file format changed and is not backwards compatible. To convert string-merging threshold files from v1.3.3 or earlier, use the provided `mumemto/convert_thresh.py`.
+
 > [!TIP] 
 > Using either merge mode enables a dynamic updating of multi-MUMs. You can incrementally add assemblies as the pangenome grows and update the global set of multi-MUMs across the collection.
 
@@ -146,6 +149,16 @@ If more than one occurence is allowed per sequence, the output format is in `*.m
 a comma-delimited list of offsets within a sequence, (3) the corresponding sequence ID for each offset given in (2). Similar to above, MEMs are sorted in the output file
 lexicographically based on the match sequence.
 
+**Bumbl format:**
+
+Mumemto can also output a binary format (`*.bumbl`) for faster I/O with large MUM files. Most Mumemto commands accept either `*.mums` or `*.bumbl` files interchangeably. Mumemto can output a `*.bumbl` file using the ``-b` flag. To convert between formats:
+```sh
+mumemto convert -m input.mums -o output.bumbl  # text to binary
+mumemto convert -b input.bumbl -o output.mums  # binary to text
+```
+
+> [!TIP]
+> For large pangenomes, using `*.bumbl` files can significantly reduce file sizes and improve loading times for visualization and analysis.
 
 ## Visualization
 <figure>
