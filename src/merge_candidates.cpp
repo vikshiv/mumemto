@@ -172,7 +172,7 @@ vector<string> split_by_whitespace(const string& str) {
 
 int main(int argc, char* argv[]) {
     if (argc < 3) {
-        cerr << "Usage: " << argv[0] << " <input_paths>... -o <output_prefix> [-v]" << endl;
+        std::cerr << "Usage: " << argv[0] << " <input_paths>... -o <output_prefix> [-v]" << endl;
         return 1;
     }
 
@@ -192,7 +192,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (verbose) {
-        cout << "Processing " << paths.size() << " input files" << endl;
+        std::cerr << "Processing " << paths.size() << " input files" << endl;
     }
 
     assert(paths.size() >= 2 && "requires at least two input files");
@@ -240,7 +240,7 @@ int main(int argc, char* argv[]) {
     }
     
     if (verbose) {
-        cout << "Writing results to " << output_path << endl;
+        std::cerr << "Writing results to " << output_path << endl;
     }
     
     std::vector<Mum> all_mums = std::get<0>(left_mums);
