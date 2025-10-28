@@ -37,11 +37,6 @@ def get_lengths_file(mums_file):
     
 def process_mums_file(mums_file, seq_idx=0, verbose=False, min_singleton_length=100):
     """Process MUMs file and calculate statistics"""
-    with open(mums_file, 'r') as f:
-        line = f.readline().split()
-        if (len(line) < 4 or line[3] == '*'):
-            print('MUMs file does not contain blocks. Try running mumemto collinear first.', file=sys.stderr)
-            sys.exit(1)
     last_block = '-'
     last_start, last_end = None, None
     last_strand = None
@@ -49,7 +44,7 @@ def process_mums_file(mums_file, seq_idx=0, verbose=False, min_singleton_length=
     mum_idx = 0
     has_blocks = False
     for l, start, strand, block in stream_mums(mums_file, seq_idx=seq_idx, verbose=verbose, return_blocks=True):
-        if block is None:
+        if block is None and verbose:
             print('No collinear blocks found. Only writing mums to BED intervals.', file=sys.stderr)
         else:
             has_blocks = True
