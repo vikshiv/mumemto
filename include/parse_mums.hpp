@@ -273,6 +273,86 @@ inline void stream_bumbl_first(
     }
 }
 
+inline void write_mums(const std::vector<Mum>& mums, const std::string& path) {
+    std::ofstream out(path);
+    if (!out) {
+        throw std::runtime_error("Failed to open output file: " + path);
+    }
+    
+    for (const auto& mum : mums) {
+        out << mum.length << "\t";
+        for (size_t i = 0; i < mum.offsets.size(); ++i) {
+            out << mum.offsets[i];
+            if (i < mum.offsets.size() - 1) out << ",";
+        }
+        out << "\t";
+        for (size_t i = 0; i < mum.strands.size(); ++i) {
+            out << (mum.strands[i] ? "+" : "-");
+            if (i < mum.strands.size() - 1) out << ",";
+        }
+        out << std::endl;
+    }
+}
+
+inline void write_bumbl(const std::vector<Mum>& mums, const std::string& path, bool partial = false, bool coll_blocks = false) {
+    uint64_t n_seqs = mums[0].offsets.size();
+    uint64_t n_mums = mums.size();
+    
+    // Prepare data and check for partials while populating
+    std::vector<uint32_t> lengths(n_mums);
+    std::vector<int64_t> flat_starts(n_mums * n_seqs);
+    std::vector<bool> flat_strands(n_mums * n_seqs);
+    
+    for (size_t r = 0; r < n_mums; ++r) {
+        lengths[r] = mums[r].length;
+        for (size_t c = 0; c < n_seqs; ++c) {
+            size_t idx = r * n_seqs + c;
+            flat_starts[idx] = mums[r].offsets[c];
+            flat_strands[idx] = mums[r].strands[c];
+            // Check for partials while populating
+            if (flat_starts[idx] == -1) {
+                partial = true;
+            }
+        }
+    }
+    
+    // Pack strands
+    size_t num_bytes = (n_mums * n_seqs + 7) / 8;
+    std::vector<uint8_t> packed(num_bytes, 0);
+    for (size_t i = 0; i < n_mums * n_seqs; ++i) {
+        if (flat_strands[i]) {
+            size_t byte_idx = i / 8;
+            size_t bit_idx = i % 8;
+            packed[byte_idx] |= (1u << (7 - bit_idx)); // MSB-first
+        }
+    }
+    
+    std::ofstream out(path, std::ios::binary);
+    if (!out) {
+        throw std::runtime_error("Failed to open output file: " + path);
+    }
+    
+    // Write flags
+    uint16_t flags = 0;
+    flags |= static_cast<uint16_t>(1u << 15); // length32 always set
+    if (partial) flags |= static_cast<uint16_t>(1u << 13);
+    if (coll_blocks) flags |= static_cast<uint16_t>(1u << 14);
+    out.write(reinterpret_cast<const char*>(&flags), sizeof(flags));
+    
+    // Write n_seqs and n_mums
+    out.write(reinterpret_cast<const char*>(&n_seqs), sizeof(n_seqs));
+    out.write(reinterpret_cast<const char*>(&n_mums), sizeof(n_mums));
+    
+    // Write lengths
+    out.write(reinterpret_cast<const char*>(lengths.data()), static_cast<std::streamsize>(n_mums * sizeof(uint32_t)));
+    
+    // Write starts
+    out.write(reinterpret_cast<const char*>(flat_starts.data()), static_cast<std::streamsize>(n_mums * n_seqs * sizeof(int64_t)));
+    
+    // Write packed strands
+    out.write(reinterpret_cast<const char*>(packed.data()), static_cast<std::streamsize>(num_bytes));
+}
+
 
 } // namespace mumsio
 

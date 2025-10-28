@@ -1,13 +1,24 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/vikshiv/mumemto) ![GitHub](https://img.shields.io/github/license/vikshiv/mumemto?color=green) [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/mumemto/README.html)
 # **mumemto**: finding multi-MUMs and MEMs in pangenomes
 
-<img src="img/polaroid_tattoo.png" alt="logo" width="292" align="left"/>
+<img src="img/polaroid_tattoo.png" alt="logo" width="310" align="left"/>
 
 Mumemto is a tool for analyzing pangenome sequence collections. It identifies **maximal unique/exact matches (multi-MUMs and multi-MEMs)** present across a collection of sequences. Mumemto can **visualize** pangenome synteny, **identify misassemblies**, and provide a unifiying structure to a pangenome.
 
 This method is uses the prefix-free parse (PFP) algorithm for suffix array construction on large, repetitive collections of text. The main workflow of `mumemto` is to compute the PFP over a collection of sequences, and identify multi-MUMs while computing the SA/LCP/BWT of the input collection. Note that this works best with highly repetitive texts (such as a collection of closely related genomes, likely intra-species such as a pangenome).
 
-Preprint available at [https://doi.org/10.1101/2025.01.05.631388](https://doi.org/10.1101/2025.01.05.631388).
+---
+If you use Mumemto, please cite:
+> Shivakumar, V. S., & Langmead, B. (2025). Mumemto: efficient maximal matching across pangenomes. Genome Biology, 26(1), 169.
+
+If you use the partition-merging approach (for parallelization, etc.), please cite:
+
+> Shivakumar, V. S., & Langmead, B. (2025). Partitioned Multi-MUM finding for scalable pangenomics. bioRxiv, 2025-05.
+
+Paper available at [https://genomebiology.biomedcentral.com/articles/10.1186/s13059-025-03644-0](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-025-03644-0).
+
+Merging algorithm described in [https://www.biorxiv.org/lookup/doi/10.1101/2025.05.20.654611](https://www.biorxiv.org/lookup/doi/10.1101/2025.05.20.654611).
+
 
 ### For detailed usage, see the [Mumemto wiki](https://github.com/vikshiv/mumemto/wiki)
 
@@ -22,9 +33,13 @@ conda activate mumemto_env
 
 conda install -c conda-forge bioconda::mumemto
 ```
-> [!NOTE]
->  When running Mumemto on MacOS, the environment variable `PFPMUM_BUILD_DIR` must be set manually to the path where Mumemto is installed. This can be done with `export PFPMUM_BUILD_DIR=$(dirname $(which mumemto))`.
 
+### pip installation
+Mumemto can be installed using pip locally. We recommend using a new conda or virtual environment for this.
+```sh
+git clone https://github.com/vikshiv/mumemto
+cd mumemto; pip install .
+```
 
 ### Docker/Singularity
 Mumemto is available on `docker` and `singularity`. 
@@ -46,7 +61,7 @@ To build from scratch, download the source code and use cmake/make. After runnin
 the `mumemto` executable will be found in the `build/` folder. The following are dependencies: cmake, g++, gcc
 
 ```sh
-git clone https://github.com/vshiv18/mumemto
+git clone https://github.com/vikshiv/mumemto
 cd mumemto
 
 mkdir build 
@@ -113,6 +128,9 @@ The merge script automatically detects which type of merging is possible and cre
 > [!NOTE]
 >  Merging is currently limited to strict multi-MUMs. However, partial multi-MUMs for local partitions can be found using string-based merging incrementally.
 
+> [!NOTE]
+>  In v1.3.4, the string-based threshold file format changed and is not backwards compatible. To convert string-merging threshold files from v1.3.3 or earlier, use the provided `mumemto/convert_thresh.py`.
+
 > [!TIP] 
 > Using either merge mode enables a dynamic updating of multi-MUMs. You can incrementally add assemblies as the pangenome grows and update the global set of multi-MUMs across the collection.
 
@@ -146,6 +164,16 @@ If more than one occurence is allowed per sequence, the output format is in `*.m
 a comma-delimited list of offsets within a sequence, (3) the corresponding sequence ID for each offset given in (2). Similar to above, MEMs are sorted in the output file
 lexicographically based on the match sequence.
 
+**Bumbl format:**
+
+Mumemto can also output a binary format (`*.bumbl`) for faster I/O with large MUM files. Most Mumemto commands accept either `*.mums` or `*.bumbl` files interchangeably. Mumemto can output a `*.bumbl` file using the ``-b` flag. To convert between formats:
+```sh
+mumemto convert -m input.mums -o output.bumbl  # text to binary
+mumemto convert -b input.bumbl -o output.mums  # binary to text
+```
+
+> [!TIP]
+> For large pangenomes, using `*.bumbl` files can significantly reduce file sizes and improve loading times for visualization and analysis.
 
 ## Visualization
 <figure>

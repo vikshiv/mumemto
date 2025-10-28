@@ -25,6 +25,18 @@ def parse_arguments(args=None):
     
     assert len(args.mum_files) >= 2, "At least two MUMs files are required for merging"
     
+    ### Normalize output extension and get base name
+    if not args.output.endswith('.bumbl') and not args.output.endswith('.mums'):
+        # No extension specified, default to .mums
+        args.output += '.mums'
+    
+    # Get base output name without extension
+    args.output_base = args.output
+    if args.output.endswith('.bumbl'):
+        args.output_base = args.output[:-6]  # remove .bumbl
+    elif args.output.endswith('.mums'):
+        args.output_base = args.output[:-5]  # remove .mums
+    
     ### build a prefix list and a mums/bumbl path list
     args.paths = []
     for i in range(len(args.mum_files)):
@@ -47,7 +59,7 @@ def parse_arguments(args=None):
     
 def merge_anchor_lengths(args):
     length_files = [m + '.lengths' for m in args.paths]
-    out = open(args.output + '.lengths', 'w')
+    out = open(args.output_base + '.lengths', 'w')
     with open(length_files[0], 'r') as f:
         anchor_path = os.path.basename(f.readline().split()[0])
     for m in length_files:
@@ -83,7 +95,7 @@ def merge_anchor_lengths(args):
     out.close()
     
 def merge_lengths(args):
-    out = open(args.output + '.lengths', 'w')
+    out = open(args.output_base + '.lengths', 'w')
     lines = []
     for m in args.paths:
         with open(m + '.lengths', 'r') as f:                
@@ -151,12 +163,12 @@ def run_merger(args):
                     os.remove(f + '_mums.fa')
             sys.exit(1)
     
-    cmd = [mumemto_script] + [f + '_mums.fa' for f in args.paths] + ['-o', args.output + '_temp_merged']
+    cmd = [mumemto_script] + [f + '_mums.fa' for f in args.paths] + ['-o', args.output_base + '_temp_merged']
     if args.verbose:
         print(f"Running command: {' '.join(cmd)}", file=sys.stderr)
     subprocess.run(cmd)
     
-    args.merged_mums = args.output + '_temp_merged.mums'
+    args.merged_mums = args.output_base + '_temp_merged.mums'
 
 def run_anchor_merger(args):
     if args.verbose:
@@ -286,14 +298,25 @@ def main(args):
         new_thresholds_rev_merge.extend(new_thresholds_rev[o])
         new_thresholds_rev_merge.extend([0])
     
-    ### write output
-    with open(args.output + '.mums', 'w') as f:
-        for o in order:
-            m = merged[o]
-            f.write('%d\t%s\t%s\n' % (m[0], ','.join(map(str, m[1])), ','.join(['+' if x else '-' for x in m[2]])))
-    with open(args.output + '.thresh', 'wb') as f:
+    ### write output using MUMdata for both formats
+    # Apply the order to merged array
+    ordered_merged = [merged[o] for o in order]
+    lengths = np.array([m[0] for m in ordered_merged], dtype=np.uint32)
+    starts = np.array([m[1] for m in ordered_merged], dtype=np.int64)
+    strands = np.array([m[2] for m in ordered_merged], dtype=bool)
+    
+    mumdata = MUMdata.from_arrays(lengths, starts, strands)
+    
+    # Write output based on extension
+    if args.output.endswith('.bumbl'):
+        mumdata.write_bums(args.output)
+    else:
+        # args.output already has .mums extension
+        mumdata.write_mums(args.output)
+    
+    with open(args.output_base + '.thresh', 'wb') as f:
         f.write(np.array(new_thresholds_merge, dtype=np.uint16).tobytes())
-    with open(args.output + '.thresh_rev', 'wb') as f:
+    with open(args.output_base + '.thresh_rev', 'wb') as f:
         f.write(np.array(new_thresholds_rev_merge, dtype=np.uint16).tobytes())
     # else:
     #     try:
@@ -312,7 +335,7 @@ def main(args):
         for f in args.paths:
             os.remove(f + '_mums.fa')
         os.remove(args.merged_mums)
-        os.remove(os.path.splitext(args.merged_mums)[0] + '.lengths')
+        os.remove(args.output_base + '_temp_merged.lengths')
         
 if __name__ == "__main__":
     args = parse_arguments()
