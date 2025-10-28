@@ -223,29 +223,34 @@ int main(int argc, char* argv[]) {
     }
 
     string output_path = output_prefix;
-    if (output_path.size() < 5 || output_path.compare(output_path.size() - 5, 5, ".mums") != 0) {
-        output_path += ".mums";
-    }
-    else { output_prefix = output_path.substr(0, output_path.size() - 5); }
+    // Determine format based on extension
+    bool output_bumbl = output_path.size() >= 6 && output_path.compare(output_path.size() - 6, 6, ".bumbl") == 0;
+    bool output_mums = output_path.size() >= 5 && output_path.compare(output_path.size() - 5, 5, ".mums") == 0;
     
+    if (!output_bumbl && !output_mums) {
+        // No extension specified, default to .mums
+        output_path += ".mums";
+        output_mums = true;
+    }
+    
+    if (output_mums) {
+        output_prefix = output_path.substr(0, output_path.size() - 5);
+    } else if (output_bumbl) {
+        output_prefix = output_path.substr(0, output_path.size() - 6);
+    }
     
     if (verbose) {
         cout << "Writing results to " << output_path << endl;
     }
-
-    ofstream output_file(output_path);
-    for (const auto& mum : std::get<0>(left_mums)) {
-        output_file << mum.length << "\t";
-        for (size_t i = 0; i < mum.offsets.size(); ++i) {
-            output_file << mum.offsets[i];
-            if (i < mum.offsets.size() - 1) output_file << ",";
-        }
-        output_file << "\t";
-        for (size_t i = 0; i < mum.strands.size(); ++i) {
-            output_file << (mum.strands[i] ? "+" : "-");
-            if (i < mum.strands.size() - 1) output_file << ",";
-        }
-        output_file << std::endl;
+    
+    std::vector<Mum> all_mums = std::get<0>(left_mums);
+    
+    if (output_bumbl) {
+        // Write bumbl format
+        mumsio::write_bumbl(all_mums, output_path);
+    } else {
+        // Write text mums format
+        mumsio::write_mums(all_mums, output_path);
     }
 
     string thresh_path = output_prefix + ".athresh";

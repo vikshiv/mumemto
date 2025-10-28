@@ -286,14 +286,31 @@ def main(args):
         new_thresholds_rev_merge.extend(new_thresholds_rev[o])
         new_thresholds_rev_merge.extend([0])
     
-    ### write output
-    with open(args.output + '.mums', 'w') as f:
-        for o in order:
-            m = merged[o]
-            f.write('%d\t%s\t%s\n' % (m[0], ','.join(map(str, m[1])), ','.join(['+' if x else '-' for x in m[2]])))
-    with open(args.output + '.thresh', 'wb') as f:
+    ### write output using MUMdata for both formats
+    # Apply the order to merged array
+    ordered_merged = [merged[o] for o in order]
+    lengths = np.array([m[0] for m in ordered_merged], dtype=np.uint32)
+    starts = np.array([m[1] for m in ordered_merged], dtype=np.int64)
+    strands = np.array([m[2] for m in ordered_merged], dtype=bool)
+    
+    mumdata = MUMdata.from_arrays(lengths, starts, strands)
+    
+    # Determine output format based on output extension
+    if args.output.endswith('.bumbl'):
+        mumdata.write_bums(args.output)
+        output_base = args.output[:-6]  # remove .bumbl
+    elif args.output.endswith('.mums'):
+        mumdata.write_mums(args.output)
+        output_base = args.output[:-5]  # remove .mums
+    else:
+        # Default to .mums format
+        output_file = args.output + '.mums'
+        mumdata.write_mums(output_file)
+        output_base = args.output
+    
+    with open(output_base + '.thresh', 'wb') as f:
         f.write(np.array(new_thresholds_merge, dtype=np.uint16).tobytes())
-    with open(args.output + '.thresh_rev', 'wb') as f:
+    with open(output_base + '.thresh_rev', 'wb') as f:
         f.write(np.array(new_thresholds_rev_merge, dtype=np.uint16).tobytes())
     # else:
     #     try:
