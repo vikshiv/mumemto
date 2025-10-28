@@ -119,59 +119,24 @@ def mum_to_bum(mumfile, outfile, verbose=False):
     os.remove(outfile + '.strands')
 
 def bum_to_mum(bumfile, outfile, verbose=False, chunk_size=8):
-    length_size = 4
-    length_dtype = np.uint32
     if outfile == "-":
         outfile = sys.stdout
     else:
         outfile = open(outfile, 'w')
+    
     try:
         with open(bumfile, "rb") as f:
-            # Read first byte and unpack into 8 bools
             flags = int.from_bytes(f.read(2), byteorder='little')
             flags = unpack_flags(flags)
-            start_size = 8
-            start_dtype = np.int64
-            # Read num_seqs (1 byte) and num_mums (1 byte)
-            num_seqs = int.from_bytes(f.read(8), byteorder='little')
-            num_mums = int.from_bytes(f.read(8), byteorder='little')
-            # Compute starting positions of each section
-            lengths_pos = (8 + 8 + 2)  # Immediately after flags, num_seqs, and num_mums
-            offsets_pos = lengths_pos + (num_mums * length_size)  # After num_mums bytes
-            strands_pos = offsets_pos + (num_seqs * num_mums * start_size)  # After offsets
-            if flags['coll_blocks']:
-                f.seek(strands_pos + (np.ceil(num_seqs*num_mums/8).astype(int)))
-                num_blocks = int.from_bytes(f.read(8), byteorder='little')
-                blocks = np.fromfile(f, count=num_blocks * 2, dtype=np.uint32).reshape(num_blocks, 2)
-                blocks = serialize_coll_blocks(blocks, num_mums)
-            # Compute bit length for strands
-            strand_buffer = None
-            total_mums = 0
-            for mum_index in tqdm(range(0, num_mums, chunk_size), desc="Processing MUMs", disable=not verbose):
-                f.seek(lengths_pos + (mum_index * length_size))
-                # Read length (1 byte per mum)
-                lengths = np.fromfile(f, count = chunk_size, dtype=length_dtype)
-
-                # Seek to the correct offset for this mum
-                offset_start = offsets_pos + (mum_index * num_seqs * start_size)
-                f.seek(offset_start)
-                starts = np.fromfile(f, count = num_seqs * chunk_size, dtype=start_dtype).reshape(chunk_size, num_seqs)
-                
-                if mum_index % chunk_size == 0:
-                    f.seek(strands_pos + ((mum_index // chunk_size) * (chunk_size // 8) * num_seqs))
-                    strand_buffer = np.fromfile(f, count = num_seqs * (chunk_size // 8), dtype=np.uint8)
-                    strand_buffer = np.unpackbits(strand_buffer, count=num_seqs * chunk_size).reshape(chunk_size, num_seqs).astype(bool)
-                strands = strand_buffer
-                # Output the current mum as human-readable text
-                if mum_index + chunk_size >= num_mums:
-                    chunk_size = num_mums - mum_index
-                if not flags['coll_blocks']:
-                    outfile.write('\n'.join([f"{lengths[i]}\t{','.join(starts[i,:].astype(str))}\t{','.join(np.where(strands[i, :], '+', '-'))}" for i in range(chunk_size)]) + '\n')
-                else:
-                    outfile.write('\n'.join([f"{lengths[i]}\t{','.join(starts[i,:].astype(str))}\t{','.join(np.where(strands[i, :], '+', '-'))}\t{blocks[i + total_mums]}" for i in range(chunk_size)]) + '\n')
-                total_mums += chunk_size
+        
+        # Use parse_bumbl_generator to read the data
+        for lengths, starts, strands, blocks in parse_bumbl_generator(bumfile, verbose=verbose, return_chunk=True, return_blocks=True, chunksize=chunk_size):
+            chunk_size = len(lengths)
+            if not flags['coll_blocks']:
+                outfile.write('\n'.join([f"{lengths[i]}\t{','.join(starts[i,:].astype(str))}\t{','.join(np.where(strands[i, :], '+', '-'))}" for i in range(chunk_size)]) + '\n')
+            else:
+                outfile.write('\n'.join([f"{lengths[i]}\t{','.join(starts[i,:].astype(str))}\t{','.join(np.where(strands[i, :], '+', '-'))}\t{blocks[i]}" for i in range(chunk_size)]) + '\n')
             
-            # for lengths, starts, strands, blocks in parse_bumbl_generator(bumfile, verbose=verbose, return_chunk=True, return_blocks=True)
     except BrokenPipeError:
         # Python flushes standard streams on exit; redirect remaining output
         # to devnull to avoid another BrokenPipeError at shutdown
