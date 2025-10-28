@@ -68,18 +68,11 @@ def get_coll_block_order(mums, blocks):
     
 def parse_mums_generator(mumfile, seq_idx=None, verbose=False, return_blocks=False):
     """Generator that streams MUMs from mumfile"""
-    if seq_idx == 0 and not return_blocks:
-        yield from parse_first_mum(mumfile)
-    if return_blocks:
-        with open(mumfile, 'r') as f:
-            first_line = f.readline().strip().split()
-            if len(first_line) < 4 or first_line[3] == '*':
-                return_blocks = False
     with open(mumfile, 'r') as f:
         for line in tqdm(f, desc='parsing MUM file', disable=not verbose):
             line = line.strip().split()
             length = int(line[0])
-            block = None if not return_blocks else line[3]
+            block = None if (len(line) < 4 or line[3] == '*') else line[3]
             # parse the full line
             if seq_idx is None:
                 strands = [s == '+' for s in line[2].split(',')]
@@ -132,17 +125,17 @@ def parse_bumbl_generator(mumfile, seq_idx=None, verbose=False, chunksize=1024, 
     strands_handle.seek(strands_pos)
     strands_bytes = np.fromfile(strands_handle, count=np.ceil(n_seqs * n_mums / 8).astype(int), dtype=np.uint8)
     all_strands = np.unpackbits(strands_bytes, count=n_mums * n_seqs).reshape((n_mums, n_seqs)).astype(bool)
-        
+    
     # Check if coll_blocks flag is set to determine if blocks exist
     if return_blocks and flags.get('coll_blocks', False):
         # Read blocks data
         num_blocks = int.from_bytes(strands_handle.read(8), byteorder='little')
         all_blocks = np.fromfile(strands_handle, count=num_blocks * 2, dtype=np.uint32).reshape((num_blocks, 2))
         strands_handle.close()
-        all_blocks = serialize_coll_blocks(all_blocks)
-    else:
-        return_blocks = False
-    
+        all_blocks = serialize_coll_blocks(all_blocks)    
+    else: 
+        all_blocks = [None] * n_mums
+        
     chunk = chunksize
     for idx in tqdm(range(0, n_mums, chunk), desc='parsing bumbl file', disable=not verbose):
         if idx + chunk > n_mums:
@@ -150,30 +143,30 @@ def parse_bumbl_generator(mumfile, seq_idx=None, verbose=False, chunksize=1024, 
         lengths = np.fromfile(length_handle, count=chunk, dtype=np.uint32)
         starts = np.fromfile(starts_handle, count=chunk * n_seqs, dtype=np.int64).reshape((chunk, n_seqs))
         strands = all_strands[idx:idx+chunk]
-        if return_blocks:
-            blocks = all_blocks[idx:idx+chunk]
+        blocks = all_blocks[idx:idx+chunk]
+        
         if return_chunk:
             if seq_idx is None:
-                yield (lengths, starts, strands)
+                yield (lengths, starts, strands) if not return_blocks else (lengths, starts, strands, blocks)
             else:
-                yield (lengths, starts[:, seq_idx], strands[:, seq_idx])
+                yield (lengths, starts[:, seq_idx], strands[:, seq_idx]) if not return_blocks else (lengths, starts[:, seq_idx], strands[:, seq_idx], blocks)
         else:
-            block = None if not return_blocks else blocks[i]
             for i in range(chunk):
                 if seq_idx is None:  
-                    yield MUM_BLOCK(lengths[i], starts[i], strands[i], block) if return_blocks else MUM(lengths[i], starts[i], strands[i])
+                    yield MUM_BLOCK(lengths[i], starts[i], strands[i], blocks[i]) if return_blocks else MUM(lengths[i], starts[i], strands[i])
                 else:
                     start = starts[i, seq_idx]
                     if start != -1:  # Only yield if MUM appears in sequence
                         strand = strands[i, seq_idx]
-                        yield MUM_BLOCK(lengths[i], start, strand, block) if return_blocks else MUM(lengths[i], start, strand)
+                        yield MUM_BLOCK(lengths[i], start, strand, blocks[i]) if return_blocks else MUM(lengths[i], start, strand)
                             
-    
     length_handle.close()
     starts_handle.close()
     strands_handle.close()
 
 def stream_mums(mumfile, seq_idx=None, verbose=False, return_blocks=False):
+    if mumfile.endswith('.mums') and seq_idx == 0 and not return_blocks:
+        yield from parse_first_mum(mumfile, verbose=verbose)
     if mumfile.endswith('.mums'):
         yield from parse_mums_generator(mumfile, seq_idx=seq_idx, verbose=verbose, return_blocks=return_blocks)
     elif mumfile.endswith('.bumbl'):

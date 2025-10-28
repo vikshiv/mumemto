@@ -4,10 +4,12 @@ import os, sys
 import numpy as np
 import argparse
 from tqdm.auto import tqdm
+
+from mumemto.utils import parse_bumbl_generator
 try:
-    from utils import parse_mums_generator, unpack_flags, pack_flags, deserialize_coll_blocks, serialize_coll_blocks, MUMdata
+    from utils import stream_mums, unpack_flags, pack_flags, deserialize_coll_blocks, serialize_coll_blocks, MUMdata
 except ImportError:
-    from mumemto.utils import parse_mums_generator, unpack_flags, pack_flags, deserialize_coll_blocks, serialize_coll_blocks, MUMdata
+    from mumemto.utils import stream_mums, unpack_flags, pack_flags, deserialize_coll_blocks, serialize_coll_blocks, MUMdata
 
 def parse_arguments(args=None):    
     parser = argparse.ArgumentParser(description="Converts Mumemto mum and bumbl formats")
@@ -57,7 +59,7 @@ def mum_to_bum(mumfile, outfile, verbose=False):
     length_dtype = np.uint32
     start_dtype = np.int64
     
-    parser = parse_mums_generator(mumfile, verbose=verbose, return_blocks=True)
+    parser = stream_mums(mumfile, verbose=verbose, return_blocks=True)
     mum_count = 0
     lengths_out = open(outfile + '.len', 'wb')
     starts_out = open(outfile + '.starts', 'wb')
@@ -168,7 +170,8 @@ def bum_to_mum(bumfile, outfile, verbose=False, chunk_size=8):
                 else:
                     outfile.write('\n'.join([f"{lengths[i]}\t{','.join(starts[i,:].astype(str))}\t{','.join(np.where(strands[i, :], '+', '-'))}\t{blocks[i + total_mums]}" for i in range(chunk_size)]) + '\n')
                 total_mums += chunk_size
-                
+            
+            # for lengths, starts, strands, blocks in parse_bumbl_generator(bumfile, verbose=verbose, return_chunk=True, return_blocks=True)
     except BrokenPipeError:
         # Python flushes standard streams on exit; redirect remaining output
         # to devnull to avoid another BrokenPipeError at shutdown
