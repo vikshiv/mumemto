@@ -38,14 +38,11 @@ int build_main(int argc, char** argv) {
     // print_build_status_info(&build_opts);
     bool mum_mode = build_opts.validate();
 
-    // determine output path for reference, generate and store filelist
-    build_opts.output_ref.assign(build_opts.output_prefix + ".fna");
-
     if ((build_opts.input_list.length() == 0) && !(build_opts.from_parse_flag || build_opts.arrays_in_flag)) {build_opts.input_list = make_filelist(build_opts.files, build_opts.output_prefix);}
 
     // Declare ref_build first
     RefBuilder ref_build = (build_opts.from_parse_flag || build_opts.arrays_in_flag)
-        ? RefBuilder(build_opts.from_parse_flag ? build_opts.parse_prefix.substr(0, build_opts.parse_prefix.length() - 4) : build_opts.arrays_in, build_opts.use_rcomp)
+        ? RefBuilder(build_opts.from_parse_flag ? build_opts.parse_prefix : build_opts.arrays_in, build_opts.use_rcomp)
         : RefBuilder(build_opts.input_list, build_opts.output_prefix, build_opts.use_rcomp);
 
     // normalize and reconcile the input parameters
@@ -55,27 +52,17 @@ int build_main(int argc, char** argv) {
     print_build_status_info(build_opts, ref_build, mum_mode);
 
     // Build the input reference file, and bitvector labeling the end for each doc
-    STATUS_LOG("build_main", "building the reference file based on file-list");
+    if (build_opts.use_gsacak || build_opts.from_parse_flag)
+        STATUS_LOG("build_main", "parsing input files");
+    else
+        STATUS_LOG("build_main", "computing PFP over input files");
     auto start = std::chrono::system_clock::now();
-    int input_file_status = ref_build.build_input_file();
+    int input_file_status = ref_build.build_input_file(build_opts.pfp_w, build_opts.hash_mod, true, build_opts.use_gsacak);
     if (input_file_status == 1) {
         remove_temp_files(build_opts.output_prefix);
         FATAL_ERROR("Please check the input files and ensure that it contains valid FASTA files. Cleaning up...");
     }
     DONE_LOG((std::chrono::system_clock::now() - start));
-
-    // Determine the paths to the BigBWT executables
-    HelperPrograms helper_bins;
-    // if (!std::getenv("PFPMUM_BUILD_DIR")) {FATAL_ERROR("Need to set PFPMUM_BUILD_DIR environment variable.");}
-    std::filesystem::path path;
-    if (!std::getenv("PFPMUM_BUILD_DIR")) {
-        path = std::filesystem::canonical("/proc/self/exe").parent_path();
-    }
-    else {
-        path = std::filesystem::path(std::string(std::getenv("PFPMUM_BUILD_DIR")));
-    }
-    helper_bins.build_paths((path / "").string());
-    helper_bins.validate();
 
     // skip PFP altogether, use gsacak directly
     if (build_opts.use_gsacak) {
@@ -114,19 +101,15 @@ int build_main(int argc, char** argv) {
         return 0;
     }
 
-    if (!build_opts.from_parse_flag){
-        // Parse the input text with BigBWT, and load it into pf object
-        STATUS_LOG("build_main", "generating the prefix-free parse for given reference");
-        start = std::chrono::system_clock::now();
-
-        run_build_parse_cmd(&build_opts, &helper_bins);
-        DONE_LOG((std::chrono::system_clock::now() - start));
+    if (build_opts.only_parse) {
+        return 0;
     }
+
     STATUS_LOG("build_main", "building the parse and dictionary objects");
     start = std::chrono::system_clock::now();
     pf_parsing pf = build_opts.from_parse_flag
         ? pf_parsing(build_opts.parse_prefix, build_opts.pfp_w)
-        : pf_parsing(build_opts.output_ref, build_opts.pfp_w);
+        : pf_parsing(build_opts.output_prefix, build_opts.pfp_w);
 
     DONE_LOG((std::chrono::system_clock::now() - start));
 
@@ -160,66 +143,6 @@ int build_main(int argc, char** argv) {
     std::cerr << "\n";
     
     return 0;
-}
-
-void run_build_parse_cmd(BuildOptions* build_opts, HelperPrograms* helper_bins) {
-    // Generates and runs the command-line for executing the PFP of the reference 
-    std::ostringstream command_stream;
-    // if (build_opts->threads > 0) {
-    //     std::string curr_exe = "";
-    //     if (build_opts->is_fasta) {curr_exe.assign(helper_bins->parse_fasta_bin);}
-    //     else {curr_exe.assign(helper_bins->parse_bin);}
-
-    //     command_stream << curr_exe << " "; //<< " -i ";
-    //     command_stream << build_opts->output_ref << " ";
-    //     command_stream << "-w " << build_opts->pfp_w;
-    //     command_stream << " -p " << build_opts->hash_mod;
-    //     // command_stream << " -t " << build_opts->threads;
-    // }
-    // else {
-        command_stream << helper_bins->parseNT_bin;
-        command_stream << " -f";
-        command_stream << " -w " << build_opts->pfp_w;
-        command_stream << " -p " << build_opts->hash_mod << " ";
-        command_stream << build_opts->output_ref;
-        
-    // }
-
-    // std::cout << command_stream.str() << std::endl;
-    // std::cout << "Executing this command: " << command_stream.str().c_str() << std::endl;
-    auto parse_log = execute_cmd(command_stream.str().c_str());
-    //OTHER_LOG(parse_log.data());
-}
-
-std::string execute_cmd(const char* cmd) {
-    std::array<char, 256> buffer{};
-    std::string output = "";
-
-    std::string cmd_plus_stderr = std::string(cmd) + " 2>&1";
-    FILE* pipe = popen(cmd_plus_stderr.data(), "r"); // Extract stderr as well
-    if (!pipe) {FATAL_ERROR("popen() failed!");}
-
-    try {
-        std::size_t bytes;
-        while ((bytes = fread(buffer.data(), sizeof(char), sizeof(buffer), pipe))) {
-            output += std::string(buffer.data(), bytes);
-        }
-    } catch (...) {
-        pclose(pipe);
-        FATAL_ERROR("Error occurred while reading popen() stream.");
-    }
-
-    // Correct the usage of pclose and WEXITSTATUS
-    int status = pclose(pipe);
-    size_t exit_code = WEXITSTATUS(status);
-
-    // Check if the command failed
-    if (exit_code != 0) {
-        std::cout << "\n";
-        FATAL_ERROR("external command failed ... here is the error message:\n%s", output.data());
-    }
-
-    return output;
 }
 
 bool endsWith(const std::string& str, const std::string& suffix) {
@@ -319,7 +242,7 @@ std::string make_filelist(std::vector<std::string> files, std::string output_pre
 }
 
 void remove_temp_files(std::string filename) {
-    std::vector<std::string> temp_files = {".fna", ".fna.dict", ".fna.occ", ".fna.parse_old", ".fna.last", ".fna.parse", "_filelist.txt"};
+    std::vector<std::string> temp_files = {".dict", ".parse", "_filelist.txt"};
     for (auto &ext : temp_files) {
         std::filesystem::remove(std::filesystem::path(filename + ext));
     }
@@ -338,6 +261,7 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
         {"no-overlap",   no_argument, NULL,  's'},
         {"modulus", required_argument, NULL, 'm'},
         {"from-parse",   no_argument, NULL,  'p'},
+        {"only-parse",   no_argument, NULL,  'P'},
         {"min-match-len",   required_argument, NULL,  'l'},
         {"max-freq",   required_argument, NULL,  'F'},
         {"arrays-out",   no_argument, NULL,  'A'},
@@ -349,12 +273,13 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
         {"merge",   no_argument, NULL,  'M'},
         {"anchor",   no_argument, NULL,  'n'},
         {"use-gsacak",   no_argument, NULL,  'g'},
+        {"only-parse",   no_argument, NULL,  'P'},
         {0, 0, 0,  0}
     };
     int c = 0;
     int long_index = 0;
     
-    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:bgMn", long_options, &long_index)) >= 0) {
+    while ((c = getopt_long(argc, argv, "hi:F:o:w:sl:ra:AKk:p:m:f:bgMnP", long_options, &long_index)) >= 0) {
         switch(c) {
             case 'h': mumemto_usage(); std::exit(0);
             case 'i': opts->input_list.assign(optarg); break;
@@ -375,6 +300,7 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
             case 'M': opts->merge = true; break;
             case 'n': opts->anchor_merge = true; break;
             case 'g': opts->use_gsacak = true; break;
+            case 'P': opts->only_parse = true; break;
             default: mumemto_usage(); std::exit(1);
         }
     }
@@ -387,12 +313,12 @@ void parse_build_options(int argc, char** argv, BuildOptions* opts) {
 int mumemto_usage() {
     /* prints out the usage information for the build method */
     std::fprintf(stderr, "\nmumemto - find maximal [unique | exact] matches using PFP.\n");
-    std::fprintf(stderr, "Usage: mumemto [mum | mem] [options] [input_fasta [...]]\n\n");
+    std::fprintf(stderr, "Usage: mumemto [options] [input_fasta [...]]\n\n");
     std::fprintf(stderr, "*** for all options, N = # of sequences ***\n");
     std::fprintf(stderr, "I/O options:\n");
     std::fprintf(stderr, "\t%-32sprints this usage message\n", "-h, --help");
     std::fprintf(stderr, "\t%-22s%-10spath to a file-list of genomes to use (overrides positional args)\n", "-i, --input", "[FILE]");
-    std::fprintf(stderr, "\t%-22s%-10soutput prefix path\n", "-o, --output", "[arg]");
+    std::fprintf(stderr, "\t%-22s%-10soutput prefix path\n", "-o, --output", "[PREFIX]");
     std::fprintf(stderr, "\t%-32sinclude the reverse complement of the sequences (default: true)\n\n", "-r, --no-revcomp");
     std::fprintf(stderr, "\t%-32soutput binary format (multi-MUMs only)\n\n", "-b, --binary");
 
@@ -412,9 +338,10 @@ int mumemto_usage() {
     std::fprintf(stderr, "PFP options:\n");
     std::fprintf(stderr, "\t%-22s%-10swindow size used for pfp (default: 10)\n", "-w, --window", "[INT]");
     std::fprintf(stderr, "\t%-22s%-10shash-modulus used for pfp (default: 100)\n", "-m, --modulus", "[INT]");
-    std::fprintf(stderr, "\t%-32suse pre-computed pf-parse\n", "-p, --from-parse");
-    std::fprintf(stderr, "\t%-32skeep PFP files\n\n", "-K, --keep-temp-files");
+    std::fprintf(stderr, "\t%-32suse pre-computed pf-parse (with shared PREFIX.parse and PREFIX.dict)\n", "-p, --from-parse", "[PREFIX]");
+    std::fprintf(stderr, "\t%-32skeep PFP files\n", "-K, --keep-temp-files");
     std::fprintf(stderr, "\t%-32sskip PFP and use gsacak directly to compute LCP, BWT, SA\n", "-g, --use-gsacak");
+    std::fprintf(stderr, "\t%-32sonly compute PFP over the input files and do not compute matches\n\n", "-P, --only-parse");
 
     std::fprintf(stderr, "Overview:\n");
         std::fprintf(stderr, "\tBy default, Mumemto computes multi-MUMs. Exact match parameters can be additionally tuned in three main ways:\n");

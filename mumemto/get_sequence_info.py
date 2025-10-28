@@ -5,9 +5,9 @@ import numpy as np
 import os, sys
 
 try:
-    from utils import MUMdata, get_sequence_lengths, serialize_coll_blocks
+    from utils import MUMdata, get_sequence_lengths, serialize_coll_blocks, get_contig_names
 except ImportError:
-    from mumemto.utils import MUMdata, get_sequence_lengths, serialize_coll_blocks
+    from mumemto.utils import MUMdata, get_sequence_lengths, serialize_coll_blocks, get_contig_names
 
 def parse_arguments(args=None):
     parser = argparse.ArgumentParser(description='Extract the MUM sequences')
@@ -22,11 +22,17 @@ def parse_arguments(args=None):
     else:
         args = parser.parse_args(args)
         
-    if not args.mumfile.endswith('.mums') and not os.path.exists(args.mumfile + '.mums'):
+    if not args.mumfile.endswith('.mums') and not args.mumfile.endswith('.bumbl'):
+        if not os.path.exists(args.mumfile + '.mums') and not os.path.exists(args.mumfile + '.bumbl'):
+            print(f"MUM file {args.mumfile} not found.", file=sys.stderr)
+            sys.exit(1)
+        elif os.path.exists(args.mumfile + '.mums'):
+            args.mumfile = args.mumfile + '.mums'
+        elif os.path.exists(args.mumfile + '.bumbl'):
+            args.mumfile = args.mumfile + '.bumbl'
+    elif not os.path.exists(args.mumfile):
         print(f"MUM file {args.mumfile} not found.", file=sys.stderr)
         sys.exit(1)
-    elif not args.mumfile.endswith('.mums'):
-        args.mumfile = args.mumfile + '.mums'
     if args.lengths is None:
         args.lengths = os.path.splitext(args.mumfile)[0] + '.lengths'
     if not os.path.exists(args.lengths):
@@ -56,21 +62,6 @@ def offset_mums(args, mums, lengths):
     partial_mask = mums.starts == -1
     rel_offsets[partial_mask] = -1
     return contig_idx, rel_offsets
-
-def get_contig_names(lengths_file):
-    ### assumes lengths_file is formatted as multilengths
-    names = []
-    cur_name = []
-    for l in open(lengths_file, 'r').readlines():
-        l = l.strip().split()
-        if l[1] == '*':
-            if cur_name:
-                names.append(cur_name)
-            cur_name = []
-            continue
-        cur_name.append(l[1])
-    names.append(cur_name)
-    return names
 
 def main(args):
     try:

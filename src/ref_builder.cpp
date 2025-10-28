@@ -10,7 +10,8 @@
 
 #include <ref_builder.hpp>
 #include <pfp_mum.hpp> 
-// #include <zlib.h> 
+#include <newscan.hpp>
+#include <zlib.h> 
 #include <kseq.h>
 #include <iostream>
 #include <string>
@@ -22,7 +23,7 @@
 #include <unordered_set>
 #include <filesystem>
 
-KSEQ_INIT(int, read);
+KSEQ_INIT(gzFile, gzread);
 
 /* Complement Table from: https://github.com/lh3/seqtk/blob/master/seqtk.c */
 char comp_tab[] = {
@@ -69,7 +70,8 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
 
         if (!is_file(word_list[0])) {
             FATAL_ERROR("The following path in the input list is not valid: %s", word_list[0].data());}
-        if (!endsWith(word_list[0], ".fa") && !endsWith(word_list[0], ".fasta") && !endsWith(word_list[0], ".fna")) {
+        if (!endsWith(word_list[0], ".fa") && !endsWith(word_list[0], ".fasta") && !endsWith(word_list[0], ".fna") &&
+            !endsWith(word_list[0], ".fa.gz") && !endsWith(word_list[0], ".fasta.gz") && !endsWith(word_list[0], ".fna.gz")) {
             FATAL_ERROR("The following input-file is not a FASTA file: %s", word_list[0].data());}
         input_files.push_back(word_list[0]);
 
@@ -113,7 +115,7 @@ RefBuilder::RefBuilder(std::string output_prefix, bool use_rcomp): use_revcomp(u
     from_parse = true;
     std::string lengths_fname = output_prefix + ".lengths";
     if (!is_file(lengths_fname)) {
-        FATAL_ERROR("Lengths file required for using intermediate PFP files. File should match parse prefix: %s", lengths_fname.data());}
+        FATAL_ERROR("Lengths file required for using intermediate files. File should match output prefix: %s", lengths_fname.data());}
     std::ifstream lengths_fd(lengths_fname.data(), std::ifstream::in);
     std::string line;
     size_t cur_length = 0;
@@ -139,94 +141,9 @@ RefBuilder::RefBuilder(std::string output_prefix, bool use_rcomp): use_revcomp(u
     this->num_docs = input_files.size();
 }
 
-int RefBuilder::build_input_file() {
-    bool multi = false;
-    std::vector<std::vector<size_t>> multifasta_lengths;
-    std::vector<std::vector<std::string>> multifasta_names;
-    if (!from_parse) {
-        // Declare needed parameters for reading/writing
-        output_ref = this->output_prefix + ".fna";
-        std::ofstream output_fd (output_ref.data(), std::ofstream::out);
-        FILE* fp; kseq_t* seq;
-        std::vector<std::string> seq_vec;
-        std::vector<std::string> name_vec;
-        std::vector<size_t> temp_lengths;
-        std::vector<std::string> temp_names;
-        
-        // Start working on building the reference file by reading each file ...
-        size_t curr_id = 1;
-        size_t curr_id_seq_length = 0;
-        for (auto iter = input_files.begin(); iter != input_files.end(); ++iter) {
-            temp_lengths = std::vector<size_t>();
-            temp_names = std::vector<std::string>();
-            fp = fopen((*iter).data(), "r"); 
-            if(fp == 0) {std::exit(1);}
-
-            seq = kseq_init(fileno(fp));
-            size_t iter_index = static_cast<size_t>(iter-input_files.begin());
-
-            while (kseq_read(seq)>=0) {
-                // Get forward seq, and write to file
-                for (size_t i = 0; i < seq->seq.l; ++i) {
-                    seq->seq.s[i] = static_cast<char>(std::toupper(seq->seq.s[i]));
-                }
-                seq_vec.push_back(seq->seq.s);
-                name_vec.push_back(seq->name.s);
-                // Added dollar sign as separator, and added 1 to length
-                // output_fd << '>' << seq->name.s << '\n' << seq->seq.s << '\n';
-                curr_id_seq_length += seq->seq.l;
-                temp_lengths.push_back(seq->seq.l);
-                temp_names.push_back(seq->name.s);
-            }
-            if (temp_lengths.size() > 1) {
-                multi = true;
-            }
-            multifasta_lengths.push_back(temp_lengths);
-            multifasta_names.push_back(temp_names);
-
-            kseq_destroy(seq);
-            fclose(fp);
-            if (curr_id_seq_length == 0) {
-                output_fd.close();
-                std::cerr << std::endl << "Empty input file found: " + *iter << std::endl;
-                return 1;
-            }
-
-            // Check if we are transitioning to a new group OR If it is the last file, output current sequence length
-            // if ((iter_index == document_ids.size()-1) || (iter_index < document_ids.size()-1 && document_ids[iter_index] != document_ids[iter_index+1])) {
-            for (auto i = 0; i < seq_vec.size() - 1; ++i) {
-                output_fd << '>' << name_vec.at(i) << '\n' << seq_vec.at(i) << '\n';
-            }
-            output_fd << '>' << name_vec.at(seq_vec.size() - 1) << '\n' << seq_vec.at(seq_vec.size() - 1) << '$' << '\n';
-            curr_id_seq_length += 1;
-            // Get reverse complement, and print it
-            // Based on seqtk reverse complement code, that does it 
-            // in place. (https://github.com/lh3/seqtk/blob/master/seqtk.c)
-            if (use_revcomp) {
-                for (auto i = seq_vec.size(); i-- != 1; ) {
-                    rev_comp(seq_vec.at(i));
-                    output_fd << '>' << name_vec.at(i) << "_rev_comp" << '\n' << seq_vec.at(i) << '\n';
-                    curr_id_seq_length += seq_vec.at(i).length();
-                }
-                rev_comp(seq_vec.at(0));
-                output_fd << '>' << name_vec.at(0) << "_rev_comp" << '\n' << seq_vec.at(0) << '$' << '\n';
-                curr_id_seq_length += seq_vec.at(0).length();
-                curr_id_seq_length += 1;
-            }
-            // for (auto s = seq_vec.begin(); s != seq_vec.end(); ++s) {
-            //     kseq_destroy(*s);
-            // }
-            seq_lengths.push_back(curr_id_seq_length);
-            curr_id += 1; curr_id_seq_length = 0;
-            name_vec.clear(); seq_vec.clear();
-            // }
-        }
-        output_fd.close();
-    }
-
-    // Add 1 to last document for $ and find total length
+void RefBuilder::build_bv() {
+    // Assuming seq_lengths has been built correctly
     size_t total_input_length = 0;
-    // seq_lengths[seq_lengths.size()-1] += 1; // for $
     for (auto length: seq_lengths) {
         total_input_length += length;
     }
@@ -234,7 +151,6 @@ int RefBuilder::build_input_file() {
     this->total_length = total_input_length;
     // sanity check
     ASSERT((this->num_docs == seq_lengths.size()), "Issue with file-list parsing occurred.");
-    // this->num_docs = seq_lengths.size();
     
     // Build bitvector/rank support marking the end of each document
     doc_ends = sdsl::bit_vector(total_input_length, 0);
@@ -245,29 +161,124 @@ int RefBuilder::build_input_file() {
         doc_ends[curr_sum-1] = 1;
     }
     doc_ends_rank = sdsl::rank_support_v<1> (&doc_ends); 
+}
 
-    // Write out lengths file
-    if (!from_parse) {
-        std::string lengths_fname = output_prefix + ".lengths";
-        std::ofstream outfile(lengths_fname);
-        if (multi) {
-            size_t total_file_length = 0;
-            for (size_t i = 0; i < multifasta_lengths.size(); ++i) {
-                total_file_length = 0;
-                for (auto n : multifasta_lengths[i]) {
-                    total_file_length += n;
-                }
-                outfile << std::filesystem::absolute(input_files[i]).string() << " * " << total_file_length << std::endl;
-                for (auto idx = 0; idx < multifasta_lengths[i].size(); ++idx) {
-                    outfile << std::filesystem::absolute(input_files[i]).string() << " " << multifasta_names[i][idx] << " " << multifasta_lengths[i][idx] << std::endl;
-                }
-            }
-        } else {
-            for (size_t i = 0; i < multifasta_lengths.size(); ++i) {
-                outfile << std::filesystem::absolute(input_files[i]).string() << " " << multifasta_lengths[i][0] << std::endl;
-            }
+void RefBuilder::write_lengths_file() {
+    // assuming multifasta_lengths is built correctly
+    std::string lengths_fname = output_prefix + ".lengths";
+    std::ofstream outfile(lengths_fname);
+    size_t total_file_length = 0;
+    for (size_t i = 0; i < multifasta_lengths.size(); ++i) {
+        total_file_length = 0;
+        for (auto n : multifasta_lengths[i]) {
+            total_file_length += n;
         }
-        outfile.close();
+        outfile << std::filesystem::canonical(input_files[i]).string() << " * " << total_file_length << std::endl;
+        for (auto idx = 0; idx < multifasta_lengths[i].size(); ++idx) {
+            outfile << std::filesystem::canonical(input_files[i]).string() << " " << multifasta_names[i][idx] << " " << multifasta_lengths[i][idx] << std::endl;
+        }
     }
+    outfile.close();
+}
+
+int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = false, bool keep_seqs = false) {
+    if (!from_parse) {
+        // Declare needed parameters for reading/writing
+        pfparser parser(this->output_prefix, w, p, probing);
+        gzFile gzfp; kseq_t* seq;
+        std::vector<std::string> seq_vec;
+        std::vector<size_t> temp_lengths;
+        std::vector<std::string> temp_names;
+        
+        // Start working on building the reference file by reading each file ...
+        size_t curr_id = 1;
+        size_t curr_id_seq_length = 0;
+        for (auto iter = input_files.begin(); iter != input_files.end(); ++iter) {
+            // Use gzopen for both compressed and uncompressed files
+            gzfp = gzopen((*iter).data(), "r");
+            if (gzfp == 0) {std::exit(1);}
+            seq = kseq_init(gzfp);
+            size_t iter_index = static_cast<size_t>(iter-input_files.begin());
+
+            while (kseq_read(seq)>=0) {
+                // Get forward seq, and write to file
+                for (size_t i = 0; i < seq->seq.l; ++i) {
+                    seq->seq.s[i] = static_cast<char>(std::toupper(seq->seq.s[i]));
+                }
+                seq_vec.push_back(seq->seq.s);
+                curr_id_seq_length += seq->seq.l;
+                temp_lengths.push_back(seq->seq.l);
+                temp_names.push_back(seq->name.s);
+            }
+            multifasta_lengths.push_back(temp_lengths);
+            multifasta_names.push_back(temp_names);
+            temp_lengths.clear();
+            temp_names.clear();
+
+            kseq_destroy(seq);
+            gzclose(gzfp);
+            if (curr_id_seq_length == 0) {
+                std::cerr << std::endl << "Empty input file found: " + *iter << std::endl;
+                return 1;
+            }
+
+            // for the terminating $
+            curr_id_seq_length += 1;
+            if (keep_seqs) {
+                this->text.reserve(this->text.size() + curr_id_seq_length);
+                for (auto i = 0; i < seq_vec.size(); ++i) {
+                    this->text.insert(this->text.end(), seq_vec.at(i).begin(), seq_vec.at(i).end());
+                }
+                this->text.push_back('$');
+            }
+            else {
+                for (auto i = 0; i < seq_vec.size(); ++i) {
+                    parser.process_string(seq_vec.at(i));
+                }
+                parser.process_string("$");
+            }
+            // Get reverse complement, and print it
+            // Based on seqtk reverse complement code, that does it 
+            // in place. (https://github.com/lh3/seqtk/blob/master/seqtk.c)
+            if (use_revcomp) {
+                for (auto i = seq_vec.size(); i-- != 0; ) {
+                    rev_comp(seq_vec.at(i));
+                    curr_id_seq_length += seq_vec.at(i).length();
+                }
+                // for the terminating $
+                curr_id_seq_length += 1;
+                if (keep_seqs) {
+                    this->text.reserve(this->text.size() + curr_id_seq_length);
+                    for (auto i = seq_vec.size(); i-- != 0; ) {
+                        this->text.insert(this->text.end(), seq_vec.at(i).begin(), seq_vec.at(i).end());
+                    }
+                    this->text.push_back('$');
+                }
+                else {
+                    for (auto i = seq_vec.size(); i-- != 0; ) {
+                        parser.process_string(seq_vec.at(i));
+                    }
+                    parser.process_string("$");
+                }
+            }
+
+            seq_lengths.push_back(curr_id_seq_length);
+            curr_id += 1; curr_id_seq_length = 0;
+            seq_vec.clear();
+        }
+
+        // Write final phrase to file, sort dictionary, and remap final parse file
+        if (!keep_seqs) {
+            parser.finish_parse();
+        }
+        // Write out lengths file
+        this->write_lengths_file();
+    }
+
+    // build the bv
+    this->build_bv();
+
     return 0;
 }
+
+

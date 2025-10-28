@@ -41,7 +41,6 @@ class CMakeBuild(Command):
             (os.path.join(self.build_temp, 'compute_lengths'), 'compute_lengths'),
             (os.path.join(self.build_temp, 'extract_mums'), 'extract_mums'),
             (os.path.join(self.build_temp, 'anchor_merge'), 'anchor_merge'),
-            (os.path.join(self.build_temp, 'install', 'bin', 'newscanNT.x'), 'newscanNT.x'),
         ]
         
         for src, dst in executables:
@@ -82,14 +81,13 @@ def read_requirements():
         'matplotlib',
         'numpy',
         'tqdm',
-        'numba',
-        'plotly'
+        'numba'
     ]
     return requirements
 
 setup(
     name="mumemto",
-    version="1.3.2",
+    version="1.3.4",
     packages=find_packages(),
     install_requires=read_requirements(),
     scripts=['mumemto/mumemto'],  # Only include the Python script here

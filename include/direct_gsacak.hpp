@@ -48,10 +48,11 @@ public:
     gsacak_lcp() {}
     
     gsacak_lcp(std::string filename, RefBuilder* ref_build, bool write_arrays = false) : 
-                ref_build(ref_build)
+                ref_build(ref_build),
+                text(ref_build->text)
     {
-        text.reserve(ref_build->total_length);
-        readFasta(filename + ".fna");
+        // text.reserve(ref_build->total_length);
+        // readFasta(filename + ".fna");
         text.push_back(1);
         text.push_back(0);
 

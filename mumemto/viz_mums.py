@@ -33,6 +33,7 @@ def parse_arguments(args=None):
     parser.add_argument('--linewidth','-lw', dest='linewidth', help='linewidth of mums (default: 0 for blocks, 0.05 for MUMs)', type=float)
     parser.add_argument('--fout','-o', dest='filename', help='plot fname (default: input_prefix)')
     parser.add_argument('--dims', dest='size', help='fig dimensions (inches) (default: 6.4, 4.8)', default=(6.4,4.8), type=float, nargs=2)
+    parser.add_argument('--region', dest='region', help='genomic region to zoom in, global coordinates (assuming contigs are concatenated)', default=None, type=float, nargs=2)
     parser.add_argument('--dpi','-d', dest='dpi', help='dpi', default=500, type=int)
     parser.add_argument('--verbose','-v', dest='verbose', help='verbose mode', action='store_true', default=False)
     parser.add_argument('--no-coll-block','-b', dest='no_coll_block', help='plot only MUMs, not collinear blocks (slower) (default: false)', action='store_true', default=False)
@@ -128,6 +129,12 @@ def get_block_polygons(collinear_blocks, mums, centering, color='#00A2FF', inv_c
         points = []
         left, right = mums[l].starts, mums[r].starts + mums[r].length
         for idx, strand in enumerate(strands):
+            if left[idx] == -1:
+                if len(points) > 2:
+                    polygons.append(points_to_poly(points))
+                    colors.append(color)
+                points = []
+                continue
             points.append(((centering[idx] + left[idx], idx), (centering[idx] + right[idx], idx)))
             if not inverted and not strand:
                 inverted = True
@@ -219,6 +226,8 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
     ax.set_ylim(-0.25, len(genome_lengths)-1 + 0.25)
     if args.mode == 'gapped':
         ax.set_xlim(0, args.multilengths.max(axis=0).sum() + args.spacer * (args.multilengths.shape[1] - 1))
+    elif args.region is not None:
+        ax.set_xlim(*args.region)
     else:
         ax.set_xlim(0, max_length)
     ax.invert_yaxis()

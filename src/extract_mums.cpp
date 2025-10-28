@@ -7,15 +7,17 @@
 #include <string>
 #include <getopt.h>
 #include <filesystem>
+#include <zlib.h>
 #include <kseq.h>
 #include <unistd.h>
 #include <vector>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>  // Include this for std::runtime_error
+#include "parse_mums.hpp"
 
 
-KSEQ_INIT(int, read);
+KSEQ_INIT(gzFile, gzread);
 
 void print_usage() {
     std::fprintf(stderr, "\nextract_mums - extract MUMs from a MUM and length file\n");
@@ -51,20 +53,20 @@ int read_ref_file(const std::string& length_file_path, std::string& ref_seq) {
         return 1; // Error: Invalid FASTA path in length file
     }        
 
-    // read in the fasta file
-    FILE* fp = fopen(fasta_path.data(), "r");
-    if (fp == 0) {
+    // read in the fasta file using gzopen for both compressed and uncompressed files
+    gzFile gzfp = gzopen(fasta_path.data(), "r");
+    if (gzfp == 0) {
         std::cerr << "Error: Unable to open FASTA file" << std::endl;
         return 1; // Error opening file
     }
 
-    kseq_t* seq = kseq_init(fileno(fp));
+    kseq_t* seq = kseq_init(gzfp);
     ref_seq.clear();
     while (kseq_read(seq) >= 0) {
         ref_seq += seq->seq.s;
     }
     kseq_destroy(seq);
-    fclose(fp);
+    gzclose(gzfp);
 
     if (ref_seq.empty()) {
         std::cerr << "Error: Empty input file found" << std::endl;
@@ -73,28 +75,16 @@ int read_ref_file(const std::string& length_file_path, std::string& ref_seq) {
     return 0; // Success
 }
 
-std::vector<std::pair<size_t, size_t>> parse_mums(std::string mum_file_path) {
-    std::ifstream mum_file(mum_file_path);
-    std::string line;
+std::vector<std::pair<size_t, size_t>> parse_mums(const std::string& path) {
     std::vector<std::pair<size_t, size_t>> mum_list;
-
-    // read in the mum file
-    size_t cur_len;
-    size_t cur_start;
-    std::string offset_string;
-    size_t tab_index;
-    size_t comma_index;
-    while (std::getline(mum_file, line)) {
-        tab_index = line.find_first_of("\t");
-        comma_index = line.find_first_of(",");
-        cur_len = std::stoul(line.substr(0, tab_index));
-        offset_string = line.substr(tab_index + 1, comma_index - (tab_index + 1));
-        if (offset_string.empty()) {
-            std::cerr << "Error: Cannot extract sequences from partial MUMs. Filter the *.mums file to only include strict MUMs before extracting." << std::endl;
-            exit(1);
-        }
-        cur_start = std::stoul(offset_string);
-        mum_list.push_back(std::make_pair(cur_start, cur_len));
+    if (endsWith(path, ".bumbl")) {
+        mumsio::stream_bumbl_first(path, [&](uint32_t len, int64_t off0){
+            mum_list.emplace_back(static_cast<size_t>(off0), static_cast<size_t>(len));
+        });
+    } else {
+        mumsio::stream_mums_first(path, [&](uint32_t len, int64_t off0){
+            mum_list.emplace_back(static_cast<size_t>(off0), static_cast<size_t>(len));
+        });
     }
     return mum_list;
 }
@@ -166,7 +156,7 @@ int main(int argc, char** argv) {
         std::cerr << "Error: No mum file provided\n";
         return 1;
     }
-    if (!endsWith(mum_file_path, ".mums")) {
+    if (!endsWith(mum_file_path, ".mums") && !endsWith(mum_file_path, ".bumbl")) {
         mum_file_path += ".mums";
     }
     if (!is_file(mum_file_path)) {

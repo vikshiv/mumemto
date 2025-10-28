@@ -55,7 +55,6 @@ add_subdirectory(include)
 add_subdirectory(src)
 
 install(TARGETS mumemto_exec DESTINATION ${PROJECT_BINARY_DIR})
-install(TARGETS newscanNT.x DESTINATION ${PROJECT_BINARY_DIR})
 install(TARGETS compute_lengths DESTINATION ${PROJECT_BINARY_DIR})
 install(TARGETS extract_mums DESTINATION ${PROJECT_BINARY_DIR})
 install(TARGETS anchor_merge DESTINATION ${PROJECT_BINARY_DIR})
@@ -70,4 +69,4 @@ add_custom_target(copy_mumemto ALL
 )
 
 # Make sure this target runs after the main executables
-add_dependencies(copy_mumemto mumemto_exec newscanNT.x compute_lengths)
+add_dependencies(copy_mumemto mumemto_exec compute_lengths)

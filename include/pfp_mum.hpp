@@ -30,7 +30,7 @@
                                   std::fprintf(stderr, "\n");} while (0)
 
 // Defintions
-#define PFPMUM_VERSION "1.3.3"
+#define PFPMUM_VERSION "1.3.4"
 
 #define MAXLCPVALUE 65535 // 2^16 - 1
 #define MAXDOCS 65535
@@ -56,7 +56,6 @@ struct BuildOptions {
     public:
         std::string input_list = "";
         std::string output_prefix = "output";
-        std::string output_ref = "";
         std::vector<std::string> files;
         bool use_rcomp = true;
         size_t pfp_w = 10;
@@ -77,6 +76,7 @@ struct BuildOptions {
         bool merge = false;
         bool anchor_merge = false;
         bool use_gsacak = false;
+        bool only_parse = false;
 
         bool validate() {
             /* checks the arguments and make sure they are valid 
@@ -95,16 +95,42 @@ struct BuildOptions {
                     FATAL_ERROR(("The following file path is not valid: " + f).c_str());
                 }
             }
+            
             std::filesystem::path p (output_prefix);
             if (p.parent_path().string().empty() && !p.string().empty())
                 output_prefix = "./" + output_prefix;
             else if (!is_dir(p.parent_path().string()))
                 std::filesystem::create_directories(p.parent_path());
 
-            if (from_parse_flag)
-                parse_prefix = parse_prefix + ".fna";
-            // if (max_mem_freq < -1)
-            //     FATAL_ERROR("Maximum MEM frequency cannot be negative (-1 indicates no limit on MEM frequency)"); 
+            if ((only_parse && use_gsacak) || (only_parse && arrays_in_flag) || (only_parse && from_parse_flag)) {
+                only_parse = false;
+                FORCE_LOG("build_main", "only-parse flag is not supported with use-gsacak, arrays-in, or from-parse, ignoring flag");
+            }
+            if (use_gsacak && from_parse_flag) {
+                FATAL_ERROR("--use-gsacak flag is incompatible with --from-parse flag");
+            }
+            if (use_gsacak && arrays_in_flag) {
+                FATAL_ERROR("--use-gsacak flag is incompatible with --arrays-in flag");
+            }
+            if (from_parse_flag && arrays_in_flag) {
+                FATAL_ERROR("--from-parse flag is incompatible with --arrays-in flag");
+            }
+
+            // check intermediate file exists for certain options
+            if (from_parse_flag) {
+                if (!is_file(parse_prefix + ".dict"))
+                    FATAL_ERROR(("Missing *.dict file. Expected file: " + parse_prefix + ".dict").c_str()); 
+                else if (!is_file(parse_prefix + ".parse"))
+                    FATAL_ERROR(("Missing *.parse file. Expected file: " + parse_prefix + ".parse").c_str()); 
+            }
+            if (arrays_in_flag) {
+                if (!is_file(arrays_in + ".sa"))
+                    FATAL_ERROR(("Missing *.sa file. Expected file: " + arrays_in + ".sa").c_str()); 
+                else if (!is_file(arrays_in + ".lcp"))
+                    FATAL_ERROR(("Missing *.lcp file. Expected file: " + arrays_in + ".lcp").c_str()); 
+                else if (!is_file(arrays_in + ".bwt"))
+                    FATAL_ERROR(("Missing *.bwt file. Expected file: " + arrays_in + ".bwt").c_str()); 
+            }
 
             if (rare_freq < 0)
                 FATAL_ERROR("Per-sequence MEM frequency must be > 0 (or 0 for no limit)."); 
@@ -162,31 +188,9 @@ struct BuildOptions {
         }
 };
 
-struct HelperPrograms {
-  /* Contains paths to run helper programs */
-  std::string base_path = "";
-  std::string parseNT_bin = "newscanNT.x";
-//   std::string parse_fasta_bin = "newscan.x";
-//   std::string parse_bin = "pscan.x";
-  
-public:
-  void build_paths(std::string base) {
-      /* Takes the base path, and combines it with names to generate executable paths */
-      base_path.assign(base);
-      parseNT_bin.assign(base_path + parseNT_bin);
-  }
-
-  void validate() const {
-      /* Makes sure that each path for an executable is valid */
-      bool invalid_path = !is_file(parseNT_bin);
-      if (invalid_path) {FATAL_ERROR("One or more of helper program paths are invalid.");}
-  }
-};
-
 /* Function Declartions involving structs */
 void parse_build_options(int argc, char** argv, BuildOptions* opts);
 void print_build_status_info(BuildOptions& opts, RefBuilder&ref_build, bool mum_mode);
-void run_build_parse_cmd(BuildOptions* build_opts, HelperPrograms* helper_bins);
 
 const std::string SKULL =
 "                            ,--.   \n"

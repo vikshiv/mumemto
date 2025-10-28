@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import argparse
-from mumemto.utils import get_sequence_lengths, parse_mums_generator
+from mumemto.utils import get_sequence_lengths, stream_mums, get_contig_names
 import sys
 
 
@@ -11,7 +11,7 @@ def parse_arguments(args=None):
     parser.add_argument('--lengths-file', '-l', help='Path to the lengths file (optional)')
     parser.add_argument('-v', '--verbose', action='store_true', 
                        help='Enable verbose output with progress bars')
-    parser.add_argument('--min-singleton-length', '-m', type=int, default=100,
+    parser.add_argument('--min-singleton-length', '-L', type=int, default=100,
                         help='Minimum length of singleton blocks to include')
     parser.add_argument('--seq-idx', '-s', type=int, default=0,
                         help='Sequence to output BED coordinates (default: first sequence)')
@@ -37,21 +37,14 @@ def get_lengths_file(mums_file):
     
 def process_mums_file(mums_file, seq_idx=0, verbose=False, min_singleton_length=100):
     """Process MUMs file and calculate statistics"""
-    with open(mums_file, 'r') as f:
-        line = f.readline().split()
-        if (len(line) < 4 or line[3] == '*'):
-            print('MUMs file does not contain blocks. Try running mumemto collinear first.', file=sys.stderr)
-            sys.exit(1)
     last_block = '-'
     last_start, last_end = None, None
     last_strand = None
     intervals = []
     mum_idx = 0
     has_blocks = False
-    for l, starts, strands, block in parse_mums_generator(mums_file, verbose=verbose, return_blocks=True):
-        start = starts[seq_idx]
-        strand = strands[seq_idx]
-        if block is None:
+    for l, start, strand, block in stream_mums(mums_file, seq_idx=seq_idx, verbose=verbose, return_blocks=True):
+        if block is None and verbose:
             print('No collinear blocks found. Only writing mums to BED intervals.', file=sys.stderr)
         else:
             has_blocks = True
@@ -94,26 +87,6 @@ def find_chr(intervals, lengths):
     rel_offsets = starts - left_start[contig_idx]
     return contig_idx, rel_offsets
 
-
-def get_contig_names(lengths_file):
-    ### assumes lengths_file is formatted as multilengths
-    names = []
-    cur_name = []
-    first_line = True
-    for l in open(lengths_file, 'r').readlines():
-        l = l.strip().split()
-        if first_line and l[1] != '*':
-            print('Lengths file must be formatted as multilengths.', file=sys.stderr)
-            sys.exit(1)
-        first_line = False
-        if l[1] == '*':
-            if cur_name:
-                names.append(cur_name)
-            cur_name = []
-            continue
-        cur_name.append(l[1])
-    names.append(cur_name)
-    return names
 
 def main(args):
     lengths = get_sequence_lengths(args.lengths_file, multilengths=True)

@@ -7,14 +7,11 @@
 #include <cassert>
 #include <tuple>
 #include <filesystem>
+#include <parse_mums.hpp>
 
 using namespace std;
 
-struct Mum {
-    int length;
-    vector<uint32_t> offsets;
-    vector<bool> strands;
-};
+using mumsio::Mum;
 
 std::vector<uint16_t> readThresholds(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
@@ -41,34 +38,24 @@ tuple<vector<Mum>, vector<bool>, vector<uint16_t>> parse_candidate(const string&
     vector<bool> mum_bv(next_best.size(), false);
     vector<Mum> mums;
 
-    ifstream mums_file(path + ".mums");
-    string line;
-    while (getline(mums_file, line)) {
-        istringstream iss(line);
-        int length;
-        string offsets_str, strands_str;
-        iss >> length >> offsets_str >> strands_str;
-
-        vector<uint32_t> offsets;
-        stringstream offsets_stream(offsets_str);
-        string offset;
-        while (getline(offsets_stream, offset, ',')) {
-            if (offset.empty()) {
-                std::cerr << "Error: Cannot merge partial MUMs. Filter the *.mums file to only include strict MUMs before merging." << std::endl;
-                exit(1);
+    string mums_txt = path + ".mums";
+    string mums_bin = path + ".bumbl";
+    if (filesystem::exists(mums_bin)) {
+        auto mv = mumsio::parse_bumbl(mums_bin, /*noPartials=*/true);
+        for (const auto& m : mv) {
+            if (!m.offsets.empty()) {
+                mum_bv[m.offsets[0]] = true;
             }
-            offsets.push_back(stoul(offset));
         }
-
-        vector<bool> strands;
-        stringstream strands_stream(strands_str);
-        string strand;
-        while (getline(strands_stream, strand, ',')) {
-            strands.push_back(strand == "+");
+        mums = std::move(mv);
+    } else {
+        auto mv = mumsio::parse_mums(mums_txt, /*noPartials=*/true);
+        for (const auto& m : mv) {
+            if (!m.offsets.empty()) {
+                mum_bv[m.offsets[0]] = true;
+            }
         }
-
-        mums.emplace_back(Mum{length, move(offsets), move(strands)});
-        mum_bv[mums.back().offsets[0]] = true;
+        mums = std::move(mv);
     }
 
     // Sort the mums by the first value in offsets
@@ -79,11 +66,11 @@ tuple<vector<Mum>, vector<bool>, vector<uint16_t>> parse_candidate(const string&
     return {move(mums), move(mum_bv), move(next_best)};
 }
 
-vector<uint32_t> fix_neg_strand(const Mum& cand, size_t cand_offset, int new_len, int old_len) {
-    int len_diff = old_len - new_len;
-    vector<uint32_t> offsets = cand.offsets;
+vector<int64_t> fix_neg_strand(const Mum& cand, size_t cand_offset, uint32_t new_len, uint32_t old_len) {
+    int64_t len_diff = static_cast<int64_t>(static_cast<int64_t>(old_len) - static_cast<int64_t>(new_len));
+    vector<int64_t> offsets = cand.offsets;
     for (size_t i = 0; i < cand.offsets.size(); ++i) {
-        offsets[i] += (!cand.strands[i]) ? len_diff : cand_offset;
+        offsets[i] += (!cand.strands[i]) ? len_diff : static_cast<int64_t>(cand_offset);
     }
     return offsets;
 }
@@ -117,20 +104,23 @@ tuple<vector<Mum>, vector<bool>, vector<uint16_t>> merge_partitions(
             last_mum2 = i;
         }
         if (cur_mum1 && cur_mum2 && (p1_mum_bv[i] || p2_mum_bv[i]) && (p1_nb[i] > 0 && p2_nb[i] > 0)) {
-            int s1_len = cur_mum1->length - (i - last_mum1);
-            int s2_len = cur_mum2->length - (i - last_mum2);
-            int new_len = min(s1_len, s2_len);
+            size_t delta1 = i - last_mum1;
+            size_t delta2 = i - last_mum2;
+            if (delta1 > cur_mum1->length || delta2 > cur_mum2->length) continue; // avoid underflow
+            uint32_t s1_len = static_cast<uint32_t>(cur_mum1->length - delta1);
+            uint32_t s2_len = static_cast<uint32_t>(cur_mum2->length - delta2);
+            uint32_t new_len = std::min(s1_len, s2_len);
             if (new_len > new_nb[i] && new_len >= 20) {
-                vector<uint32_t> new_offsets2 = fix_neg_strand(*cur_mum2, i - last_mum2, new_len, s2_len);
-                vector<uint32_t> new_offsets1 = fix_neg_strand(*cur_mum1, i - last_mum1, new_len, s1_len);
-                vector<uint32_t> combined_offsets = new_offsets1;
+                vector<int64_t> new_offsets2 = fix_neg_strand(*cur_mum2, i - last_mum2, new_len, s2_len);
+                vector<int64_t> new_offsets1 = fix_neg_strand(*cur_mum1, i - last_mum1, new_len, s1_len);
+                vector<int64_t> combined_offsets = new_offsets1;
                 combined_offsets.insert(combined_offsets.end(), new_offsets2.begin() + 1, new_offsets2.end());
 
                 vector<bool> combined_strands = cur_mum1->strands;
                 combined_strands.insert(combined_strands.end(), cur_mum2->strands.begin() + 1, cur_mum2->strands.end());
 
                 new_mums.emplace_back(Mum{new_len, move(combined_offsets), move(combined_strands)});
-                new_mum_bv[new_offsets1[0]] = true;
+                new_mum_bv[static_cast<size_t>(new_offsets1[0])] = true;
             }
         }
     }
@@ -139,15 +129,25 @@ tuple<vector<Mum>, vector<bool>, vector<uint16_t>> merge_partitions(
 }
 
 string get_path(const string& path) {
+    /* by default look for .mums and .athresh files, unless .bumbl specified*/
+    bool is_bumbl = false;
     string base_path = path;
     if (path.size() >= 8 && path.compare(path.size() - 8, 8, ".athresh") == 0) {
         base_path = path.substr(0, path.size() - 8);
     } else if (path.size() >= 5 && path.compare(path.size() - 5, 5, ".mums") == 0) {
         base_path = path.substr(0, path.size() - 5);
+    } else if (path.size() >= 6 && path.compare(path.size() - 6, 6, ".bumbl") == 0) {
+        is_bumbl = true;
+        base_path = path.substr(0, path.size() - 6);
     }
     // Check that both .thresh and .mums files exist
     string thresh_path = base_path + ".athresh";
-    string mums_path = base_path + ".mums";
+    string mums_path;
+    if (!is_bumbl) {
+        mums_path = base_path + ".mums";
+    } else {
+        mums_path = base_path + ".bumbl";
+    }
     
     if (!filesystem::exists(thresh_path)) {
         throw runtime_error("Could not find threshold file: " + thresh_path);
