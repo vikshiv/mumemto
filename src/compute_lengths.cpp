@@ -64,27 +64,20 @@ int is_file(std::string path) {
 void write_length_files(const std::vector<std::string>& files,
                         const std::vector<std::vector<size_t>>& multifasta_lengths,
                         const std::vector<std::vector<std::string>>& multifasta_names,
-                        const std::string& output_prefix,
-                        bool multi) {
+                        const std::string& output_prefix) {
     size_t total_file_length = 0;
     // Write main lengths file
     std::string lengths_fname = output_prefix + ".lengths";
     std::ofstream outfile(lengths_fname);
 
-    if (multi) {
-        for (size_t i = 0; i < multifasta_lengths.size(); ++i) {
-            total_file_length = 0;
-            for (auto n : multifasta_lengths[i]) {
-                total_file_length += n;
-            }
-            outfile << std::filesystem::absolute(files[i]).string() << " * " << total_file_length << std::endl;
-            for (auto idx = 0; idx < multifasta_lengths[i].size(); ++idx) {
-                outfile << std::filesystem::absolute(files[i]).string() << " " << multifasta_names[i][idx] << " " << multifasta_lengths[i][idx] << std::endl;
-            }
+    for (size_t i = 0; i < multifasta_lengths.size(); ++i) {
+        total_file_length = 0;
+        for (auto n : multifasta_lengths[i]) {
+            total_file_length += n;
         }
-    } else {
-        for (size_t i = 0; i < multifasta_lengths.size(); ++i) {
-            outfile << std::filesystem::absolute(files[i]).string() << " " << multifasta_lengths[i][0] << std::endl;
+        outfile << std::filesystem::absolute(files[i]).string() << " * " << total_file_length << std::endl;
+        for (auto idx = 0; idx < multifasta_lengths[i].size(); ++idx) {
+            outfile << std::filesystem::absolute(files[i]).string() << " " << multifasta_names[i][idx] << " " << multifasta_lengths[i][idx] << std::endl;
         }
     }
     outfile.close();
@@ -98,7 +91,6 @@ int compute_lengths(std::vector<std::string>& input_files, std::string output_pr
     std::vector<std::vector<std::string>> multifasta_names;
     std::vector<size_t> temp_lengths;
     std::vector<std::string> temp_names;
-    bool multi = false;
 
     size_t curr_id_seq_length = 0;
     for (size_t i = 0; i < input_files.size(); ++i) {
@@ -151,9 +143,6 @@ int compute_lengths(std::vector<std::string>& input_files, std::string output_pr
             gzclose(gzfp);
             return 1;
         }
-        if (temp_lengths.size() > 1) {
-            multi = true;
-        }
         multifasta_lengths.push_back(temp_lengths);
         multifasta_names.push_back(temp_names);
 
@@ -175,7 +164,7 @@ int compute_lengths(std::vector<std::string>& input_files, std::string output_pr
     }
 
     // Write lengths files
-    write_length_files(input_files, multifasta_lengths, multifasta_names, output_prefix, multi);
+    write_length_files(input_files, multifasta_lengths, multifasta_names, output_prefix);
     
     return 0;
 }

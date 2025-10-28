@@ -132,7 +132,7 @@ def parse_bumbl_generator(mumfile, seq_idx=None, verbose=False, chunksize=1024, 
         num_blocks = int.from_bytes(strands_handle.read(8), byteorder='little')
         all_blocks = np.fromfile(strands_handle, count=num_blocks * 2, dtype=np.uint32).reshape((num_blocks, 2))
         strands_handle.close()
-        all_blocks = serialize_coll_blocks(all_blocks)    
+        all_blocks = serialize_coll_blocks(all_blocks, n_mums)    
     else: 
         all_blocks = [None] * n_mums
         
