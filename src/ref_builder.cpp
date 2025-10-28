@@ -173,10 +173,9 @@ void RefBuilder::write_lengths_file() {
         for (auto n : multifasta_lengths[i]) {
             total_file_length += n;
         }
-        outfile << std::filesystem::absolute(input_files[i]).string() << " * " << total_file_length << std::endl;
+        outfile << std::filesystem::canonical(input_files[i]).string() << " * " << total_file_length << std::endl;
         for (auto idx = 0; idx < multifasta_lengths[i].size(); ++idx) {
-            outfile << std::filesystem::absolute(input_files[i]).string() << " " << multifasta_names[i][idx] << " " << multifasta_lengths[i][idx] << std::endl;
-        }
+            outfile << std::filesystem::canonical(input_files[i]).string() << " " << multifasta_names[i][idx] << " " << multifasta_lengths[i][idx] << std::endl;
     }
     outfile.close();
 }

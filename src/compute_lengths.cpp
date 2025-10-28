@@ -75,9 +75,9 @@ void write_length_files(const std::vector<std::string>& files,
         for (auto n : multifasta_lengths[i]) {
             total_file_length += n;
         }
-        outfile << std::filesystem::absolute(files[i]).string() << " * " << total_file_length << std::endl;
+        outfile << std::filesystem::canonical(files[i]).string() << " * " << total_file_length << std::endl;
         for (auto idx = 0; idx < multifasta_lengths[i].size(); ++idx) {
-            outfile << std::filesystem::absolute(files[i]).string() << " " << multifasta_names[i][idx] << " " << multifasta_lengths[i][idx] << std::endl;
+            outfile << std::filesystem::canonical(files[i]).string() << " " << multifasta_names[i][idx] << " " << multifasta_lengths[i][idx] << std::endl;
         }
     }
     outfile.close();
