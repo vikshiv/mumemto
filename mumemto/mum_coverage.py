@@ -7,9 +7,9 @@ import os
 import sys
 from numba import njit
 try:
-    from utils import parse_mums_generator, parse_bumbl_generator, get_sequence_lengths
+    from utils import stream_mums, get_sequence_lengths
 except ImportError:
-    from mumemto.utils import parse_mums_generator, parse_bumbl_generator, get_sequence_lengths
+    from mumemto.utils import stream_mums, get_sequence_lengths
 
 def parse_arguments(args=None):    
     parser = argparse.ArgumentParser(description="Aggregates MUM coverage from mumemto output.")
@@ -40,12 +40,9 @@ def parse_arguments(args=None):
             args.mumfile = args.prefix + '.bumbl'
         elif mums_exists:
             args.mumfile = args.prefix + '.mums'
-        elif args.prefix.endswith('.bumbl'):
+        elif args.prefix.endswith('.bumbl') or args.prefix.endswith('.mums'):
             args.mumfile = args.prefix
             args.prefix = os.path.splitext(args.prefix)[0]
-        elif args.prefix.endswith('.mums'):
-            args.prefix = args.prefix[:-5]
-            args.mumfile = args.prefix + '.mums'
         else:
             args.mumfile = args.prefix + '.mums'
     
@@ -54,35 +51,11 @@ def parse_arguments(args=None):
         
     return args
 
+
 @njit
-def update_coverage_ranges(coverage, starts, lengths):
-    """Update coverage array for multiple MUM ranges using Numba acceleration"""
-    n = len(starts)
-    for i in range(n):
-        start = starts[i]
-        if start != -1:  # Skip if MUM is not present in this sequence
-            length = lengths[i]
-            coverage[start:start+length] = True
-
-def update_coverage(coverage, mum_gen, lenfilter=0, verbose=False):
-    """Update coverage array based on MUM positions"""
-    for mum in tqdm(mum_gen, disable=not verbose, desc='Updating coverage'):
-        length, start, _ = mum
-        if start != -1 and length >= lenfilter: 
-            coverage[start:start+length] = True
-    return coverage
-
-def update_coverage_chunked(coverage, mum_gen, lenfilter=0, verbose=False):
-    """Update coverage array based on MUM positions from chunks"""
-    for chunk in tqdm(mum_gen, disable=not verbose, desc='Updating coverage'):
-        lengths, starts, _ = chunk
-        # Filter out entries where MUM is not present and apply length filter
-        valid_mask = (starts != -1) & (lengths >= lenfilter)
-        if valid_mask.any():
-            valid_starts = starts[valid_mask]
-            valid_lengths = lengths[valid_mask]
-            update_coverage_ranges(coverage, valid_starts, valid_lengths)
-    return coverage
+def update_coverage(coverage, start, length, lenfilter=0):
+    if start != -1 and length >= lenfilter: 
+        coverage[start:start+length] = True
 
 def main(args):
     # Read sequence lengths
@@ -98,19 +71,15 @@ def main(args):
     # Initialize coverage array for single sequence
     coverage = np.zeros(target_length, dtype=bool)
     
-    # Determine file type and use appropriate generator
-    if args.mumfile.endswith('.bumbl'):
-        mum_gen = parse_bumbl_generator(args.mumfile, seq_idx=args.seq_idx, verbose=args.verbose, return_chunk=True)
-        # Update coverage using chunked processing with numpy vectorization
-        coverage = update_coverage_chunked(coverage, mum_gen, lenfilter=args.lenfilter, verbose=args.verbose)
-    else:
-        mum_gen = parse_mums_generator(args.mumfile, seq_idx=args.seq_idx, verbose=args.verbose)
-        # Update coverage for individual MUMs
-        coverage = update_coverage(coverage, mum_gen, lenfilter=args.lenfilter, verbose=args.verbose)
-    
+    # compute coverage over mums
+    mum_gen = stream_mums(args.mumfile, seq_idx=args.seq_idx, verbose=args.verbose)
+    for mum in mum_gen:
+        length, start, _ = mum
+        update_coverage(coverage, start, length, args.lenfilter)
+        
     # Print results
     coverage_pct = np.count_nonzero(coverage) * 100 / target_length
-    print(f'seq{args.seq_idx}: {coverage_pct:.3f}%')
+    print(f'seq{args.seq_idx}: {coverage_pct:.3f}%', file=sys.stderr)
 
 if __name__ == "__main__":
     args = parse_arguments()

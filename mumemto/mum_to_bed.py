@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import argparse
-from mumemto.utils import get_sequence_lengths, parse_mums_generator
+from mumemto.utils import get_sequence_lengths, stream_mums
 import sys
 
 
@@ -11,7 +11,7 @@ def parse_arguments(args=None):
     parser.add_argument('--lengths-file', '-l', help='Path to the lengths file (optional)')
     parser.add_argument('-v', '--verbose', action='store_true', 
                        help='Enable verbose output with progress bars')
-    parser.add_argument('--min-singleton-length', '-m', type=int, default=100,
+    parser.add_argument('--min-singleton-length', '-L', type=int, default=100,
                         help='Minimum length of singleton blocks to include')
     parser.add_argument('--seq-idx', '-s', type=int, default=0,
                         help='Sequence to output BED coordinates (default: first sequence)')
@@ -48,9 +48,7 @@ def process_mums_file(mums_file, seq_idx=0, verbose=False, min_singleton_length=
     intervals = []
     mum_idx = 0
     has_blocks = False
-    for l, starts, strands, block in parse_mums_generator(mums_file, verbose=verbose, return_blocks=True):
-        start = starts[seq_idx]
-        strand = strands[seq_idx]
+    for l, start, strand, block in stream_mums(mums_file, seq_idx=seq_idx, verbose=verbose, return_blocks=True):
         if block is None:
             print('No collinear blocks found. Only writing mums to BED intervals.', file=sys.stderr)
         else:
