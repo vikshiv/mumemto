@@ -105,7 +105,7 @@ def main(args):
         outfile = open(args.output, 'w')
     for i in range(len(intervals)):
         interval_len = intervals[i][1] - intervals[i][0]
-        outfile.write(f'{contig_names[contig_idx[i]]}\t{rel_offsets[i]}\t{rel_offsets[i] + interval_len}\t{intervals[i][3]}\t{'+' if intervals[i][2] else '-'}\n')
+        outfile.write(f"{contig_names[contig_idx[i]]}\t{rel_offsets[i]}\t{rel_offsets[i] + interval_len}\t{intervals[i][3]}\t{'+' if intervals[i][2] else '-'}\n")
     
     outfile.close()
     
