@@ -184,6 +184,8 @@ void RefBuilder::write_lengths_file() {
 int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = false, bool keep_seqs = false) {
     if (!from_parse) {
         // Declare needed parameters for reading/writing
+        
+        //TODO: remove parse_old or don't instantiate pfparser at all if keep_seqs
         pfparser parser(this->output_prefix, w, p, probing);
         gzFile gzfp; kseq_t* seq;
         std::vector<std::string> seq_vec;
