@@ -49,29 +49,47 @@ void rev_comp(std::string &seq) {
         seq[seq.length()>>1] = comp_tab[static_cast<int>(seq[seq.length()>>1])];
 }
 
-RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
-                       bool use_rcomp)
-    : input_file(input_data), use_revcomp(use_rcomp), output_prefix(output_prefix) {
-    /* Constructor of RefBuilder for filelist input - builds input reference and determines size of each class */
+RefBuilder::RefBuilder(std::string input_data, std::string output_prefix, 
+                        bool use_rcomp): input_file(input_data), use_revcomp(use_rcomp), output_prefix(output_prefix) {
+    /* Constructor of RefBuilder - builds input reference and determines size of each class */
 
     // Verify every file in the filelist is valid
     std::string line = "";
+    size_t curr_id = 0, member_num = 0;
 
-    std::ifstream input_fd(input_file.data(), std::ifstream::in);
+    std::ifstream input_fd (input_file.data(), std::ifstream::in);
 
     while (std::getline(input_fd, line)) {
         auto word_list = split(line, ' ');
-        if (word_list.empty())
+        if (word_list.size() == 0) 
             continue;
+        // Make sure the filelist has at least 2 columns (name and doc_id)
+        // ASSERT((word_list.size() >= 2), "Input file-list does not have expected structure.");
+        // if (word_list.size() == 1)
+        //     word_list.push_back(std::to_string(curr_id + 1));
 
         if (!is_file(word_list[0])) {
-            FATAL_ERROR("The following path in the input list is not valid: %s", word_list[0].data());
-        }
+            FATAL_ERROR("The following path in the input list is not valid: %s", word_list[0].data());}
         if (!endsWith(word_list[0], ".fa") && !endsWith(word_list[0], ".fasta") && !endsWith(word_list[0], ".fna") &&
             !endsWith(word_list[0], ".fa.gz") && !endsWith(word_list[0], ".fasta.gz") && !endsWith(word_list[0], ".fna.gz")) {
-            FATAL_ERROR("The following input-file is not a FASTA file: %s", word_list[0].data());
-        }
+            FATAL_ERROR("The following input-file is not a FASTA file: %s", word_list[0].data());}
         input_files.push_back(word_list[0]);
+
+        // Make sure second column is valid integer, and starts at 1
+        // if (!is_integer(word_list[1])) 
+        //     FATAL_ERROR("A document ID in the file_list is not an integer: %s", word_list[1].data());  
+        // if (member_num == 0 && std::stoi(word_list[1]) != 1) 
+        //     FATAL_ERROR("The first ID in file_list must be 1");
+            
+        // if (std::stoi(word_list[1]) ==  static_cast<int>(curr_id) || std::stoi(word_list[1]) == static_cast<int>(curr_id+1)) {
+        //     if (std::stoi(word_list[1]) == static_cast<int>(curr_id+1)) 
+        //         {
+        //             curr_id+=1;
+        //         }
+        //     document_ids.push_back(curr_id);
+        // } else
+        //     FATAL_ERROR("The IDs in the file_list must be staying constant or increasing by 1.");
+        // member_num += 1;
     }
 
     // Remove duplicates while preserving order
@@ -83,10 +101,11 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
         }
     }
     input_files = std::move(unique_files);
-
+    
+    // Make sure we have parsed each line, and it has multiple groups
+    // ASSERT((document_ids.size() == input_files.size()), "Issue with file-list parsing occurred.");
     if (input_files.size() <= 1) {
-        FATAL_ERROR("Multiple FASTA inputs required. Perhaps split a multi-FASTA into multiple files?");
-    }
+        FATAL_ERROR("Multiple FASTA inputs required. Perhaps split a multi-FASTA into multiple files?");}
 
     this->num_docs = input_files.size();
 }
@@ -94,11 +113,8 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
 RefBuilder::RefBuilder(const std::vector<std::string>& files, std::string output_prefix,
                        bool use_rcomp)
     : use_revcomp(use_rcomp), output_prefix(output_prefix) {
-    /* Constructor of RefBuilder for positional FASTA inputs */
-
+    /* Constructor for positional FASTA inputs (no filelist file). */
     input_files = files;
-
-    // Remove duplicates while preserving order
     std::vector<std::string> unique_files;
     std::unordered_set<std::string> seen;
     for (const auto& file : input_files) {
@@ -107,11 +123,9 @@ RefBuilder::RefBuilder(const std::vector<std::string>& files, std::string output
         }
     }
     input_files = std::move(unique_files);
-
     if (input_files.size() <= 1) {
         FATAL_ERROR("Multiple FASTA inputs required. Perhaps split a multi-FASTA into multiple files?");
     }
-
     this->num_docs = input_files.size();
 }
 

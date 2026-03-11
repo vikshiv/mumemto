@@ -10,6 +10,7 @@
 #define REF_BUILD_H
 
 #include <string>
+#include <vector>
 #include <sdsl/bit_vectors.hpp>
 
 class RefBuilder {
