@@ -234,7 +234,7 @@ void print_build_status_info(BuildOptions& opts, RefBuilder& ref_build, bool mum
 }
 
 void remove_temp_files(std::string filename) {
-    std::vector<std::string> temp_files = {".dict", ".parse"};
+    std::vector<std::string> temp_files = {".dict", ".parse", ".parse_old"};
     for (auto &ext : temp_files) {
         std::filesystem::remove(std::filesystem::path(filename + ext));
     }
