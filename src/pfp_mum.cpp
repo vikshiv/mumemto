@@ -38,12 +38,14 @@ int build_main(int argc, char** argv) {
     // print_build_status_info(&build_opts);
     bool mum_mode = build_opts.validate();
 
-    if ((build_opts.input_list.length() == 0) && !(build_opts.from_parse_flag || build_opts.arrays_in_flag)) {build_opts.input_list = make_filelist(build_opts.files, build_opts.output_prefix);}
-
     // Declare ref_build first
-    RefBuilder ref_build = (build_opts.from_parse_flag || build_opts.arrays_in_flag)
-        ? RefBuilder(build_opts.from_parse_flag ? build_opts.parse_prefix : build_opts.arrays_in, build_opts.use_rcomp)
-        : RefBuilder(build_opts.input_list, build_opts.output_prefix, build_opts.use_rcomp);
+    RefBuilder ref_build =
+        (build_opts.from_parse_flag || build_opts.arrays_in_flag)
+            ? RefBuilder(build_opts.from_parse_flag ? build_opts.parse_prefix : build_opts.arrays_in,
+                         build_opts.use_rcomp)
+            : (build_opts.input_list.length()
+                   ? RefBuilder(build_opts.input_list, build_opts.output_prefix, build_opts.use_rcomp)
+                   : RefBuilder(build_opts.files, build_opts.output_prefix, build_opts.use_rcomp));
 
     // normalize and reconcile the input parameters
     build_opts.set_parameters(ref_build.num_docs, mum_mode);
@@ -231,18 +233,8 @@ void print_build_status_info(BuildOptions& opts, RefBuilder& ref_build, bool mum
     std::fprintf(stderr, "\n");
 }
 
-std::string make_filelist(std::vector<std::string> files, std::string output_prefix) {
-    std::string fname = output_prefix + "_filelist.txt";
-    std::ofstream outfile(fname);
-    for (size_t i = 0; i < files.size(); ++i) {
-        outfile << std::filesystem::absolute(files[i]).string() << std::endl;
-    }
-    outfile.close();
-    return fname;
-}
-
 void remove_temp_files(std::string filename) {
-    std::vector<std::string> temp_files = {".dict", ".parse", "_filelist.txt"};
+    std::vector<std::string> temp_files = {".dict", ".parse"};
     for (auto &ext : temp_files) {
         std::filesystem::remove(std::filesystem::path(filename + ext));
     }

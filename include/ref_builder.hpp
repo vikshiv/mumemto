@@ -26,6 +26,7 @@ public:
     size_t total_length = 0;
     
     RefBuilder(std::string input_data, std::string output_prefix, bool use_rcomp);
+    RefBuilder(const std::vector<std::string>& input_files, std::string output_prefix, bool use_rcomp);
     RefBuilder(std::string output_prefix, bool use_rcomp);
     int build_input_file(size_t w, size_t p, bool probing, bool keep_seqs);
     

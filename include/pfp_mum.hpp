@@ -45,7 +45,6 @@ int build_main(int argc, char** argv);
 int mumemto_short_usage();
 int is_file(std::string path);
 int is_dir(std::string path);
-std::string  make_filelist(std::vector<std::string> files, std::string output_prefix);
 void remove_temp_files(std::string filename);
 std::vector<std::string> split(std::string input, char delim);
 bool is_integer(const std::string& str);
