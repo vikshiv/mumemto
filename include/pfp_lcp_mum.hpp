@@ -108,6 +108,7 @@ public:
         phrase_suffix_t prev;
         size_t count = 0;
         size_t pb_inc = pf.n / PBWIDTH;
+        if (pb_inc == 0) pb_inc = 1; // avoid division by zero when pf.n < PBWIDTH
         inc(curr);
         while (curr.i < pf.dict.saD.size())
         {

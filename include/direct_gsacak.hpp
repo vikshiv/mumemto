@@ -99,6 +99,7 @@ public:
         size_t doc_i;
         size_t text_size = bwt.size();
         size_t pb_inc = text_size / PBWIDTH;
+        if (pb_inc == 0) pb_inc = 1; // avoid division by zero when text_size < PBWIDTH
         for (size_t j = 0; j < text_size; j++)
         {    
             if (j % pb_inc == 0){

@@ -73,6 +73,7 @@ public:
     size_t process(T &match_finder) {
         size_t count;
         size_t pb_inc = ref_build->total_length / PBWIDTH;
+        if (pb_inc == 0) pb_inc = 1; // avoid division by zero when total_length < PBWIDTH
         for (auto j = 0; j < ref_build->total_length; j++)
         {    
             if (j % pb_inc == 0)
