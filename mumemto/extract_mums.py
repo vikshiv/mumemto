@@ -48,7 +48,7 @@ def main(args):
         outlines = []
         for i in tqdm(range(len(mum_lengths)), desc="Extracting MUMs", disable=not args.verbose):
             outlines.append(f'>mum_{i}')
-            cur = seq[mum_starts[i, args.index] : mum_starts[i, args.index] + mum_lengths[i]]  
+            cur = seq[mum_starts[i, args.index] : mum_starts[i, args.index] + mum_lengths[i]].upper()  
             if mum_strands[i, args.index]:
                 outlines.append(str(cur) + '#')
             else:
