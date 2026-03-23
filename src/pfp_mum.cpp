@@ -57,7 +57,13 @@ int build_main(int argc, char** argv) {
     else
         STATUS_LOG("build_main", "computing PFP over input files");
     auto start = std::chrono::system_clock::now();
-    int input_file_status = ref_build.build_input_file(build_opts.pfp_w, build_opts.hash_mod, true, build_opts.use_gsacak);
+    int input_file_status = ref_build.build_input_file(
+        build_opts.pfp_w,
+        build_opts.hash_mod,
+        true,
+        build_opts.use_gsacak,
+        build_opts.keep_temp || build_opts.only_parse
+    );
     if (input_file_status == 1) {
         remove_temp_files(build_opts.output_prefix);
         FATAL_ERROR("Please check the input files and ensure that it contains valid FASTA files. Cleaning up...");
@@ -107,9 +113,15 @@ int build_main(int argc, char** argv) {
 
     STATUS_LOG("build_main", "building the parse and dictionary objects");
     start = std::chrono::system_clock::now();
+    if (!build_opts.from_parse_flag && !ref_build.has_in_memory_pfp) {
+        FATAL_ERROR("In-memory PFP data is not available after parsing.");
+    }
+    std::vector<uint_t> unused_freq;
+    std::vector<uint32_t> parse_data = ref_build.pfp_parse_data;
+    parse_data.push_back(0);
     pf_parsing pf = build_opts.from_parse_flag
         ? pf_parsing(build_opts.parse_prefix, build_opts.pfp_w)
-        : pf_parsing(build_opts.output_prefix, build_opts.pfp_w);
+        : pf_parsing(ref_build.pfp_dict_data, parse_data, unused_freq, build_opts.pfp_w);
 
     DONE_LOG((std::chrono::system_clock::now() - start));
 

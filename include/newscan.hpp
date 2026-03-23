@@ -204,7 +204,9 @@ class pfparser {
 private:
     map<uint64_t, word_stats> wordFreq;
     string file_prefix;
-    FILE* tmp_parse_file;
+    vector<uint64_t> parse_hashes;
+    vector<uint32_t> parse_ranks;
+    vector<uint8_t> dict_data;
 
     // intermediate values for parsing
     string word;
@@ -214,12 +216,13 @@ private:
     bool probing;
     size_t w;
     size_t p;
+    bool write_to_disk;
     
     // Helper method to save and update words
     void save_update_word(string& window);
 
 public:
-    pfparser(string file_prefix, size_t w, size_t p, bool probing);
+    pfparser(string file_prefix, size_t w, size_t p, bool probing, bool write_to_disk=false);
     ~pfparser();
     
     // Process a single string and accumulate results
@@ -228,18 +231,21 @@ public:
     // Run the second pass (dictionary construction and remapping)
     void finish_parse();
 
+    // Access in-memory output (valid after finish_parse)
+    const vector<uint8_t>& get_dict_data() const;
+    const vector<uint32_t>& get_parse_data() const;
+
 };
 
 // Constructor
-pfparser::pfparser(string file_prefix, size_t w, size_t p, bool probing) :
+pfparser::pfparser(string file_prefix, size_t w, size_t p, bool probing, bool write_to_disk) :
       file_prefix(file_prefix),
       w(w), 
       p(p), 
       probing(probing),
-      krw(w) {
+      krw(w),
+      write_to_disk(write_to_disk) {
     // Initialize any necessary state
-    
-    tmp_parse_file = open_aux_file(file_prefix.c_str(),EXTPARS0,"wb");
     // init first word in the parsing with a Dollar char
     word.append(1,Dollar);
 }
@@ -291,7 +297,7 @@ void pfparser::save_update_word(string& window) {
         }
     }
 
-    if(fwrite(&hash, sizeof(hash), 1, tmp_parse_file) != 1) die("parse write error");
+    parse_hashes.push_back(hash);
       
     // Keep only the overlapping part of the window
     window.erase(0, window.size() - w);
@@ -319,9 +325,6 @@ void pfparser::finish_parse() {
     // virtually add w null chars at the end of the file and add the last word in the dict
     word.append(w, Dollar);
     save_update_word(word);
-    // close input and output files
-    if(fclose(tmp_parse_file)!=0) die("Error closing parse file");
-
     // Check # distinct words
     uint64_t totDWord = wordFreq.size();
     if(totDWord > MAX_DISTINCT_WORDS) {
@@ -342,15 +345,53 @@ void pfparser::finish_parse() {
     // Sort dictionary
     sort(dictArray.begin(), dictArray.end(), pword_statsCompare);
     
-    // Write plain dictionary and occ file, also compute rank for each hash
-    writeDictOcc(file_prefix, wordFreq, dictArray);
+    // Build dictionary data in memory and compute rank for each hash
+    dict_data.clear();
+    dict_data.reserve(totDWord * (w + 2));
+    word_int_t wrank = 1;
+    for (auto x : dictArray) {
+        const string& current_word = x->str;
+        dict_data.insert(dict_data.end(), current_word.begin(), current_word.end());
+        dict_data.push_back(EndOfWord);
+        x->rank = wrank;
+        wrank++;
+    }
+    dict_data.push_back(EndOfDict);
     dictArray.clear(); // reclaim memory
-    
-    // Remap parse file
-    remapParse(file_prefix, wordFreq);
+
+    // Remap parse in memory
+    parse_ranks.clear();
+    parse_ranks.reserve(parse_hashes.size());
+    for (auto hash : parse_hashes) {
+        parse_ranks.push_back(wordFreq.at(hash).rank);
+    }
+    parse_hashes.clear();
+
+    // Optional write-out of parse + dict files
+    if (write_to_disk) {
+        FILE *fdict = open_aux_file(file_prefix.c_str(), EXTDICT, "wb");
+        size_t dict_written = fwrite(dict_data.data(), 1, dict_data.size(), fdict);
+        if (dict_written != dict_data.size()) die("Error writing to DICT file");
+        if (fclose(fdict) != 0) die("Error closing DICT file");
+
+        FILE *fparse = open_aux_file(file_prefix.c_str(), EXTPARSE, "wb");
+        if (!parse_ranks.empty()) {
+            size_t parse_written = fwrite(parse_ranks.data(), sizeof(parse_ranks[0]), parse_ranks.size(), fparse);
+            if (parse_written != parse_ranks.size()) die("Error writing to parse file");
+        }
+        if (fclose(fparse) != 0) die("Error closing parse file");
+    }
 
     // Clear memory after parsing is complete
     wordFreq.clear();
+}
+
+const vector<uint8_t>& pfparser::get_dict_data() const {
+    return dict_data;
+}
+
+const vector<uint32_t>& pfparser::get_parse_data() const {
+    return parse_ranks;
 }
 
 

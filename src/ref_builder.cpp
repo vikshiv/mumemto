@@ -181,12 +181,12 @@ void RefBuilder::write_lengths_file() {
     outfile.close();
 }
 
-int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = false, bool keep_seqs = false) {
+int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = false, bool keep_seqs = false, bool write_pfp_files = false) {
     if (!from_parse) {
         // Declare needed parameters for reading/writing
         
         //TODO: remove parse_old or don't instantiate pfparser at all if keep_seqs
-        pfparser parser(this->output_prefix, w, p, probing);
+        pfparser parser(this->output_prefix, w, p, probing, write_pfp_files);
         gzFile gzfp; kseq_t* seq;
         std::vector<std::string> seq_vec;
         std::vector<size_t> temp_lengths;
@@ -272,6 +272,9 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
         // Write final phrase to file, sort dictionary, and remap final parse file
         if (!keep_seqs) {
             parser.finish_parse();
+            pfp_dict_data = parser.get_dict_data();
+            pfp_parse_data = parser.get_parse_data();
+            has_in_memory_pfp = true;
         }
         // Write out lengths file
         this->write_lengths_file();
