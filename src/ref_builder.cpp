@@ -110,6 +110,33 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
     this->num_docs = input_files.size();
 }
 
+RefBuilder::RefBuilder(const std::vector<std::string>& files, std::string output_prefix,
+                       bool use_rcomp)
+    : use_revcomp(use_rcomp), output_prefix(output_prefix) {
+    /* Constructor for positional FASTA inputs (no filelist file). */
+    std::vector<std::string> unique_files;
+    std::unordered_set<std::string> seen;
+    for (const auto& file : files) {
+        if (!is_file(file)) {
+            FATAL_ERROR("The following file path is not valid: %s", file.data());
+        }
+        if (!endsWith(file, ".fa") && !endsWith(file, ".fasta") && !endsWith(file, ".fna") &&
+            !endsWith(file, ".fa.gz") && !endsWith(file, ".fasta.gz") && !endsWith(file, ".fna.gz")) {
+            FATAL_ERROR("The following input-file is not a FASTA file: %s", file.data());
+        }
+
+        std::string normalized = std::filesystem::absolute(file).lexically_normal().string();
+        if (seen.insert(normalized).second) {
+            unique_files.push_back(normalized);
+        }
+    }
+    input_files = std::move(unique_files);
+    if (input_files.size() <= 1) {
+        FATAL_ERROR("Multiple FASTA inputs required. Perhaps split a multi-FASTA into multiple files?");
+    }
+    this->num_docs = input_files.size();
+}
+
 RefBuilder::RefBuilder(std::string output_prefix, bool use_rcomp): use_revcomp(use_rcomp), output_prefix(output_prefix) {
     /* Alternative constructor for running from the lengths file */
     from_parse = true;

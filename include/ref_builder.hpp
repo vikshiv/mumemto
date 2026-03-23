@@ -31,6 +31,7 @@ public:
     bool has_in_memory_pfp = false;
     
     RefBuilder(std::string input_data, std::string output_prefix, bool use_rcomp);
+    RefBuilder(const std::vector<std::string>& input_files, std::string output_prefix, bool use_rcomp);
     RefBuilder(std::string output_prefix, bool use_rcomp);
     int build_input_file(size_t w, size_t p, bool probing, bool keep_seqs, bool write_pfp_files=false);
     
