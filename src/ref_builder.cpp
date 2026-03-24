@@ -299,8 +299,8 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
         // Write final phrase to file, sort dictionary, and remap final parse file
         if (!keep_seqs) {
             parser.finish_parse();
-            pfp_dict_data = parser.get_dict_data();
-            pfp_parse_data = parser.get_parse_data();
+            pfp_dict_data = parser.take_dict_data();
+            pfp_parse_data = parser.take_parse_data();
             has_in_memory_pfp = true;
         }
         // Write out lengths file

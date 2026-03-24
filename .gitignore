@@ -1,0 +1,10 @@
+*_build/
+build/
+build_*/
+.eggs*
+mumemto.egg-info/
+.vscode/
+analysis/mumemto/*.pyc
+test_mumemto_scripts/
+bioconda/
+mumemto/__pycache__/

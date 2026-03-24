@@ -118,12 +118,11 @@ int build_main(int argc, char** argv) {
     if (!build_opts.from_parse_flag && !ref_build.has_in_memory_pfp) {
         FATAL_ERROR("In-memory PFP data is not available after parsing.");
     }
-    std::vector<uint_t> unused_freq;
-    std::vector<uint32_t> parse_data = ref_build.pfp_parse_data;
-    parse_data.push_back(0);
-    pf_parsing pf = build_opts.from_parse_flag
-        ? pf_parsing(build_opts.parse_prefix, build_opts.pfp_w)
-        : pf_parsing(ref_build.pfp_dict_data, parse_data, unused_freq, build_opts.pfp_w);
+    pf_parsing pf;
+    if (build_opts.from_parse_flag)
+        pf.build_from_prefix_files(build_opts.parse_prefix, build_opts.pfp_w);
+    else
+        pf.build_from_ref_builder(ref_build, build_opts.pfp_w);
 
     DONE_LOG((std::chrono::system_clock::now() - start));
 

@@ -29,6 +29,7 @@
 #include <random>
 #include <vector>
 #include <map>
+#include <utility>
 #ifdef GZSTREAM
 #include <gzstream.h>
 #endif
@@ -231,9 +232,9 @@ public:
     // Run the second pass (dictionary construction and remapping)
     void finish_parse();
 
-    // Access in-memory output (valid after finish_parse)
-    const vector<uint8_t>& get_dict_data() const;
-    const vector<uint32_t>& get_parse_data() const;
+    // Access in-memory output (valid after finish_parse); move-out empties parser buffers.
+    vector<uint8_t> take_dict_data();
+    vector<uint32_t> take_parse_data();
 
 };
 
@@ -338,16 +339,19 @@ void pfparser::finish_parse() {
     dictArray.reserve(totDWord);
     
     // Fill array
+    // exact dict size: phrase bytes + EndOfWord each + final EndOfDict
+    size_t dict_byte_capacity = 1;
     for (auto& x: wordFreq) {
+        dict_byte_capacity += x.second.str.size() + 1;
         dictArray.push_back(&x.second);
     }
       
     // Sort dictionary
     sort(dictArray.begin(), dictArray.end(), pword_statsCompare);
-    
+
     // Build dictionary data in memory and compute rank for each hash
     dict_data.clear();
-    dict_data.reserve(totDWord * (w + 2));
+    dict_data.reserve(dict_byte_capacity);
     word_int_t wrank = 1;
     for (auto x : dictArray) {
         const string& current_word = x->str;
@@ -386,12 +390,12 @@ void pfparser::finish_parse() {
     wordFreq.clear();
 }
 
-const vector<uint8_t>& pfparser::get_dict_data() const {
-    return dict_data;
+vector<uint8_t> pfparser::take_dict_data() {
+    return std::move(dict_data);
 }
 
-const vector<uint32_t>& pfparser::get_parse_data() const {
-    return parse_ranks;
+vector<uint32_t> pfparser::take_parse_data() {
+    return std::move(parse_ranks);
 }
 
 
