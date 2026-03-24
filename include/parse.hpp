@@ -70,11 +70,6 @@ public:
     // Building parse from file
     std::string tmp_filename = filename_prefix + std::string(".parse");
     read_file(tmp_filename.c_str(), p);
-    // // Uploading the frequency file
-    // tmp_filename = filename_prefix + std::string(".occ");
-    // read_file(tmp_filename.c_str(), freq);
-    // freq.insert(freq.begin(), 1);
-    // compute_freq();
     build();
   }
 
@@ -106,7 +101,6 @@ public:
         }
       }
     );
-    compute_freq();
   }
 
   void compute_ilist()

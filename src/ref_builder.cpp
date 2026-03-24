@@ -208,7 +208,7 @@ void RefBuilder::write_lengths_file() {
     outfile.close();
 }
 
-int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = false, bool keep_seqs = false, bool write_pfp_files = false) {
+int RefBuilder::build_input_file(size_t w, size_t p, bool probing, bool keep_seqs, bool write_pfp_files) {
     if (!from_parse) {
         // Declare needed parameters for reading/writing
         

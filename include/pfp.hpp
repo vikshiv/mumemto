@@ -83,8 +83,6 @@ public:
     pars.init_from_memory(std::move(rb.pfp_parse_data), dict.n_phrases() + 1);
     rb.has_in_memory_pfp = false;
 
-    pars.compute_ilist();
-
     // Compute the length of the string;
     compute_n();
 
@@ -93,6 +91,11 @@ public:
 
     verbose("Computing s_lcp_T");
     _elapsed_time(compute_s_lcp_T());
+
+    std::vector<uint64_t>().swap(dict.phrase_to_rank);
+
+    pars.compute_freq();
+    pars.compute_ilist();
 
     // Clear unnecessary elements
     clear_unnecessary_elements();
@@ -117,14 +120,9 @@ public:
     _elapsed_time(compute_s_lcp_T());
 
     std::vector<uint64_t>().swap(dict.phrase_to_rank);
-    // dict.isaD.clear(); 
-    // dict.isaD.shrink_to_fit();
 
+    pars.compute_freq();
     pars.compute_ilist();
-
-    print_sizes();
-
-    print_stats();
 
     // Clear unnecessary elements
     clear_unnecessary_elements();
