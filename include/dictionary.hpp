@@ -192,10 +192,9 @@ private:
   /// Match on-disk .dict layout: prepend Dollar until there are \p w leading dollars.
   void prepend_dollar_padding(size_t w) {
     // Prepending w dollars to d
-    // 1. Count how many dollars there are
-    int i = 0;
-    int n_dollars = 0;
-    while(i < (int)d.size() && d[i++] == Dollar)
+    // 1. Count how many dollars at the start (must use size_t: d.size() can exceed INT_MAX)
+    size_t n_dollars = 0;
+    while (n_dollars < d.size() && d[n_dollars] == Dollar)
       ++n_dollars;
     std::vector<uint8_t> dollars(w - n_dollars, Dollar);
     d.insert(d.begin(), dollars.begin(), dollars.end());
