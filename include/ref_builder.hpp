@@ -29,12 +29,17 @@ public:
     std::vector<uint8_t> pfp_dict_data;
     std::vector<uint32_t> pfp_parse_data;
     bool has_in_memory_pfp = false;
-    
+
+    void rev_comp(std::string &seq);
+
     RefBuilder(std::string input_data, std::string output_prefix, bool use_rcomp);
     RefBuilder(const std::vector<std::string>& input_files, std::string output_prefix, bool use_rcomp);
     RefBuilder(std::string output_prefix, bool use_rcomp);
-    int build_input_file(size_t w, size_t p, bool probing, bool keep_seqs, bool write_pfp_files=false);
+    RefBuilder(const std::vector<std::vector<size_t>>& lengths, bool use_rcomp);
     
+    int build_input_file(size_t w, size_t p, bool probing, bool keep_seqs, bool write_pfp_files=false);
+    int build_input_file_lib(std::vector<std::vector<std::string>>& sequences, bool keep_seqs);      
+
     // only used for direct_gsacak
     std::vector<uint8_t> text;
 

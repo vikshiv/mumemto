@@ -37,7 +37,7 @@ char comp_tab[] = {
 	'p', 'q', 'y', 's', 'a', 'a', 'b', 'w', 'x', 'r', 'z', 123, 124, 125, 126, 127
 };
 
-void rev_comp(std::string &seq) {
+void RefBuilder::rev_comp(std::string &seq) {
     int c0, c1;
     for (size_t i = 0; i < seq.length()>>1; ++i) { // reverse complement sequence
         c0 = comp_tab[(int)seq[i]];
