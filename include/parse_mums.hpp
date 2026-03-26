@@ -20,6 +20,13 @@ struct Mum {
     std::vector<bool> strands;
 };
 
+struct Mem {
+    uint32_t length;
+    std::vector<int64_t> offsets;
+    std::vector<size_t> seq_ids;
+    std::vector<bool> strands;
+};
+
 // Common binary read helper: read exactly n bytes or throw
 inline void readExact(std::istream& in, char* dst, std::streamsize n) {
     in.read(dst, n);
@@ -273,6 +280,40 @@ inline void stream_bumbl_first(
     }
 }
 
+inline std::string serialize_mum(const Mum& mum) {
+    std::stringstream ss;
+    ss << mum.length << "\t";
+    for (size_t i = 0; i < mum.offsets.size(); ++i) {
+        ss << mum.offsets[i];
+        if (i < mum.offsets.size() - 1) ss << ",";
+    }
+    ss << "\t";
+    for (size_t i = 0; i < mum.strands.size(); ++i) {
+        ss << (mum.strands[i] ? "+" : "-");
+        if (i < mum.strands.size() - 1) ss << ",";
+    }
+    return ss.str();
+}
+
+inline std::string serialize_mem(const Mem& mem) {
+    std::stringstream ss;
+    ss << mem.length << "\t";
+    for (size_t i = 0; i < mem.offsets.size(); ++i) {
+        ss << mem.offsets[i];
+        if (i < mem.offsets.size() - 1) ss << ",";
+    }
+    ss << "\t";
+    for (size_t i = 0; i < mem.seq_ids.size(); ++i) {
+        ss << mem.seq_ids[i];
+        if (i < mem.seq_ids.size() - 1) ss << ",";
+    }
+    ss << "\t";
+    for (size_t i = 0; i < mem.strands.size(); ++i) {
+        ss << (mem.strands[i] ? "+" : "-");
+        if (i < mem.strands.size() - 1) ss << ",";
+    }
+    return ss.str();
+}
 inline void write_mums(const std::vector<Mum>& mums, const std::string& path) {
     std::ofstream out(path);
     if (!out) {
@@ -280,17 +321,7 @@ inline void write_mums(const std::vector<Mum>& mums, const std::string& path) {
     }
     
     for (const auto& mum : mums) {
-        out << mum.length << "\t";
-        for (size_t i = 0; i < mum.offsets.size(); ++i) {
-            out << mum.offsets[i];
-            if (i < mum.offsets.size() - 1) out << ",";
-        }
-        out << "\t";
-        for (size_t i = 0; i < mum.strands.size(); ++i) {
-            out << (mum.strands[i] ? "+" : "-");
-            if (i < mum.strands.size() - 1) out << ",";
-        }
-        out << std::endl;
+        out << serialize_mum(mum) << std::endl;
     }
 }
 
