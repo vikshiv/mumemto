@@ -228,6 +228,8 @@ public:
     
     // Process a single string and accumulate results
     void process_string(const string& input_string);
+    // Process reverse-complement of a string (scans backward, complements, uppercases)
+    void process_string_revcomp(const string& input_string);
         
     // Run the second pass (dictionary construction and remapping)
     void finish_parse();
@@ -311,7 +313,37 @@ void pfparser::process_string(const string& input_string) {
     // Main processing logic for the input string    
     // Process each character in the input string
     for (size_t i = 0; i < input_string.length(); i++) {
-        c = input_string[i];
+        c = static_cast<unsigned char>(input_string[i]);
+        c = std::toupper(c);
+        if(c <= Dollar) { cerr << "Invalid char found in input string: no additional chars will be read\n"; break;}
+        word.append(1, c);
+        hash = krw.addchar(c);
+        if(hash % p == 0) {
+            save_update_word(word);
+        }
+    }
+}
+
+// Complement table (seqtk): ASCII->complement (handles upper/lower).
+static const unsigned char pfparser_comp_tab[128] = {
+      0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14,  15,
+     16,  17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  29,  30,  31,
+     32,  33,  34,  35,  36,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,
+     48,  49,  50,  51,  52,  53,  54,  55,  56,  57,  58,  59,  60,  61,  62,  63,
+     64, 'T', 'V', 'G', 'H', 'E', 'F', 'C', 'D', 'I', 'J', 'M', 'L', 'K', 'N', 'O',
+    'P', 'Q', 'Y', 'S', 'A', 'A', 'B', 'W', 'X', 'R', 'Z',  91,  92,  93,  94,  95,
+     64, 't', 'v', 'g', 'h', 'e', 'f', 'c', 'd', 'i', 'j', 'm', 'l', 'k', 'n', 'o',
+    'p', 'q', 'y', 's', 'a', 'a', 'b', 'w', 'x', 'r', 'z', 123, 124, 125, 126, 127
+};
+
+void pfparser::process_string_revcomp(const string& input_string) {
+    uint64_t hash;
+    int c;
+    // Scan backwards, complement, uppercase
+    for (size_t i = input_string.length(); i-- != 0; ) {
+        c = static_cast<unsigned char>(input_string[i]);
+        c = pfparser_comp_tab[c];
+        c = std::toupper(static_cast<unsigned char>(c));
         if(c <= Dollar) { cerr << "Invalid char found in input string: no additional chars will be read\n"; break;}
         word.append(1, c);
         hash = krw.addchar(c);

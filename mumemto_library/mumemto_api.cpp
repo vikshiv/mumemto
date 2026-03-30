@@ -4,13 +4,13 @@
 #include <cctype>
 #include <cstdint>
 #include <deque>
+#include <new>
 #include <queue>
 #include <stdexcept>
 #include <unordered_map>
 
 #include <sdsl/bit_vectors.hpp>
 
-#include <newscan.hpp>
 #include <pfp.hpp>
 
 #include <ref_builder.hpp>
@@ -158,7 +158,7 @@ class mem_finder_library{
 
                 mem.offsets.push_back(static_cast<int64_t>(curpos));
                 mem.seq_ids.push_back(curdoc);
-                mem.strands.push_back(curstrand);
+                mem.strands.push_back(curstrand ? 1u : 0u);
             }
 
             mems.push_back(std::move(mem));
@@ -277,9 +277,9 @@ class mem_finder_library{
             mumsio::Mum m;
             m.length = static_cast<uint32_t>(length);
             m.offsets = std::move(offsets);
-            m.strands.assign(num_docs, false);
+            m.strands.assign(num_docs, 0u);
             for (size_t doc = 0; doc < num_docs; doc++) {
-                m.strands[doc] = (strand[doc] == '+');
+                m.strands[doc] = (strand[doc] == '+') ? 1u : 0u;
             }
             mums.push_back(std::move(m));
             return 1;
@@ -340,6 +340,10 @@ class mem_finder_library{
         }
 
         const size_t num_docs = sequences.size();
+        
+        if (num_distinct == 0) {
+            num_distinct = num_docs;
+        }
 
         auto lengths = compute_record_lengths(sequences);
         RefBuilder ref_build = RefBuilder(lengths, use_revcomp);
@@ -351,10 +355,12 @@ class mem_finder_library{
             gsacak_lcp gsacak("", &ref_build, false);
             gsacak.process(match_finder);
         } else {
+            mumemto_set_progress_enabled(false);
             pf_parsing pf;
             pf.build_from_ref_builder(ref_build, 10);
             pfp_lcp lcp(pf, "", &ref_build, false);
             lcp.process(match_finder);
+            mumemto_set_progress_enabled(true);
         }
         return MumResult{std::move(match_finder.mums), std::move(lengths)};
     }
@@ -385,10 +391,12 @@ class mem_finder_library{
             gsacak_lcp gsacak("", &ref_build, false);
             gsacak.process(match_finder);
         } else {
+            mumemto_set_progress_enabled(false);
             pf_parsing pf;
             pf.build_from_ref_builder(ref_build, 10);
             pfp_lcp lcp(pf, "", &ref_build, false);
             lcp.process(match_finder);
+            mumemto_set_progress_enabled(true);
         }
 
         // If max_doc_freq == 1, the underlying algorithm emits MUMs. Convert to MemResult.
@@ -416,83 +424,233 @@ class mem_finder_library{
 
 } // namespace mumemto
 
-RefBuilder::RefBuilder(const std::vector<std::vector<size_t>>& lengths, bool use_rcomp): use_revcomp(use_rcomp) {
-    /* Alternative constructor for running from the lengths file */
-    output_prefix = "";
-    size_t cur_length = 0;
-    for (const auto& length : lengths) {
-        for (const auto& l : length) { cur_length += l; }
-        if (use_revcomp) { cur_length *= 2; }
-        seq_lengths.push_back(cur_length);
-    }
-    this->num_docs = lengths.size();
+// -----------------------------------------------------------------------------
+// C ABI implementation
+// -----------------------------------------------------------------------------
+
+// These must be defined in the global namespace to match the forward
+// declarations in the public C header (avoid anonymous-namespace type mismatch).
+
+struct mumemto_mum_result {
+    size_t num_docs = 0;
+    std::vector<size_t> doc_record_offsets; // size num_docs+1
+    std::vector<size_t> record_lengths;     // flattened
+
+    std::vector<mumsio::Mum> mums;            // native result storage
+};
+
+struct mumemto_mem_result {
+    size_t num_docs = 0;
+    std::vector<size_t> doc_record_offsets; // size num_docs+1
+    std::vector<size_t> record_lengths;     // flattened
+
+    std::vector<mumsio::Mem> mems; // native result storage
+};
+
+namespace {
+
+thread_local std::string g_last_error;
+
+static inline void set_last_error(const char* msg) {
+    g_last_error = (msg ? msg : "unknown error");
 }
 
-int RefBuilder::build_input_file_lib(std::vector<std::vector<std::string>>& sequences, bool keep_seqs) {        
-    pfparser parser(this->output_prefix, 10, 100, true, false);
-    std::vector<std::string> seq_vec;
-    std::vector<size_t> temp_lengths;
-    std::vector<std::string> temp_names;
-    
-    size_t curr_id = 1;
-    size_t curr_id_seq_length = 0;
-    for (auto i = 0; i < sequences.size(); i++) {
-        seq_vec = sequences[i];
-        for (auto seq : seq_vec) {
-            for (size_t k = 0; k < seq.size(); ++k) {
-                seq[k] = static_cast<char>(std::toupper(seq[k]));
-            }
-            curr_id_seq_length += seq.size();
-        }
-        // for the terminating $
-        curr_id_seq_length += 1;
-        if (keep_seqs) {
-            this->text.reserve(this->text.size() + curr_id_seq_length);
-            for (auto i = 0; i < seq_vec.size(); ++i) {
-                this->text.insert(this->text.end(), seq_vec.at(i).begin(), seq_vec.at(i).end());
-            }
-            this->text.push_back('$');
-        }
-        else {
-            for (auto i = 0; i < seq_vec.size(); ++i) {
-                parser.process_string(seq_vec.at(i));
-            }
-            parser.process_string("$");
-        }
-        if (use_revcomp) {
-            for (auto i = seq_vec.size(); i-- != 0; ) {
-                rev_comp(seq_vec.at(i));
-                curr_id_seq_length += seq_vec.at(i).length();
-            }
-            // for the terminating $
-            curr_id_seq_length += 1;
-            if (keep_seqs) {
-                this->text.reserve(this->text.size() + curr_id_seq_length);
-                for (auto i = seq_vec.size(); i-- != 0; ) {
-                    this->text.insert(this->text.end(), seq_vec.at(i).begin(), seq_vec.at(i).end());
-                }
-                this->text.push_back('$');
-            }
-            else {
-                for (auto i = seq_vec.size(); i-- != 0; ) {
-                    parser.process_string(seq_vec.at(i));
-                }
-                parser.process_string("$");
-            }
-        }
-
-        seq_lengths.push_back(curr_id_seq_length);
-        curr_id += 1; curr_id_seq_length = 0;            
-    }
-    // Write final phrase to file, sort dictionary, and remap final parse file
-    if (!keep_seqs) {
-        parser.finish_parse();
-        pfp_dict_data = parser.take_dict_data();
-        pfp_parse_data = parser.take_parse_data();
-        has_in_memory_pfp = true;
-    }
-    // build the bv
-    this->build_bv();
-
-    return 0;
+static inline void set_last_error(const std::string& msg) {
+    g_last_error = msg;
 }
+
+static inline std::vector<std::vector<std::string>> build_sequences_from_docs(
+    const mumemto_doc_view* docs,
+    size_t num_docs) {
+    std::vector<std::vector<std::string>> sequences;
+    sequences.reserve(num_docs);
+    for (size_t d = 0; d < num_docs; ++d) {
+        std::vector<std::string> recs;
+        recs.reserve(docs[d].num_records);
+        for (size_t r = 0; r < docs[d].num_records; ++r) {
+            const char* s = docs[d].records ? docs[d].records[r] : nullptr;
+            recs.emplace_back(s ? s : "");
+        }
+        sequences.emplace_back(std::move(recs));
+    }
+    return sequences;
+}
+
+static inline void flatten_lengths(
+    const std::vector<std::vector<size_t>>& lengths,
+    std::vector<size_t>& out_doc_offsets,
+    std::vector<size_t>& out_flat) {
+    out_doc_offsets.clear();
+    out_flat.clear();
+
+    out_doc_offsets.reserve(lengths.size() + 1);
+    out_doc_offsets.push_back(0);
+    size_t total = 0;
+    for (const auto& doc : lengths) {
+        total += doc.size();
+        out_doc_offsets.push_back(total);
+    }
+    out_flat.reserve(total);
+    for (const auto& doc : lengths) {
+        out_flat.insert(out_flat.end(), doc.begin(), doc.end());
+    }
+}
+
+} // namespace
+
+extern "C" {
+
+const char* mumemto_last_error(void) {
+    return g_last_error.c_str();
+}
+
+int mumemto_mum(
+    const mumemto_doc_view* docs,
+    size_t num_docs,
+    uint32_t min_match_len,
+    uint8_t use_revcomp,
+    size_t num_distinct,
+    uint8_t use_gsacak,
+    mumemto_mum_result** out_result) {
+    if (!out_result) {
+        set_last_error("out_result must be non-null");
+        return 1;
+    }
+    *out_result = nullptr;
+    try {
+        if (!docs && num_docs != 0) {
+            set_last_error("docs must be non-null when num_docs != 0");
+            return 2;
+        }
+
+        auto sequences = build_sequences_from_docs(docs, num_docs);
+        auto cpp = mumemto::mumemto_mum(
+            sequences,
+            min_match_len,
+            use_revcomp != 0,
+            num_distinct,
+            use_gsacak != 0);
+
+        auto* r = new mumemto_mum_result();
+        r->num_docs = sequences.size();
+        flatten_lengths(cpp.lengths, r->doc_record_offsets, r->record_lengths);
+
+        r->mums = std::move(cpp.matches);
+
+        *out_result = r;
+        return 0;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return 3;
+    } catch (...) {
+        set_last_error("unknown exception");
+        return 4;
+    }
+}
+
+int mumemto_mem(
+    const mumemto_doc_view* docs,
+    size_t num_docs,
+    uint32_t min_match_len,
+    uint8_t use_revcomp,
+    size_t num_distinct,
+    size_t max_total_freq,
+    size_t max_doc_freq,
+    uint8_t use_gsacak,
+    mumemto_mem_result** out_result) {
+    if (!out_result) {
+        set_last_error("out_result must be non-null");
+        return 1;
+    }
+    *out_result = nullptr;
+    try {
+        if (!docs && num_docs != 0) {
+            set_last_error("docs must be non-null when num_docs != 0");
+            return 2;
+        }
+
+        auto sequences = build_sequences_from_docs(docs, num_docs);
+        auto cpp = mumemto::mumemto_mem(
+            sequences,
+            min_match_len,
+            use_revcomp != 0,
+            num_distinct,
+            max_total_freq,
+            max_doc_freq,
+            use_gsacak != 0);
+
+        auto* r = new mumemto_mem_result();
+        r->num_docs = sequences.size();
+        flatten_lengths(cpp.lengths, r->doc_record_offsets, r->record_lengths);
+
+        r->mems = std::move(cpp.matches);
+
+        *out_result = r;
+        return 0;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return 3;
+    } catch (...) {
+        set_last_error("unknown exception");
+        return 4;
+    }
+}
+
+size_t num_docs(const mumemto_mum_result* r) {
+    return r ? r->num_docs : 0;
+}
+const size_t* doc_record_offsets(const mumemto_mum_result* r) {
+    return r ? r->doc_record_offsets.data() : nullptr;
+}
+const size_t* record_lengths(const mumemto_mum_result* r) {
+    return r ? r->record_lengths.data() : nullptr;
+}
+
+size_t num_docs_mem(const mumemto_mem_result* r) {
+    return r ? r->num_docs : 0;
+}
+const size_t* doc_record_offsets_mem(const mumemto_mem_result* r) {
+    return r ? r->doc_record_offsets.data() : nullptr;
+}
+const size_t* record_lengths_mem(const mumemto_mem_result* r) {
+    return r ? r->record_lengths.data() : nullptr;
+}
+
+size_t num_mums(const mumemto_mum_result* r) {
+    return r ? r->mums.size() : 0;
+}
+
+mumemto_mum_match_view mum_at(const mumemto_mum_result* r, size_t idx) {
+    mumemto_mum_match_view v{};
+    if (!r) return v;
+    if (idx >= r->mums.size()) return v;
+    v.length = r->mums[idx].length;
+    v.offsets = r->mums[idx].offsets.data();
+    v.strands = r->mums[idx].strands.data();
+    return v;
+}
+
+size_t num_mems(const mumemto_mem_result* r) {
+    return r ? r->mems.size() : 0;
+}
+
+mumemto_mem_match_view mem_at(const mumemto_mem_result* r, size_t idx) {
+    mumemto_mem_match_view v{};
+    if (!r) return v;
+    if (idx >= r->mems.size()) return v;
+    v.length = r->mems[idx].length;
+    v.occurrences = r->mems[idx].offsets.size();
+    v.offsets = r->mems[idx].offsets.data();
+    v.seq_ids = r->mems[idx].seq_ids.data();
+    v.strands = r->mems[idx].strands.data();
+    return v;
+}
+
+void mum_free(mumemto_mum_result* r) {
+    delete r;
+}
+void mem_free(mumemto_mem_result* r) {
+    delete r;
+}
+
+} // extern "C"

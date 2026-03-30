@@ -17,14 +17,14 @@ namespace mumsio {
 struct Mum {
     uint32_t length;
     std::vector<int64_t> offsets; // supports partials as -1
-    std::vector<bool> strands;
+    std::vector<uint8_t> strands;
 };
 
 struct Mem {
     uint32_t length;
     std::vector<int64_t> offsets;
     std::vector<size_t> seq_ids;
-    std::vector<bool> strands;
+    std::vector<uint8_t> strands;
 };
 
 // Common binary read helper: read exactly n bytes or throw
@@ -56,7 +56,7 @@ inline std::vector<Mum> parse_mums(const std::string& path, bool noPartials = tr
 
         uint32_t len = static_cast<uint32_t>(std::stoul(length_str));
         std::vector<int64_t> row_offsets;
-        std::vector<bool> row_strands;
+        std::vector<uint8_t> row_strands;
 
         // parse offsets
         {
@@ -80,7 +80,7 @@ inline std::vector<Mum> parse_mums(const std::string& path, bool noPartials = tr
             std::stringstream sss(strands_str);
             std::string tok;
             while (std::getline(sss, tok, ',')) {
-                row_strands.push_back(tok == "+");
+                row_strands.push_back((tok == "+") ? 1u : 0u);
             }
         }
 
@@ -182,9 +182,9 @@ inline std::vector<Mum> parse_bumbl(const std::string& path, bool noPartials = t
             if (!packed.empty()) {
                 uint8_t byte = packed[idx / 8];
                 uint8_t bit  = (byte >> (7 - (idx % 8))) & 0x1; // MSB-first
-                m.strands[c] = (bit != 0);
+                m.strands[c] = (bit != 0) ? 1u : 0u;
             } else {
-                m.strands[c] = false;
+                m.strands[c] = 0u;
             }
         }
         mums.emplace_back(std::move(m));
@@ -332,14 +332,14 @@ inline void write_bumbl(const std::vector<Mum>& mums, const std::string& path, b
     // Prepare data and check for partials while populating
     std::vector<uint32_t> lengths(n_mums);
     std::vector<int64_t> flat_starts(n_mums * n_seqs);
-    std::vector<bool> flat_strands(n_mums * n_seqs);
+    std::vector<uint8_t> flat_strands(n_mums * n_seqs);
     
     for (size_t r = 0; r < n_mums; ++r) {
         lengths[r] = mums[r].length;
         for (size_t c = 0; c < n_seqs; ++c) {
             size_t idx = r * n_seqs + c;
             flat_starts[idx] = mums[r].offsets[c];
-            flat_strands[idx] = mums[r].strands[c];
+            flat_strands[idx] = mums[r].strands[c] ? 1u : 0u;
             // Check for partials while populating
             if (flat_starts[idx] == -1) {
                 partial = true;

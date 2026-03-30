@@ -116,7 +116,7 @@ tuple<vector<Mum>, vector<bool>, vector<uint16_t>> merge_partitions(
                 vector<int64_t> combined_offsets = new_offsets1;
                 combined_offsets.insert(combined_offsets.end(), new_offsets2.begin() + 1, new_offsets2.end());
 
-                vector<bool> combined_strands = cur_mum1->strands;
+                vector<uint8_t> combined_strands = cur_mum1->strands;
                 combined_strands.insert(combined_strands.end(), cur_mum2->strands.begin() + 1, cur_mum2->strands.end());
 
                 new_mums.emplace_back(Mum{new_len, move(combined_offsets), move(combined_strands)});

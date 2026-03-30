@@ -313,4 +313,78 @@ int RefBuilder::build_input_file(size_t w, size_t p, bool probing, bool keep_seq
     return 0;
 }
 
+// Code for the library version of the constructor and build_input_file_lib function
+
+RefBuilder::RefBuilder(const std::vector<std::vector<size_t>>& lengths, bool use_rcomp): use_revcomp(use_rcomp) {
+    /* Alternative constructor for running from the lengths file */
+    output_prefix = "";
+    size_t cur_length = 0;
+    for (const auto& length : lengths) {
+        for (const auto& l : length) { cur_length += l; }
+        if (use_revcomp) { cur_length *= 2; }
+        seq_lengths.push_back(cur_length);
+    }
+    this->num_docs = lengths.size();
+}
+
+int RefBuilder::build_input_file_lib(std::vector<std::vector<std::string>>& sequences, bool keep_seqs) {        
+    pfparser parser(this->output_prefix, 10, 100, true, false);
+    std::vector<std::string> seq_vec;
+    std::vector<size_t> temp_lengths;
+    std::vector<std::string> temp_names;
+    
+    for (auto i = 0; i < sequences.size(); i++) {
+        seq_vec = sequences[i];
+        for (const auto& seq : seq_vec) {
+        }
+        if (keep_seqs) {
+            for (auto i = 0; i < seq_vec.size(); ++i) {
+                // store uppercase forward sequence (gsacak needs stored text)
+                const auto& s = seq_vec.at(i);
+                for (unsigned char c : s) this->text.push_back(static_cast<uint8_t>(std::toupper(c)));
+            }
+            this->text.push_back('$');
+        }
+        else {
+            for (auto i = 0; i < seq_vec.size(); ++i) {
+                parser.process_string(seq_vec.at(i));
+            }
+            parser.process_string("$");
+        }
+        if (use_revcomp) {
+            for (auto i = seq_vec.size(); i-- != 0; ) {
+            }
+            if (keep_seqs) {
+                for (auto i = seq_vec.size(); i-- != 0; ) {
+                    // store uppercase reverse-complement without allocating a temp string
+                    const auto& s = seq_vec.at(i);
+                    for (size_t j = s.size(); j-- != 0; ) {
+                        unsigned char c = static_cast<unsigned char>(s[j]);
+                        c = comp_tab[c];
+                        this->text.push_back(static_cast<uint8_t>(std::toupper(c)));
+                    }
+                }
+                this->text.push_back('$');
+            }
+            else {
+                for (auto i = seq_vec.size(); i-- != 0; ) {
+                    parser.process_string_revcomp(seq_vec.at(i));
+                }
+                parser.process_string("$");
+            }
+        }
+    }
+    // Write final phrase to file, sort dictionary, and remap final parse file
+    if (!keep_seqs) {
+        parser.finish_parse();
+        pfp_dict_data = parser.take_dict_data();
+        pfp_parse_data = parser.take_parse_data();
+        has_in_memory_pfp = true;
+    }
+    // build the bv
+    this->build_bv();
+
+    return 0;
+}
+
 
