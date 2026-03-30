@@ -352,8 +352,10 @@ class mem_finder_library{
         // MUM mode: at most 1 occurrence per doc.
         mem_finder_library match_finder(ref_build, use_revcomp, min_match_len, num_distinct, 1, 0);
         if (use_gsacak) {
+            mumemto_set_progress_enabled(false);
             gsacak_lcp gsacak("", &ref_build, false);
             gsacak.process(match_finder);
+            mumemto_set_progress_enabled(true);
         } else {
             mumemto_set_progress_enabled(false);
             pf_parsing pf;
@@ -388,8 +390,10 @@ class mem_finder_library{
 
         mem_finder_library match_finder(ref_build, use_revcomp, min_match_len, num_distinct, max_doc_freq, max_total_freq);
         if (use_gsacak) {
+            mumemto_set_progress_enabled(false);
             gsacak_lcp gsacak("", &ref_build, false);
             gsacak.process(match_finder);
+            mumemto_set_progress_enabled(true);
         } else {
             mumemto_set_progress_enabled(false);
             pf_parsing pf;
