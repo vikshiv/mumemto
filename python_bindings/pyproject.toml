@@ -1,0 +1,17 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11>=2.12", "numpy"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "mumemto"
+version = "0.0.0"
+description = "Python bindings for mumemto (MUM/MEM finder)"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = ["numpy"]
+
+[tool.scikit-build]
+cmake.minimum-version = "3.18"
+cmake.verbose = true
+build-dir = "build/{wheel_tag}"
+wheel.packages = ["python/mumemto"]
