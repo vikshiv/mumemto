@@ -318,8 +318,8 @@ int RefBuilder::build_input_file(size_t w, size_t p, bool probing, bool keep_seq
 RefBuilder::RefBuilder(const std::vector<std::vector<size_t>>& lengths, bool use_rcomp): use_revcomp(use_rcomp) {
     /* Alternative constructor for running from the lengths file */
     output_prefix = "";
-    size_t cur_length = 0;
     for (const auto& length : lengths) {
+        size_t cur_length = 1; // adds 1 for the terminator
         for (const auto& l : length) { cur_length += l; }
         if (use_revcomp) { cur_length *= 2; }
         seq_lengths.push_back(cur_length);
