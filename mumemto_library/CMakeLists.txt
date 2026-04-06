@@ -94,6 +94,7 @@ install(TARGETS mumemto
 )
 
 install(FILES
+    "${CMAKE_CURRENT_LIST_DIR}/mumemto.h"
     "${CMAKE_CURRENT_LIST_DIR}/mumemto_api.hpp"
     "${CMAKE_CURRENT_LIST_DIR}/mumemto.hpp"
     "${CMAKE_CURRENT_LIST_DIR}/../include/mumsio.hpp"
