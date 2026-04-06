@@ -528,7 +528,7 @@ class MUMdata:
 
     def __repr__(self):
         """String representation"""
-        return (f"MUMdata(num_mums={self.num_mums}, num_seqs={self.num_seqs}")
+        return (f"MUMdata(num_mums={self.num_mums}, num_seqs={self.num_seqs})")
     
     def __str__(self):
         """Human-readable string representation"""
