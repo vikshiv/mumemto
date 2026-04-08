@@ -174,3 +174,9 @@ length, offsets, seq_ids, strands = res.match_at(0)
 > [!NOTE]
 > The arrays returned by `match_at()` are **views** into result storage. If you want to modify them, make a copy (e.g. `offsets = offsets.copy()`).
 
+---
+
+## AI disclosure
+
+Portions of the C ABI and python bindings, along with this README, were written with using AI; the maintainers have reviewed the technical content and run manually (non-AI-written) tests for correctness.
+
