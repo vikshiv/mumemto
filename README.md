@@ -22,10 +22,6 @@ Merging algorithm described in [https://www.biorxiv.org/lookup/doi/10.1101/2025.
 
 ### For detailed usage, see the [Mumemto wiki](https://github.com/vikshiv/mumemto/wiki)
 
-### Library API quick start (C / C++ / Python)
-If you want to embed Mumemto in your own software (not just run the CLI), see the library quick start:
-- [`mumemto_library/README.md`](mumemto_library/README.md)
-
 ## Installation
 
 ### Conda installation (recommended)
@@ -118,6 +114,11 @@ Here are some example use cases:
 	 # Find all MEMs that appear at most 100 times within a collection
      mumemto -f 0 -k 2 -F 100 [OPTIONS] [input_fasta [...]]
 ```
+
+### Library API quick start (C / C++ / Python)
+If you want to embed Mumemto in your own software (not just run the CLI), see the library quick start: [`mumemto_library/README.md`](mumemto_library/README.md)
+
+
 
 ### Multi-MUM merging (***new in v1.3***)
 
