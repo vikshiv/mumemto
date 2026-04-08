@@ -330,7 +330,7 @@ class mem_finder_library{
     // --- Public library API implementations ---
 
     MumResult mumemto_mum(
-        std::vector<std::vector<std::string>>& sequences,
+        const std::vector<std::vector<std::string>>& sequences,
         std::uint32_t min_match_len,
         bool use_revcomp,
         size_t num_distinct,
@@ -368,7 +368,7 @@ class mem_finder_library{
     }
 
     MemResult mumemto_mem(
-        std::vector<std::vector<std::string>>& sequences,
+        const std::vector<std::vector<std::string>>& sequences,
         std::uint32_t min_match_len,
         bool use_revcomp,
         size_t num_distinct,

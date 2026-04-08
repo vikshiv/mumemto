@@ -7,6 +7,23 @@
 
 #include <mumsio.hpp>
 
+// The core library is built with -fvisibility=hidden (see CMakeModules/*),
+// so we must explicitly export the native C++ API symbols for consumers
+// (C++ callers and the pybind11 extension).
+#if defined(_WIN32)
+  #if defined(MUMEMTO_BUILD_DLL)
+    #define MUMEMTO_CPP_API __declspec(dllexport)
+  #else
+    #define MUMEMTO_CPP_API __declspec(dllimport)
+  #endif
+#else
+  #if defined(__GNUC__) || defined(__clang__)
+    #define MUMEMTO_CPP_API __attribute__((visibility("default")))
+  #else
+    #define MUMEMTO_CPP_API
+  #endif
+#endif
+
 namespace mumemto {
 
 struct MumResult {
@@ -23,15 +40,15 @@ struct MemResult {
     std::vector<std::vector<size_t>> lengths;
 };
 
-MumResult mumemto_mum(
-    std::vector<std::vector<std::string>>& sequences,
+MUMEMTO_CPP_API MumResult mumemto_mum(
+    const std::vector<std::vector<std::string>>& sequences,
     std::uint32_t min_match_len = 20,
     bool use_revcomp = true,
     size_t num_distinct = 0,
     bool use_gsacak = false);
 
-MemResult mumemto_mem(
-    std::vector<std::vector<std::string>>& sequences,
+MUMEMTO_CPP_API MemResult mumemto_mem(
+    const std::vector<std::vector<std::string>>& sequences,
     std::uint32_t min_match_len = 20,
     bool use_revcomp = true,
     size_t num_distinct = 0,
