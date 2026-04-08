@@ -22,6 +22,10 @@ Merging algorithm described in [https://www.biorxiv.org/lookup/doi/10.1101/2025.
 
 ### For detailed usage, see the [Mumemto wiki](https://github.com/vikshiv/mumemto/wiki)
 
+### Library API quick start (C / C++ / Python)
+If you want to embed Mumemto in your own software (not just run the CLI), see the library quick start:
+- [`mumemto_library/README.md`](mumemto_library/README.md)
+
 ## Installation
 
 ### Conda installation (recommended)

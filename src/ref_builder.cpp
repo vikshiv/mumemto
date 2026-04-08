@@ -327,7 +327,7 @@ RefBuilder::RefBuilder(const std::vector<std::vector<size_t>>& lengths, bool use
     this->num_docs = lengths.size();
 }
 
-int RefBuilder::build_input_file_lib(std::vector<std::vector<std::string>>& sequences, bool keep_seqs) {        
+int RefBuilder::build_input_file_lib(const std::vector<std::vector<std::string>>& sequences, bool keep_seqs) {        
     pfparser parser(this->output_prefix, 10, 100, true, false);
     std::vector<std::string> seq_vec;
     std::vector<size_t> temp_lengths;
