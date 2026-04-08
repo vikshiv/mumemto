@@ -117,7 +117,7 @@ cc -std=c11 -I"$PREFIX/include" example.c -L"$PREFIX/lib" -Wl,-rpath,"$PREFIX/li
 
 ---
 
-## C++quick start (native C++ API)
+## C++ quick start (native C++ API)
 
 Minimal example:
 
