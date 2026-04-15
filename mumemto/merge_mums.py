@@ -45,9 +45,7 @@ def parse_arguments(args=None):
         elif args.mum_files[i].endswith('.bumbl'):
             args.paths.append(args.mum_files[i][:-6])
         else: 
-            ### assume that the input is a prefix, and use .mums by default
-            args.paths.append(args.mum_files[i])
-            args.mum_files[i] += '.mums'     
+            parser.error(f"Invalid input: {args.mum_files[i]}. Input must explicitly end with .mums or .bumbl.")
     
     if args.merged_mums is not None and not args.merged_mums.endswith('.mums'):
         args.merged_mums += '.mums'
