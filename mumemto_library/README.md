@@ -1,4 +1,4 @@
-# Mumemto library quick start (C / C++ / Python)
+# Mumemto library quick start (Python / C / C++)
 
 Mumemto ships a shared library (`libmumemto.so`), headers, and Python bindings. This page is a **quick-start** for using the library APIs (not the CLI).
 
@@ -42,7 +42,39 @@ cmake --install build
 
 ---
 
+## Python quick start
+
+After installing via conda/pip:
+
+```python
+import mumemto
+
+# sequences[doc][record]
+res = mumemto.mem([["ACGTACGT"], ["TACGTAAA"]], min_match_len=3, max_doc_freq=2)
+
+print(res.num_docs(), res.num_matches())
+length, offsets, seq_ids, strands = res.match_at(0)
+
+mum_res = mumemto.mum([["ACGTACGT"], ["TACGTAAA"]], min_match_len=3)
+length, offsets, strands = mum_res.match_at(0)
+
+first = res[0]  # same tuple as match_at(0)
+for length, offsets, seq_ids, strands in len(res):
+    ...
+for length, offsets, strands in mum_res:
+    ...
+```
+
+> [!NOTE]
+> The arrays returned by `match_at()` are **views** into result storage. If you want to modify them, make a copy (e.g. `offsets = offsets.copy()`).
+
+---
+
 ## Which API should I use?
+
+### Python bindings
+
+Use this if you want to call Mumemto from Python. The Python API is designed around returning **NumPy views** into result buffers, and Python inputs are `list[list[str]]`.
 
 ### C ABI (`mumemto.h`) — stable ABI for C / FFI
 
@@ -70,10 +102,6 @@ Use this if you want:
 - RAII ownership of the C ABI result handles
 
 This wraps the C ABI and is convenient for quick prototypes and tools.
-
-### Python bindings
-
-Use this if you want to call Mumemto from Python. The Python API is designed around returning **NumPy views** into result buffers, and Python inputs are `list[list[str]]`.
 
 ---
 
@@ -150,6 +178,35 @@ int main() {
 }
 ```
 
+### C++ convenience wrapper (`mumemto.hpp`)
+
+The same inputs as above, using **`mumemto_cxx::mum`** / **`mumemto_cxx::mem`**: RAII over the C ABI (no manual memory management needed).
+
+```cpp
+#include <vector>
+#include "mumemto.hpp"
+
+int main() {
+  std::vector<std::vector<std::string>> sequences{
+      {"ACGTACGT"},
+      {"TACGTAAA"},
+  };
+
+  auto r = mumemto_cxx::mem(
+      sequences,
+      /*min_match_len=*/3,
+      /*use_revcomp=*/true,
+      /*num_distinct=*/0,
+      /*max_total_freq=*/0,
+      /*max_doc_freq=*/2,
+      /*use_gsacak=*/false);
+
+  return static_cast<int>(r.num_matches());
+}
+```
+
+Use **`mumemto_cxx::mum`** for MUM mode.
+
 ### CMake integration (`find_package(Mumemto)`)
 
 ```cmake
@@ -158,25 +215,6 @@ add_executable(example example.cpp)
 target_link_libraries(example PRIVATE Mumemto::mumemto)
 target_compile_features(example PRIVATE cxx_std_17)
 ```
-
----
-
-## Python quick start
-
-After installing via conda/pip:
-
-```python
-import mumemto
-
-# sequences[doc][record]
-res = mumemto.mem([["ACGTACGT"], ["TACGTAAA"]], min_match_len=3, max_doc_freq=2)
-
-print(res.num_docs(), res.num_matches())
-length, offsets, seq_ids, strands = res.match_at(0)
-```
-
-> [!NOTE]
-> The arrays returned by `match_at()` are **views** into result storage. If you want to modify them, make a copy (e.g. `offsets = offsets.copy()`).
 
 ---
 
