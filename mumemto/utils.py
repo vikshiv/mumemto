@@ -490,6 +490,11 @@ class MUMdata:
             # Single index - slice only rows
             row_indices = indices
             col_indices = slice(None)
+
+        # Keep 2D shape for starts/strands when selecting a single column.
+        # NumPy squeezes dimensions on scalar indexing, which breaks num_seqs.
+        if isinstance(col_indices, (int, np.integer)):
+            col_indices = [int(col_indices)]
         
         # Apply indexing directly (numpy handles all the cases)
         new_lengths = self.lengths[row_indices]
@@ -522,9 +527,31 @@ class MUMdata:
         if isinstance(idx, (int, np.integer)):
             # Single MUM access - return MUM object
             return MUM(self.lengths[idx], self.starts[idx], self.strands[idx])
-        else:
-            # Multiple MUMs access - return new MUMdata object using slice method
+
+        # 2D indexing: mumdata[rows, cols]
+        if isinstance(idx, tuple):
+            if len(idx) != 2:
+                raise ValueError("Too many indices for 2D slicing")
+            row_indices, col_indices = idx
+
+            row_is_scalar = isinstance(row_indices, (int, np.integer))
+            col_is_scalar = isinstance(col_indices, (int, np.integer))
+
+            # Scalar row -> return a MUM (optionally with a subset of sequences)
+            if row_is_scalar:
+                if col_is_scalar:
+                    raise TypeError(
+                        "Scalar row+col indexing is not supported; use mumdata[i].starts[j] "
+                        "(or mumdata.starts[i, j]) instead."
+                    )
+                i = int(row_indices)
+                return MUM(self.lengths[i], self.starts[i, col_indices], self.strands[i, col_indices])
+
+            # Otherwise return a MUMdata slice (including scalar column -> 1-column MUMdata)
             return self.slice(idx)
+
+        # Multiple MUMs access - return new MUMdata object using slice method
+        return self.slice(idx)
 
     def __repr__(self):
         """String representation"""
