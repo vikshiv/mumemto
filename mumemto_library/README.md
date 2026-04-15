@@ -22,6 +22,8 @@ conda activate mumemto_env
 conda install -c conda-forge bioconda::mumemto
 ```
 
+**Linking C/C++ against conda `mumemto`:** install **`cxx-compiler`** in the same env (`mamba install cxx-compiler`) and **compile with conda’s toolchain** (`c++` / `cc` from the activated environment), not the system `g++`.
+
 ### Build from source (local install tree)
 
 This installs the library, headers, and a CMake config into `build/install/` by default:
@@ -108,12 +110,14 @@ int main(void) {
 }
 ```
 
-Compile/link (if installed into `$PREFIX`, assuming Linux system):
+Compile/link (if installed into `$PREFIX`, Linux):
 
 ```sh
-cc -std=c11 -I"$PREFIX/include" example.c -L"$PREFIX/lib" -Wl,-rpath,"$PREFIX/lib" -lmumemto -o example
+cc -std=c11 -I"$PREFIX/include" example.c -L"$PREFIX/lib" -Wl,-rpath,"$PREFIX/lib" -lmumemto -lstdc++ -o example
 ./example
 ```
+
+(`libmumemto` is C++; with `cc`, add `-lstdc++`. With conda, use the env’s `cc` / `c++` as above.)
 
 ---
 
