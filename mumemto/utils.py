@@ -318,18 +318,47 @@ class MUMdata:
                 offset_dtype=self.offset_dtype
             )
         if sort:
-            sorted = np.all(np.diff(self.starts[:,0]) >= 0)
-            if self.blocks is not None and not sorted:
-                print("MUMs must be sorted by first column to store blocks; ignoring blocks and sorting.", file=sys.stderr)
-                self.blocks = None
-            if not sorted:
-            # sort by reference offset position
-                order = self.starts[:,0].argsort()
-                self.lengths = self.lengths[order]
-                self.starts = self.starts[order]
-                self.strands = self.strands[order]
-                if self.extra_fields is not None:
-                    self.extra_fields = [self.extra_fields[i] for i in order]
+            self.sort(ref_col=0, copy=False)
+    
+    def sort(self, ref_col=0, copy=False):
+        """Sort MUMs by a reference start position column (starts[:, ref_col]).
+
+        Note:
+            Sorting can invalidate stored collinear block indices (`self.blocks`), since blocks
+            are defined over the current row order. If a reordering is needed, `blocks` will be
+            dropped (set to None).
+        
+        Args:
+            ref_col: Column of `starts` to sort by (default: 0).
+            copy: If True, return a new sorted MUMdata object without mutating self.
+                  If False (default), sort this object in place.
+        
+        Returns:
+            MUMdata: The sorted MUMdata (self or a new copy).
+        """
+        target = self.copy() if copy else self
+        if target.num_mums <= 1:
+            return target
+        
+        ref_col = int(ref_col)
+        if ref_col < 0 or (target.starts.ndim != 2) or (ref_col >= target.starts.shape[1]):
+            raise IndexError(f"ref_col {ref_col} out of bounds for MUMdata with  {self.num_seqs} sequences")
+
+        already_sorted = np.all(np.diff(target.starts[:, ref_col]) >= 0)
+
+        if target.blocks is not None and not already_sorted:
+            target.blocks = None
+        
+        if not already_sorted:
+            # Sort by reference offset position
+            order = target.starts[:, ref_col].argsort(kind='mergesort')
+            target.lengths = target.lengths[order]
+            target.starts = target.starts[order]
+            target.strands = target.strands[order]
+            if target.extra_fields is not None:
+                target.extra_fields = [target.extra_fields[i] for i in order]
+        
+        return target
     
     @property
     def num_mums(self):
