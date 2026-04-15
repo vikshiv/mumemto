@@ -46,7 +46,11 @@ def parse_arguments(args=None):
     elif args.out == None and args.mumfile == None and args.bumfile:
         args.out = "-"
         args.to_bum = False
-        
+
+    if args.mumfile is None and args.bumfile is None:
+        parser.print_help()
+        sys.exit(0)
+
     if not args.to_bum and args.bumfile:
         if not os.path.exists(args.bumfile):
             parser.error("bumbl file does not exist")
