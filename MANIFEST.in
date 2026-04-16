@@ -1,0 +1,15 @@
+include CMakeLists.txt
+include LICENSE
+include README.md
+graft CMakeModules
+graft include
+graft mumemto
+graft mumemto_library
+graft python_bindings
+graft src
+graft thirdparty
+prune python_bindings/build
+
+global-exclude **/__pycache__/*
+global-exclude **/*.py[cod]
+global-exclude .git*
