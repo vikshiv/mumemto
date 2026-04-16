@@ -384,6 +384,10 @@ class mem_finder_library{
 
         const size_t num_docs = sequences.size();
 
+        if (num_distinct == 0) {
+            num_distinct = num_docs;
+        }
+
         auto lengths = compute_record_lengths(sequences);
         RefBuilder ref_build = RefBuilder(lengths, use_revcomp);
         ref_build.build_input_file_lib(sequences, use_gsacak);
@@ -401,26 +405,6 @@ class mem_finder_library{
             pfp_lcp lcp(pf, "", &ref_build, false);
             lcp.process(match_finder);
             mumemto_set_progress_enabled(true);
-        }
-
-        // If max_doc_freq == 1, the underlying algorithm emits MUMs. Convert to MemResult.
-        if (max_doc_freq == 1) {
-            MemResult out;
-            out.lengths = std::move(lengths);
-            out.matches.reserve(match_finder.mums.size());
-            for (auto& mum : match_finder.mums) {
-                mumsio::Mem mem;
-                mem.length = mum.length;
-                for (size_t doc_id = 0; doc_id < num_docs; doc_id++) {
-                    if (mum.offsets[doc_id] != -1) {
-                        mem.offsets.push_back(mum.offsets[doc_id]);
-                        mem.seq_ids.push_back(doc_id);
-                        mem.strands.push_back(mum.strands[doc_id]);
-                    }
-                }
-                out.matches.push_back(std::move(mem));
-            }
-            return out;
         }
 
         return MemResult{std::move(match_finder.mems), std::move(lengths)};

@@ -53,7 +53,7 @@ MUMEMTO_CPP_API MemResult mumemto_mem(
     bool use_revcomp = true,
     size_t num_distinct = 0,
     size_t max_total_freq = 0,
-    size_t max_doc_freq = 1,
+    size_t max_doc_freq = 2,
     bool use_gsacak = false);
 
 } // namespace mumemto

@@ -335,8 +335,6 @@ int RefBuilder::build_input_file_lib(const std::vector<std::vector<std::string>>
     
     for (auto i = 0; i < sequences.size(); i++) {
         seq_vec = sequences[i];
-        for (const auto& seq : seq_vec) {
-        }
         if (keep_seqs) {
             for (auto i = 0; i < seq_vec.size(); ++i) {
                 // store uppercase forward sequence (gsacak needs stored text)
@@ -352,8 +350,6 @@ int RefBuilder::build_input_file_lib(const std::vector<std::vector<std::string>>
             parser.process_string("$");
         }
         if (use_revcomp) {
-            for (auto i = seq_vec.size(); i-- != 0; ) {
-            }
             if (keep_seqs) {
                 for (auto i = seq_vec.size(); i-- != 0; ) {
                     // store uppercase reverse-complement without allocating a temp string
