@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "mumemto"
-version = "0.0.0"
+version = "1.4.0"
 description = "Python bindings for mumemto (MUM/MEM finder)"
 readme = "README.md"
 requires-python = ">=3.8"
