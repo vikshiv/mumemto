@@ -1,6 +1,7 @@
 include CMakeLists.txt
 include LICENSE
 include README.md
+graft img
 graft CMakeModules
 graft include
 graft mumemto

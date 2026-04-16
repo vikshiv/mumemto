@@ -9,8 +9,25 @@ import sysconfig
 import pybind11
 import numpy
 from setuptools import Command, find_packages, setup
+from setuptools.command.bdist_wheel import bdist_wheel as bdist_wheel_cmd
 from setuptools.command.build_py import build_py
 from setuptools.command.install import install
+
+_REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+
+def _read_readme() -> str:
+    path = os.path.join(_REPO_ROOT, "README.md")
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+class PlatformWheel(bdist_wheel_cmd):
+    """Binary extensions are built by CMake; wheels must be platform-specific."""
+
+    def finalize_options(self):
+        super().finalize_options()
+        self.root_is_pure = False
 
 
 class CMakeBuild(Command):
@@ -52,7 +69,7 @@ class CMakeBuild(Command):
     def _run_python_bindings_cmake(self, pkg_dir: str) -> None:
         """Configure/build/install _mumemto_core into the package tree."""
         cmake_prefix = self._cmake_prefix_path()
-        bindings_src = os.path.join(os.path.dirname(__file__), "python_bindings")
+        bindings_src = os.path.join(_REPO_ROOT, "python_bindings")
         bindings_build = os.path.join(self.build_temp, "pybind_build")
         install_prefix = os.path.dirname(pkg_dir)
 
@@ -69,11 +86,8 @@ class CMakeBuild(Command):
             "-DCMAKE_BUILD_TYPE=Release",
             f"-DCMAKE_PREFIX_PATH={cmake_prefix}",
             f"-DPython_EXECUTABLE={sys.executable}",
-            f"-DPython3_EXECUTABLE={sys.executable}",
             f"-DPython_ROOT_DIR={sys.prefix}",
-            f"-DPython3_ROOT_DIR={sys.prefix}",
             f"-DPython_INCLUDE_DIR={py_include}",
-            f"-DPython3_INCLUDE_DIR={py_include}",
             "-DPython_FIND_REGISTRY=NEVER",
             f"-Dpybind11_DIR={pybind11.get_cmake_dir()}",
             f"-DPython_NumPy_INCLUDE_DIR={numpy.get_include()}",
@@ -186,7 +200,7 @@ def read_requirements():
 
 setup(
     name="mumemto",
-    version="1.3.4",
+    version="1.4.0",
     packages=find_packages(),
     install_requires=read_requirements(),
     scripts=["mumemto/mumemto"],
@@ -197,20 +211,17 @@ setup(
             "*.so.*",
             "*.pyd",
             "*.dylib",
-            "*.dll",
         ],
     },
     cmdclass={
         "cmake_build": CMakeBuild,
         "build_py": CustomBuildPy,
         "install": CustomInstall,
+        "bdist_wheel": PlatformWheel,
     },
     description="Finding maximal unique matches across pangenomes",
-    long_description=(
-        "Mumemto is a tool for finding a variety of matches across collections of "
-        "sequences like a pangenome. It includes a visualization tool for "
-        "visualizing pangenome synteny."
-    ),
+    long_description=_read_readme(),
+    long_description_content_type="text/markdown",
     author="vikshiv",
     url="https://github.com/vikshiv/mumemto",
     license="GPL-3.0-only",
@@ -218,7 +229,9 @@ setup(
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-        "Operating System :: OS Independent",
+        "Operating System :: POSIX :: Linux",
+        "Operating System :: MacOS",
+        "Topic :: Scientific/Engineering :: Bio-Informatics",
     ],
     include_package_data=True,
 )
