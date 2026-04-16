@@ -40,8 +40,11 @@ class CMakeBuild(Command):
         self.install_scripts = None
 
     def finalize_options(self):
-        self.build_lib = self.get_finalized_command("build").build_lib
-        self.install_scripts = self.get_finalized_command("install").install_scripts
+        build_cmd = self.get_finalized_command("build")
+        self.build_lib = build_cmd.build_lib
+        # Must match build_scripts' build_dir so install_scripts can copy the full tree
+        # into the wheel/venv bin (native tools + launcher).
+        self.install_scripts = build_cmd.build_scripts
 
     def _cmake_prefix_path(self):
         return os.path.abspath(os.path.join(self.build_temp, "install"))
