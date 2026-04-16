@@ -7,7 +7,7 @@
 #include <cassert>
 #include <tuple>
 #include <filesystem>
-#include <parse_mums.hpp>
+#include <mumsio.hpp>
 
 using namespace std;
 
@@ -32,16 +32,44 @@ std::vector<uint16_t> readThresholds(const std::string& filename) {
     return buffer;
 }
 
-tuple<vector<Mum>, vector<bool>, vector<uint16_t>> parse_candidate(const string& path) {
+static inline bool ends_with(const std::string& s, const std::string& suffix) {
+    return s.size() >= suffix.size() && s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
 
-    vector<uint16_t> next_best = readThresholds(path + ".athresh");
+static inline std::string strip_suffix(const std::string& s, const std::string& suffix) {
+    return s.substr(0, s.size() - suffix.size());
+}
+
+static inline void validate_candidate_path(const std::string& mums_path) {
+    std::string base_path;
+    if (ends_with(mums_path, ".bumbl")) {
+        base_path = strip_suffix(mums_path, ".bumbl");
+    } else if (ends_with(mums_path, ".mums")) {
+        base_path = strip_suffix(mums_path, ".mums");
+    } else {
+        throw runtime_error("Invalid input: " + mums_path + ". Inputs must explicitly end with .mums or .bumbl.");
+    }
+
+    const std::string thresh_path = base_path + ".athresh";
+    if (!filesystem::exists(mums_path)) {
+        throw runtime_error("Could not find MUMs file: " + mums_path);
+    }
+    if (!filesystem::exists(thresh_path)) {
+        throw runtime_error("Could not find threshold file: " + thresh_path);
+    }
+}
+
+tuple<vector<Mum>, vector<bool>, vector<uint16_t>> parse_candidate(const string& mums_path) {
+    const bool is_bumbl = ends_with(mums_path, ".bumbl");
+    const std::string base_path = is_bumbl ? strip_suffix(mums_path, ".bumbl") : strip_suffix(mums_path, ".mums");
+    const std::string thresh_path = base_path + ".athresh";
+
+    vector<uint16_t> next_best = readThresholds(thresh_path);
     vector<bool> mum_bv(next_best.size(), false);
     vector<Mum> mums;
 
-    string mums_txt = path + ".mums";
-    string mums_bin = path + ".bumbl";
-    if (filesystem::exists(mums_bin)) {
-        auto mv = mumsio::parse_bumbl(mums_bin, /*noPartials=*/true);
+    if (is_bumbl) {
+        auto mv = mumsio::parse_bumbl(mums_path, /*noPartials=*/true);
         for (const auto& m : mv) {
             if (!m.offsets.empty()) {
                 mum_bv[m.offsets[0]] = true;
@@ -49,7 +77,7 @@ tuple<vector<Mum>, vector<bool>, vector<uint16_t>> parse_candidate(const string&
         }
         mums = std::move(mv);
     } else {
-        auto mv = mumsio::parse_mums(mums_txt, /*noPartials=*/true);
+        auto mv = mumsio::parse_mums(mums_path, /*noPartials=*/true);
         for (const auto& m : mv) {
             if (!m.offsets.empty()) {
                 mum_bv[m.offsets[0]] = true;
@@ -116,7 +144,7 @@ tuple<vector<Mum>, vector<bool>, vector<uint16_t>> merge_partitions(
                 vector<int64_t> combined_offsets = new_offsets1;
                 combined_offsets.insert(combined_offsets.end(), new_offsets2.begin() + 1, new_offsets2.end());
 
-                vector<bool> combined_strands = cur_mum1->strands;
+                vector<uint8_t> combined_strands = cur_mum1->strands;
                 combined_strands.insert(combined_strands.end(), cur_mum2->strands.begin() + 1, cur_mum2->strands.end());
 
                 new_mums.emplace_back(Mum{new_len, move(combined_offsets), move(combined_strands)});
@@ -126,37 +154,6 @@ tuple<vector<Mum>, vector<bool>, vector<uint16_t>> merge_partitions(
     }
 
     return {move(new_mums), move(new_mum_bv), move(new_nb)};
-}
-
-string get_path(const string& path) {
-    /* by default look for .mums and .athresh files, unless .bumbl specified*/
-    bool is_bumbl = false;
-    string base_path = path;
-    if (path.size() >= 8 && path.compare(path.size() - 8, 8, ".athresh") == 0) {
-        base_path = path.substr(0, path.size() - 8);
-    } else if (path.size() >= 5 && path.compare(path.size() - 5, 5, ".mums") == 0) {
-        base_path = path.substr(0, path.size() - 5);
-    } else if (path.size() >= 6 && path.compare(path.size() - 6, 6, ".bumbl") == 0) {
-        is_bumbl = true;
-        base_path = path.substr(0, path.size() - 6);
-    }
-    // Check that both .thresh and .mums files exist
-    string thresh_path = base_path + ".athresh";
-    string mums_path;
-    if (!is_bumbl) {
-        mums_path = base_path + ".mums";
-    } else {
-        mums_path = base_path + ".bumbl";
-    }
-    
-    if (!filesystem::exists(thresh_path)) {
-        throw runtime_error("Could not find threshold file: " + thresh_path);
-    }
-    if (!filesystem::exists(mums_path)) {
-        throw runtime_error("Could not find MUMs file: " + mums_path);
-    }
-
-    return base_path;
 }
 
 vector<string> split_by_whitespace(const string& str) {
@@ -197,27 +194,26 @@ int main(int argc, char* argv[]) {
 
     assert(paths.size() >= 2 && "requires at least two input files");
 
+    // Pre-validate all inputs up front so we fail fast before any expensive parsing/merging.
+    for (const auto& p : paths) {
+        validate_candidate_path(p);
+    }
+
     tuple<vector<Mum>, vector<bool>, vector<uint16_t>> left_mums;
     tuple<vector<Mum>, vector<bool>, vector<uint16_t>> right_mums;
 
-    for (auto i = 0; i < paths.size(); ++i) {
-        paths[i] = get_path(paths[i]);
-    }
-
-    std::string base_left = paths[0];
-    std::string base_right = paths[1];
-    std::cerr << "merging " << filesystem::path(base_left).filename().string() << " and " << filesystem::path(base_right).filename().string() << endl;
+    std::cerr << "merging " << filesystem::path(paths[0]).filename().string()
+              << " and " << filesystem::path(paths[1]).filename().string() << endl;
         
-    left_mums = parse_candidate(base_left);
-    right_mums = parse_candidate(base_right);
+    left_mums = parse_candidate(paths[0]);
+    right_mums = parse_candidate(paths[1]);
 
     left_mums = merge_partitions(left_mums, right_mums);
 
     if (paths.size() > 2) {
         for (size_t i = 2; i < paths.size(); ++i) {
-            base_right = paths[i];
-            std::cerr << "merging in " << filesystem::path(base_right).filename().string() << endl;
-            right_mums = parse_candidate(base_right);
+            std::cerr << "merging in " << filesystem::path(paths[i]).filename().string() << endl;
+            right_mums = parse_candidate(paths[i]);
             left_mums = merge_partitions(left_mums, right_mums);
         }
     }

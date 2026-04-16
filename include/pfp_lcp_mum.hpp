@@ -42,7 +42,17 @@ extern "C"
 #define PBSTR "============================================================"
 #define PBWIDTH 60
 
+// Disables progress bars when called from the API
+inline bool& mumemto_progress_enabled() {
+    static bool enabled = true;
+    return enabled;
+}
+inline void mumemto_set_progress_enabled(bool enabled) {
+    mumemto_progress_enabled() = enabled;
+}
+
 void printProgress(double percentage) {
+    if (!mumemto_progress_enabled()) return;
     int val = (int) (percentage * 100);
     int lpad = (int) (percentage * PBWIDTH);
     int rpad = PBWIDTH - lpad;
@@ -108,6 +118,7 @@ public:
         phrase_suffix_t prev;
         size_t count = 0;
         size_t pb_inc = pf.n / PBWIDTH;
+        if (pb_inc == 0) pb_inc = 1; // avoid division by zero when pf.n < PBWIDTH
         inc(curr);
         while (curr.i < pf.dict.saD.size())
         {

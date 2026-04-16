@@ -52,6 +52,7 @@ else ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 endif()
 
 add_subdirectory(include)
+add_subdirectory(mumemto_library)
 add_subdirectory(src)
 
 install(TARGETS mumemto_exec DESTINATION ${PROJECT_BINARY_DIR})

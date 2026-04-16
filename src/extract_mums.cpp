@@ -14,7 +14,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>  // Include this for std::runtime_error
-#include "parse_mums.hpp"
+#include "mumsio.hpp"
 
 
 KSEQ_INIT(gzFile, gzread);

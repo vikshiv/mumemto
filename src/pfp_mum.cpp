@@ -38,12 +38,14 @@ int build_main(int argc, char** argv) {
     // print_build_status_info(&build_opts);
     bool mum_mode = build_opts.validate();
 
-    if ((build_opts.input_list.length() == 0) && !(build_opts.from_parse_flag || build_opts.arrays_in_flag)) {build_opts.input_list = make_filelist(build_opts.files, build_opts.output_prefix);}
-
     // Declare ref_build first
-    RefBuilder ref_build = (build_opts.from_parse_flag || build_opts.arrays_in_flag)
-        ? RefBuilder(build_opts.from_parse_flag ? build_opts.parse_prefix : build_opts.arrays_in, build_opts.use_rcomp)
-        : RefBuilder(build_opts.input_list, build_opts.output_prefix, build_opts.use_rcomp);
+    RefBuilder ref_build =
+        (build_opts.from_parse_flag || build_opts.arrays_in_flag)
+            ? RefBuilder(build_opts.from_parse_flag ? build_opts.parse_prefix : build_opts.arrays_in,
+                         build_opts.use_rcomp)
+            : (build_opts.input_list.length()
+                   ? RefBuilder(build_opts.input_list, build_opts.output_prefix, build_opts.use_rcomp)
+                   : RefBuilder(build_opts.files, build_opts.output_prefix, build_opts.use_rcomp));
 
     // normalize and reconcile the input parameters
     build_opts.set_parameters(ref_build.num_docs, mum_mode);
@@ -57,7 +59,13 @@ int build_main(int argc, char** argv) {
     else
         STATUS_LOG("build_main", "computing PFP over input files");
     auto start = std::chrono::system_clock::now();
-    int input_file_status = ref_build.build_input_file(build_opts.pfp_w, build_opts.hash_mod, true, build_opts.use_gsacak);
+    int input_file_status = ref_build.build_input_file(
+        build_opts.pfp_w,
+        build_opts.hash_mod,
+        true,
+        build_opts.use_gsacak,
+        build_opts.keep_temp || build_opts.only_parse
+    );
     if (input_file_status == 1) {
         remove_temp_files(build_opts.output_prefix);
         FATAL_ERROR("Please check the input files and ensure that it contains valid FASTA files. Cleaning up...");
@@ -107,9 +115,14 @@ int build_main(int argc, char** argv) {
 
     STATUS_LOG("build_main", "building the parse and dictionary objects");
     start = std::chrono::system_clock::now();
-    pf_parsing pf = build_opts.from_parse_flag
-        ? pf_parsing(build_opts.parse_prefix, build_opts.pfp_w)
-        : pf_parsing(build_opts.output_prefix, build_opts.pfp_w);
+    if (!build_opts.from_parse_flag && !ref_build.has_in_memory_pfp) {
+        FATAL_ERROR("In-memory PFP data is not available after parsing.");
+    }
+    pf_parsing pf;
+    if (build_opts.from_parse_flag)
+        pf.build_from_prefix_files(build_opts.parse_prefix, build_opts.pfp_w);
+    else
+        pf.build_from_ref_builder(ref_build, build_opts.pfp_w);
 
     DONE_LOG((std::chrono::system_clock::now() - start));
 
@@ -231,18 +244,8 @@ void print_build_status_info(BuildOptions& opts, RefBuilder& ref_build, bool mum
     std::fprintf(stderr, "\n");
 }
 
-std::string make_filelist(std::vector<std::string> files, std::string output_prefix) {
-    std::string fname = output_prefix + "_filelist.txt";
-    std::ofstream outfile(fname);
-    for (size_t i = 0; i < files.size(); ++i) {
-        outfile << std::filesystem::absolute(files[i]).string() << std::endl;
-    }
-    outfile.close();
-    return fname;
-}
-
 void remove_temp_files(std::string filename) {
-    std::vector<std::string> temp_files = {".dict", ".parse", "_filelist.txt"};
+    std::vector<std::string> temp_files = {".dict", ".parse", ".parse_old"};
     for (auto &ext : temp_files) {
         std::filesystem::remove(std::filesystem::path(filename + ext));
     }

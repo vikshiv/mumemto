@@ -25,6 +25,10 @@
 #ifndef _PFP_PARSE_HH
 #define _PFP_PARSE_HH
 
+#include <algorithm>
+#include <string>
+#include <utility>
+
 #include <common.hpp>
 
 #include <sdsl/rmq_support.hpp>
@@ -50,44 +54,29 @@ public:
   typedef size_t size_type;
 
   // Default constructor for load
-  parse() {}
+  parse() = default;
 
-  parse(  std::vector<uint32_t>& p_,
-          size_t alphabet_size_):
-          p(p_),
-          alphabet_size(alphabet_size_)
-  {
-    assert(p.back() == 0);
-
-    compute_freq();
-
+  /// Raw .parse phrase ranks (same bytes as read from disk, no sacak terminator yet).
+  /// Same as init_from_file after read_file: \ref build().
+  void init_from_memory(std::vector<uint32_t>&& ranks, size_t alphabet_size_) {
+    alphabet_size = alphabet_size_;
+    p = std::move(ranks);
     build();
-
-
   }
 
-  parse(  std::string filename,
-          size_t alphabet_size_):
-          alphabet_size(alphabet_size_)
-  {
-    // Building dictionary from file
-    std::string tmp_filename = filename + std::string(".parse");
+  /// Load PREFIX.parse into p, then same post-processing as init_from_memory.
+  void init_from_file(const std::string& filename_prefix, size_t alphabet_size_) {
+    alphabet_size = alphabet_size_;
+    // Building parse from file
+    std::string tmp_filename = filename_prefix + std::string(".parse");
     read_file(tmp_filename.c_str(), p);
-    p.push_back(0); // this is the terminator for the sacak algorithm
-
-    // // Uploading the frequency file
-    // tmp_filename = filename + std::string(".occ");
-    // read_file(tmp_filename.c_str(), freq);
-    // freq.insert(freq.begin(), 1);
-
-    // compute_freq();
-
     build();
-
-
   }
 
+  /// Append sacak terminator \c 0 if missing, build SA/ISA, then \ref compute_freq (needed before \ref compute_ilist).
   void build(){
+    if (p.empty() || p.back() != 0)
+      p.push_back(0); // this is the terminator for the sacak algorithm
 
     saP.resize(p.size());
     // suffix array of the parsing.
@@ -96,14 +85,11 @@ public:
       sacak_int(&p[0],&saP[0],p.size(),alphabet_size);
     );
 
-
-
     // inverted list of the parsing.
     // verbose("Computing ilist");
     // _elapsed_time(
     //   compute_ilist()
     // );
-
 
     // inverse suffix array of the parsing.
     verbose("Computing ISA of the parsing");
@@ -115,10 +101,7 @@ public:
         }
       }
     );
-
-
   }
-
 
   void compute_ilist()
   {
@@ -175,7 +158,7 @@ public:
     written_bytes += ilist_s.serialize(out, child, "ilist_s");
     written_bytes += select_ilist_s.serialize(out, child, "select_ilist_s");
     written_bytes += sdsl::write_member(alphabet_size, out, child, "alphabet_size");
-    
+
 
     sdsl::structure_tree::add_size(child, written_bytes);
     return written_bytes;

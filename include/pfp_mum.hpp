@@ -45,7 +45,6 @@ int build_main(int argc, char** argv);
 int mumemto_short_usage();
 int is_file(std::string path);
 int is_dir(std::string path);
-std::string  make_filelist(std::vector<std::string> files, std::string output_prefix);
 void remove_temp_files(std::string filename);
 std::vector<std::string> split(std::string input, char delim);
 bool is_integer(const std::string& str);
@@ -116,6 +115,10 @@ struct BuildOptions {
                 FATAL_ERROR("--from-parse flag is incompatible with --arrays-in flag");
             }
 
+            if (anchor_merge && !merge) {
+                merge = true;
+            }
+
             // check intermediate file exists for certain options
             if (from_parse_flag) {
                 if (!is_file(parse_prefix + ".dict"))
@@ -170,6 +173,13 @@ struct BuildOptions {
                 std::string message = "Too large number of sequences, defaulting to multi-" + match_type + " in all sequences";
                 FORCE_LOG("build_main", message.c_str());
                 num_distinct_docs = num_docs;
+            }
+
+            if (merge && (num_distinct_docs != num_docs)) {
+                FATAL_ERROR("Merging not available for partial multi-MUM/MEMs");
+            }
+            if (merge && (rare_freq != 1)) {
+                FATAL_ERROR("Merging not available for multi-MEMs");
             }
 
             // Set max total frequency, based on valid ranges

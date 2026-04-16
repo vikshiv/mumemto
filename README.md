@@ -115,6 +115,11 @@ Here are some example use cases:
      mumemto -f 0 -k 2 -F 100 [OPTIONS] [input_fasta [...]]
 ```
 
+### Library API quick start (C / C++ / Python)
+If you want to embed Mumemto in your own software (not just run the CLI), see the library quick start: [`mumemto_library/README.md`](mumemto_library/README.md)
+
+
+
 ### Multi-MUM merging (***new in v1.3***)
 
 The output multi-MUMs from Mumemto can be merged between runs in v1.3. There are two methods to do this: anchor-based (`-Mn`) and string-based (`-M`). Anchor-based merging requires the *first* sequence in each partition to be the same. String-based merging does not require any overlap between partitions, however is generally slower.

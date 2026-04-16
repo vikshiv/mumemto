@@ -318,18 +318,47 @@ class MUMdata:
                 offset_dtype=self.offset_dtype
             )
         if sort:
-            sorted = np.all(np.diff(self.starts[:,0]) >= 0)
-            if self.blocks is not None and not sorted:
-                print("MUMs must be sorted by first column to store blocks; ignoring blocks and sorting.", file=sys.stderr)
-                self.blocks = None
-            if not sorted:
-            # sort by reference offset position
-                order = self.starts[:,0].argsort()
-                self.lengths = self.lengths[order]
-                self.starts = self.starts[order]
-                self.strands = self.strands[order]
-                if self.extra_fields is not None:
-                    self.extra_fields = [self.extra_fields[i] for i in order]
+            self.sort(ref_col=0, copy=False)
+    
+    def sort(self, ref_col=0, copy=False):
+        """Sort MUMs by a reference start position column (starts[:, ref_col]).
+
+        Note:
+            Sorting can invalidate stored collinear block indices (`self.blocks`), since blocks
+            are defined over the current row order. If a reordering is needed, `blocks` will be
+            dropped (set to None).
+        
+        Args:
+            ref_col: Column of `starts` to sort by (default: 0).
+            copy: If True, return a new sorted MUMdata object without mutating self.
+                  If False (default), sort this object in place.
+        
+        Returns:
+            MUMdata: The sorted MUMdata (self or a new copy).
+        """
+        target = self.copy() if copy else self
+        if target.num_mums <= 1:
+            return target
+        
+        ref_col = int(ref_col)
+        if ref_col < 0 or (target.starts.ndim != 2) or (ref_col >= target.starts.shape[1]):
+            raise IndexError(f"ref_col {ref_col} out of bounds for MUMdata with  {self.num_seqs} sequences")
+
+        already_sorted = np.all(np.diff(target.starts[:, ref_col]) >= 0)
+
+        if target.blocks is not None and not already_sorted:
+            target.blocks = None
+        
+        if not already_sorted:
+            # Sort by reference offset position
+            order = target.starts[:, ref_col].argsort(kind='mergesort')
+            target.lengths = target.lengths[order]
+            target.starts = target.starts[order]
+            target.strands = target.strands[order]
+            if target.extra_fields is not None:
+                target.extra_fields = [target.extra_fields[i] for i in order]
+        
+        return target
     
     @property
     def num_mums(self):
@@ -490,6 +519,11 @@ class MUMdata:
             # Single index - slice only rows
             row_indices = indices
             col_indices = slice(None)
+
+        # Keep 2D shape for starts/strands when selecting a single column.
+        # NumPy squeezes dimensions on scalar indexing, which breaks num_seqs.
+        if isinstance(col_indices, (int, np.integer)):
+            col_indices = [int(col_indices)]
         
         # Apply indexing directly (numpy handles all the cases)
         new_lengths = self.lengths[row_indices]
@@ -522,13 +556,35 @@ class MUMdata:
         if isinstance(idx, (int, np.integer)):
             # Single MUM access - return MUM object
             return MUM(self.lengths[idx], self.starts[idx], self.strands[idx])
-        else:
-            # Multiple MUMs access - return new MUMdata object using slice method
+
+        # 2D indexing: mumdata[rows, cols]
+        if isinstance(idx, tuple):
+            if len(idx) != 2:
+                raise ValueError("Too many indices for 2D slicing")
+            row_indices, col_indices = idx
+
+            row_is_scalar = isinstance(row_indices, (int, np.integer))
+            col_is_scalar = isinstance(col_indices, (int, np.integer))
+
+            # Scalar row -> return a MUM (optionally with a subset of sequences)
+            if row_is_scalar:
+                if col_is_scalar:
+                    raise TypeError(
+                        "Scalar row+col indexing is not supported; use mumdata[i].starts[j] "
+                        "(or mumdata.starts[i, j]) instead."
+                    )
+                i = int(row_indices)
+                return MUM(self.lengths[i], self.starts[i, col_indices], self.strands[i, col_indices])
+
+            # Otherwise return a MUMdata slice (including scalar column -> 1-column MUMdata)
             return self.slice(idx)
+
+        # Multiple MUMs access - return new MUMdata object using slice method
+        return self.slice(idx)
 
     def __repr__(self):
         """String representation"""
-        return (f"MUMdata(num_mums={self.num_mums}, num_seqs={self.num_seqs}")
+        return (f"MUMdata(num_mums={self.num_mums}, num_seqs={self.num_seqs})")
     
     def __str__(self):
         """Human-readable string representation"""

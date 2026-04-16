@@ -25,6 +25,9 @@
 #ifndef _PFP_HH
 #define _PFP_HH
 
+#include <string>
+#include <utility>
+
 #include <common.hpp>
 
 #include <sdsl/rmq_support.hpp>
@@ -34,8 +37,9 @@ extern "C" {
     #include<gsacak.h>
 }
 
-#include<dictionary.hpp>
-#include<parse.hpp>
+#include <ref_builder.hpp>
+#include <dictionary.hpp>
+#include <parse.hpp>
 
 class pf_parsing{
 public:
@@ -43,8 +47,8 @@ public:
   dictionary dict;
   parse pars;
   // std::vector<uint_t> freq;
-  size_t n; // Size of the text
-  size_t w; // Size of the window
+  size_t n = 0; // Size of the text
+  size_t w = 0; // Size of the window
 
   std::vector<size_t> s_lcp_T; // LCP array of T sampled in corrispondence of the beginning of each phrase.
   sdsl::rmq_succinct_sct<> rmq_s_lcp_T;
@@ -62,41 +66,23 @@ public:
   typedef size_t size_type;
 
   // Default constructor for load
-  pf_parsing() {}
-
-  pf_parsing(std::vector<uint8_t> &d_,
-             std::vector<uint32_t> &p_,
-             std::vector<uint_t> &freq_,
-             size_t w_) : 
-            dict(d_, w_),
-            pars(p_, dict.n_phrases() + 1),
-            // freq(freq_),
-            s_lcp_T(1,0),
-            pos_T(1,0),
-            // ilist(pars.p.size()),
-            // ilist_s(pars.p.size()+ 1, 0),
-            w(w_)
-  {
-    // Compute the length of the string;
-    compute_n();
-
-    // verbose("Computing b_p");
-    // _elapsed_time(compute_b_p());
-
-    // Clear unnecessary elements
-    clear_unnecessary_elements();
+  pf_parsing() {
+    s_lcp_T.assign(1, 0);
+    pos_T.assign(1, 0);
   }
 
-  pf_parsing( std::string filename, size_t w_):
-              dict(filename, w_),
-              pars(filename,dict.n_phrases()+1),
-              // freq(),
-              s_lcp_T(1,0),
-              pos_T(1,0),
-              // ilist(pars.p.size()),
-              // ilist_s(pars.p.size()+ 1, 0),
-              w(w_)
-  {
+  /// Steal in-memory dict/parse from RefBuilder (moves vectors into this object). Clears rb buffers / flag.
+  void build_from_ref_builder(RefBuilder& rb, size_t w_) {
+    if (!rb.has_in_memory_pfp)
+      error("build_from_ref_builder: RefBuilder has no in-memory PFP data");
+    w = w_;
+    s_lcp_T.assign(1, 0);
+    pos_T.assign(1, 0);
+
+    dict.init_from_memory(std::move(rb.pfp_dict_data), w_);
+    pars.init_from_memory(std::move(rb.pfp_parse_data), dict.n_phrases() + 1);
+    rb.has_in_memory_pfp = false;
+
     // Compute the length of the string;
     compute_n();
 
@@ -107,15 +93,36 @@ public:
     _elapsed_time(compute_s_lcp_T());
 
     std::vector<uint64_t>().swap(dict.phrase_to_rank);
-    // dict.isaD.clear(); 
-    // dict.isaD.shrink_to_fit();
 
     pars.compute_freq();
     pars.compute_ilist();
 
-    print_sizes();
+    // Clear unnecessary elements
+    clear_unnecessary_elements();
+  }
 
-    print_stats();
+  /// Load PREFIX.dict / PREFIX.parse from disk.
+  void build_from_prefix_files(const std::string& filename_prefix, size_t w_) {
+    w = w_;
+    s_lcp_T.assign(1, 0);
+    pos_T.assign(1, 0);
+
+    dict.init_from_file(filename_prefix, w_);
+    pars.init_from_file(filename_prefix, dict.n_phrases() + 1);
+
+    // Compute the length of the string;
+    compute_n();
+
+    verbose("Computing pos_T");
+    _elapsed_time(compute_pos_T());
+
+    verbose("Computing s_lcp_T");
+    _elapsed_time(compute_s_lcp_T());
+
+    std::vector<uint64_t>().swap(dict.phrase_to_rank);
+
+    pars.compute_freq();
+    pars.compute_ilist();
 
     // Clear unnecessary elements
     clear_unnecessary_elements();
@@ -202,12 +209,12 @@ public:
   // Customized Kasai et al.
   void compute_s_lcp_T()
   {
-    size_t n = pars.saP.size();
-    s_lcp_T.resize(n, 0);
+    size_t n_sa = pars.saP.size();
+    s_lcp_T.resize(n_sa, 0);
 
     size_t l = 0;
     size_t lt = 0;
-    for (size_t i = 0; i < n; ++i)
+    for (size_t i = 0; i < n_sa; ++i)
     {
       // if i is the last character LCP is not defined
       size_t k = pars.isaP[i];

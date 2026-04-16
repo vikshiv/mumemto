@@ -10,7 +10,9 @@
 #define REF_BUILD_H
 
 #include <string>
+#include <cstdint>
 #include <sdsl/bit_vectors.hpp>
+#include <vector>
 
 class RefBuilder {
 public:
@@ -24,11 +26,20 @@ public:
 
     size_t num_docs = 0;
     size_t total_length = 0;
-    
+    std::vector<uint8_t> pfp_dict_data;
+    std::vector<uint32_t> pfp_parse_data;
+    bool has_in_memory_pfp = false;
+
+    void rev_comp(std::string &seq);
+
     RefBuilder(std::string input_data, std::string output_prefix, bool use_rcomp);
+    RefBuilder(const std::vector<std::string>& input_files, std::string output_prefix, bool use_rcomp);
     RefBuilder(std::string output_prefix, bool use_rcomp);
-    int build_input_file(size_t w, size_t p, bool probing, bool keep_seqs);
+    RefBuilder(const std::vector<std::vector<size_t>>& lengths, bool use_rcomp);
     
+    int build_input_file(size_t w, size_t p, bool probing, bool keep_seqs, bool write_pfp_files=false);
+    int build_input_file_lib(const std::vector<std::vector<std::string>>& sequences, bool keep_seqs);      
+
     // only used for direct_gsacak
     std::vector<uint8_t> text;
 

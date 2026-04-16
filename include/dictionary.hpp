@@ -26,6 +26,8 @@
 #define _PFP_DICTIONARY_HH
 
 #include <queue>
+#include <string>
+#include <utility>
 
 #include <common.hpp>
 
@@ -53,36 +55,23 @@ public:
   typedef size_t size_type;
 
   // default constructor for load.
-  dictionary() {}
+  dictionary() = default;
 
-  dictionary( std::vector<uint8_t>& d_,
-              size_t w ):
-              d(d_)
-  {
+  /// Raw .dict bytes (same as read from disk before padding); \p w is the PFP window.
+  void init_from_memory(std::vector<uint8_t>&& bytes, size_t w) {
+    d = std::move(bytes);
+    assert(d[0] == Dollar);
+    prepend_dollar_padding(w);
     build();
-
   }
 
-  dictionary(std::string filename,
-             size_t w)
-  {
+  /// Load PREFIX.dict; same normalization as init_from_memory.
+  void init_from_file(const std::string& filename_prefix, size_t w) {
     // Building dictionary from file
-    std::string tmp_filename = filename + std::string(".dict");
-
+    std::string tmp_filename = filename_prefix + std::string(".dict");
     read_file(tmp_filename.c_str(), d);
     assert(d[0] == Dollar);
-
-    // Prepending w dollars to d
-    // 1. Count how many dollars there are
-    int i = 0;
-    int n_dollars = 0;
-
-    while(i < d.size() && d[i++] == Dollar)
-      ++n_dollars;
-
-    std::vector<uint8_t> dollars(w-n_dollars,Dollar);
-    d.insert(d.begin(), dollars.begin(),dollars.end());
-
+    prepend_dollar_padding(w);
     build();
   }
 
@@ -167,8 +156,6 @@ public:
     
   }
 
-  
-
   // Serialize to a stream.
   size_type serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const
   {
@@ -200,10 +187,18 @@ public:
     rank_b_d.load(in, &b_d);
     select_b_d.load(in, &b_d);
   }
+
+private:
+  /// Match on-disk .dict layout: prepend Dollar until there are \p w leading dollars.
+  void prepend_dollar_padding(size_t w) {
+    // Prepending w dollars to d
+    // 1. Count how many dollars at the start (must use size_t: d.size() can exceed INT_MAX)
+    size_t n_dollars = 0;
+    while (n_dollars < d.size() && d[n_dollars] == Dollar)
+      ++n_dollars;
+    std::vector<uint8_t> dollars(w - n_dollars, Dollar);
+    d.insert(d.begin(), dollars.begin(), dollars.end());
+  }
 };
-
-
-
-
 
 #endif /* end of include guard: _PFP_DICTIONARY_HH */

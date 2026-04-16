@@ -37,7 +37,7 @@ char comp_tab[] = {
 	'p', 'q', 'y', 's', 'a', 'a', 'b', 'w', 'x', 'r', 'z', 123, 124, 125, 126, 127
 };
 
-void rev_comp(std::string &seq) {
+void RefBuilder::rev_comp(std::string &seq) {
     int c0, c1;
     for (size_t i = 0; i < seq.length()>>1; ++i) { // reverse complement sequence
         c0 = comp_tab[(int)seq[i]];
@@ -107,6 +107,33 @@ RefBuilder::RefBuilder(std::string input_data, std::string output_prefix,
     if (input_files.size() <= 1) {
         FATAL_ERROR("Multiple FASTA inputs required. Perhaps split a multi-FASTA into multiple files?");}
 
+    this->num_docs = input_files.size();
+}
+
+RefBuilder::RefBuilder(const std::vector<std::string>& files, std::string output_prefix,
+                       bool use_rcomp)
+    : use_revcomp(use_rcomp), output_prefix(output_prefix) {
+    /* Constructor for positional FASTA inputs (no filelist file). */
+    std::vector<std::string> unique_files;
+    std::unordered_set<std::string> seen;
+    for (const auto& file : files) {
+        if (!is_file(file)) {
+            FATAL_ERROR("The following file path is not valid: %s", file.data());
+        }
+        if (!endsWith(file, ".fa") && !endsWith(file, ".fasta") && !endsWith(file, ".fna") &&
+            !endsWith(file, ".fa.gz") && !endsWith(file, ".fasta.gz") && !endsWith(file, ".fna.gz")) {
+            FATAL_ERROR("The following input-file is not a FASTA file: %s", file.data());
+        }
+
+        std::string normalized = std::filesystem::absolute(file).lexically_normal().string();
+        if (seen.insert(normalized).second) {
+            unique_files.push_back(normalized);
+        }
+    }
+    input_files = std::move(unique_files);
+    if (input_files.size() <= 1) {
+        FATAL_ERROR("Multiple FASTA inputs required. Perhaps split a multi-FASTA into multiple files?");
+    }
     this->num_docs = input_files.size();
 }
 
@@ -181,10 +208,12 @@ void RefBuilder::write_lengths_file() {
     outfile.close();
 }
 
-int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = false, bool keep_seqs = false) {
+int RefBuilder::build_input_file(size_t w, size_t p, bool probing, bool keep_seqs, bool write_pfp_files) {
     if (!from_parse) {
         // Declare needed parameters for reading/writing
-        pfparser parser(this->output_prefix, w, p, probing);
+        
+        //TODO: remove parse_old or don't instantiate pfparser at all if keep_seqs
+        pfparser parser(this->output_prefix, w, p, probing, write_pfp_files);
         gzFile gzfp; kseq_t* seq;
         std::vector<std::string> seq_vec;
         std::vector<size_t> temp_lengths;
@@ -270,11 +299,84 @@ int RefBuilder::build_input_file(size_t w = 10, size_t p = 100, bool probing = f
         // Write final phrase to file, sort dictionary, and remap final parse file
         if (!keep_seqs) {
             parser.finish_parse();
+            pfp_dict_data = parser.take_dict_data();
+            pfp_parse_data = parser.take_parse_data();
+            has_in_memory_pfp = true;
         }
         // Write out lengths file
         this->write_lengths_file();
     }
 
+    // build the bv
+    this->build_bv();
+
+    return 0;
+}
+
+// Code for the library version of the constructor and build_input_file_lib function
+
+RefBuilder::RefBuilder(const std::vector<std::vector<size_t>>& lengths, bool use_rcomp): use_revcomp(use_rcomp) {
+    /* Alternative constructor for running from the lengths file */
+    output_prefix = "";
+    for (const auto& length : lengths) {
+        size_t cur_length = 1; // adds 1 for the terminator
+        for (const auto& l : length) { cur_length += l; }
+        if (use_revcomp) { cur_length *= 2; }
+        seq_lengths.push_back(cur_length);
+    }
+    this->num_docs = lengths.size();
+}
+
+int RefBuilder::build_input_file_lib(const std::vector<std::vector<std::string>>& sequences, bool keep_seqs) {        
+    pfparser parser(this->output_prefix, 10, 100, true, false);
+    std::vector<std::string> seq_vec;
+    std::vector<size_t> temp_lengths;
+    std::vector<std::string> temp_names;
+    
+    for (auto i = 0; i < sequences.size(); i++) {
+        seq_vec = sequences[i];
+        if (keep_seqs) {
+            for (auto i = 0; i < seq_vec.size(); ++i) {
+                // store uppercase forward sequence (gsacak needs stored text)
+                const auto& s = seq_vec.at(i);
+                for (unsigned char c : s) this->text.push_back(static_cast<uint8_t>(std::toupper(c)));
+            }
+            this->text.push_back('$');
+        }
+        else {
+            for (auto i = 0; i < seq_vec.size(); ++i) {
+                parser.process_string(seq_vec.at(i));
+            }
+            parser.process_string("$");
+        }
+        if (use_revcomp) {
+            if (keep_seqs) {
+                for (auto i = seq_vec.size(); i-- != 0; ) {
+                    // store uppercase reverse-complement without allocating a temp string
+                    const auto& s = seq_vec.at(i);
+                    for (size_t j = s.size(); j-- != 0; ) {
+                        unsigned char c = static_cast<unsigned char>(s[j]);
+                        c = comp_tab[c];
+                        this->text.push_back(static_cast<uint8_t>(std::toupper(c)));
+                    }
+                }
+                this->text.push_back('$');
+            }
+            else {
+                for (auto i = seq_vec.size(); i-- != 0; ) {
+                    parser.process_string_revcomp(seq_vec.at(i));
+                }
+                parser.process_string("$");
+            }
+        }
+    }
+    // Write final phrase to file, sort dictionary, and remap final parse file
+    if (!keep_seqs) {
+        parser.finish_parse();
+        pfp_dict_data = parser.take_dict_data();
+        pfp_parse_data = parser.take_parse_data();
+        has_in_memory_pfp = true;
+    }
     // build the bv
     this->build_bv();
 

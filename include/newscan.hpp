@@ -29,6 +29,7 @@
 #include <random>
 #include <vector>
 #include <map>
+#include <utility>
 #ifdef GZSTREAM
 #include <gzstream.h>
 #endif
@@ -204,7 +205,9 @@ class pfparser {
 private:
     map<uint64_t, word_stats> wordFreq;
     string file_prefix;
-    FILE* tmp_parse_file;
+    vector<uint64_t> parse_hashes;
+    vector<uint32_t> parse_ranks;
+    vector<uint8_t> dict_data;
 
     // intermediate values for parsing
     string word;
@@ -214,32 +217,38 @@ private:
     bool probing;
     size_t w;
     size_t p;
+    bool write_to_disk;
     
     // Helper method to save and update words
     void save_update_word(string& window);
 
 public:
-    pfparser(string file_prefix, size_t w, size_t p, bool probing);
+    pfparser(string file_prefix, size_t w, size_t p, bool probing, bool write_to_disk=false);
     ~pfparser();
     
     // Process a single string and accumulate results
     void process_string(const string& input_string);
+    // Process reverse-complement of a string (scans backward, complements, uppercases)
+    void process_string_revcomp(const string& input_string);
         
     // Run the second pass (dictionary construction and remapping)
     void finish_parse();
 
+    // Access in-memory output (valid after finish_parse); move-out empties parser buffers.
+    vector<uint8_t> take_dict_data();
+    vector<uint32_t> take_parse_data();
+
 };
 
 // Constructor
-pfparser::pfparser(string file_prefix, size_t w, size_t p, bool probing) :
+pfparser::pfparser(string file_prefix, size_t w, size_t p, bool probing, bool write_to_disk) :
       file_prefix(file_prefix),
       w(w), 
       p(p), 
       probing(probing),
-      krw(w) {
+      krw(w),
+      write_to_disk(write_to_disk) {
     // Initialize any necessary state
-    
-    tmp_parse_file = open_aux_file(file_prefix.c_str(),EXTPARS0,"wb");
     // init first word in the parsing with a Dollar char
     word.append(1,Dollar);
 }
@@ -291,7 +300,7 @@ void pfparser::save_update_word(string& window) {
         }
     }
 
-    if(fwrite(&hash, sizeof(hash), 1, tmp_parse_file) != 1) die("parse write error");
+    parse_hashes.push_back(hash);
       
     // Keep only the overlapping part of the window
     window.erase(0, window.size() - w);
@@ -304,7 +313,37 @@ void pfparser::process_string(const string& input_string) {
     // Main processing logic for the input string    
     // Process each character in the input string
     for (size_t i = 0; i < input_string.length(); i++) {
-        c = input_string[i];
+        c = static_cast<unsigned char>(input_string[i]);
+        c = std::toupper(c);
+        if(c <= Dollar) { cerr << "Invalid char found in input string: no additional chars will be read\n"; break;}
+        word.append(1, c);
+        hash = krw.addchar(c);
+        if(hash % p == 0) {
+            save_update_word(word);
+        }
+    }
+}
+
+// Complement table (seqtk): ASCII->complement (handles upper/lower).
+static const unsigned char pfparser_comp_tab[128] = {
+      0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14,  15,
+     16,  17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  29,  30,  31,
+     32,  33,  34,  35,  36,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,
+     48,  49,  50,  51,  52,  53,  54,  55,  56,  57,  58,  59,  60,  61,  62,  63,
+     64, 'T', 'V', 'G', 'H', 'E', 'F', 'C', 'D', 'I', 'J', 'M', 'L', 'K', 'N', 'O',
+    'P', 'Q', 'Y', 'S', 'A', 'A', 'B', 'W', 'X', 'R', 'Z',  91,  92,  93,  94,  95,
+     64, 't', 'v', 'g', 'h', 'e', 'f', 'c', 'd', 'i', 'j', 'm', 'l', 'k', 'n', 'o',
+    'p', 'q', 'y', 's', 'a', 'a', 'b', 'w', 'x', 'r', 'z', 123, 124, 125, 126, 127
+};
+
+void pfparser::process_string_revcomp(const string& input_string) {
+    uint64_t hash;
+    int c;
+    // Scan backwards, complement, uppercase
+    for (size_t i = input_string.length(); i-- != 0; ) {
+        c = static_cast<unsigned char>(input_string[i]);
+        c = pfparser_comp_tab[c];
+        c = std::toupper(static_cast<unsigned char>(c));
         if(c <= Dollar) { cerr << "Invalid char found in input string: no additional chars will be read\n"; break;}
         word.append(1, c);
         hash = krw.addchar(c);
@@ -319,9 +358,6 @@ void pfparser::finish_parse() {
     // virtually add w null chars at the end of the file and add the last word in the dict
     word.append(w, Dollar);
     save_update_word(word);
-    // close input and output files
-    if(fclose(tmp_parse_file)!=0) die("Error closing parse file");
-
     // Check # distinct words
     uint64_t totDWord = wordFreq.size();
     if(totDWord > MAX_DISTINCT_WORDS) {
@@ -335,22 +371,63 @@ void pfparser::finish_parse() {
     dictArray.reserve(totDWord);
     
     // Fill array
+    // exact dict size: phrase bytes + EndOfWord each + final EndOfDict
+    size_t dict_byte_capacity = 1;
     for (auto& x: wordFreq) {
+        dict_byte_capacity += x.second.str.size() + 1;
         dictArray.push_back(&x.second);
     }
       
     // Sort dictionary
     sort(dictArray.begin(), dictArray.end(), pword_statsCompare);
-    
-    // Write plain dictionary and occ file, also compute rank for each hash
-    writeDictOcc(file_prefix, wordFreq, dictArray);
+
+    // Build dictionary data in memory and compute rank for each hash
+    dict_data.clear();
+    dict_data.reserve(dict_byte_capacity);
+    word_int_t wrank = 1;
+    for (auto x : dictArray) {
+        const string& current_word = x->str;
+        dict_data.insert(dict_data.end(), current_word.begin(), current_word.end());
+        dict_data.push_back(EndOfWord);
+        x->rank = wrank;
+        wrank++;
+    }
+    dict_data.push_back(EndOfDict);
     dictArray.clear(); // reclaim memory
-    
-    // Remap parse file
-    remapParse(file_prefix, wordFreq);
+
+    // Remap parse in memory
+    parse_ranks.clear();
+    parse_ranks.reserve(parse_hashes.size());
+    for (auto hash : parse_hashes) {
+        parse_ranks.push_back(wordFreq.at(hash).rank);
+    }
+    parse_hashes.clear();
+
+    // Optional write-out of parse + dict files
+    if (write_to_disk) {
+        FILE *fdict = open_aux_file(file_prefix.c_str(), EXTDICT, "wb");
+        size_t dict_written = fwrite(dict_data.data(), 1, dict_data.size(), fdict);
+        if (dict_written != dict_data.size()) die("Error writing to DICT file");
+        if (fclose(fdict) != 0) die("Error closing DICT file");
+
+        FILE *fparse = open_aux_file(file_prefix.c_str(), EXTPARSE, "wb");
+        if (!parse_ranks.empty()) {
+            size_t parse_written = fwrite(parse_ranks.data(), sizeof(parse_ranks[0]), parse_ranks.size(), fparse);
+            if (parse_written != parse_ranks.size()) die("Error writing to parse file");
+        }
+        if (fclose(fparse) != 0) die("Error closing parse file");
+    }
 
     // Clear memory after parsing is complete
     wordFreq.clear();
+}
+
+vector<uint8_t> pfparser::take_dict_data() {
+    return std::move(dict_data);
+}
+
+vector<uint32_t> pfparser::take_parse_data() {
+    return std::move(parse_ranks);
 }
 
 
