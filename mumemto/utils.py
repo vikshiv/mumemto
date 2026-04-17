@@ -351,7 +351,7 @@ class MUMdata:
         
         if not already_sorted:
             # Sort by reference offset position
-            order = target.starts[:, ref_col].argsort(kind='mergesort')
+            order = target.starts[:, ref_col].argsort()
             target.lengths = target.lengths[order]
             target.starts = target.starts[order]
             target.strands = target.strands[order]
