@@ -116,8 +116,7 @@ endif()
 ## Add sdsl
 FetchContent_Declare(
   sdsl
-  # GIT_REPOSITORY https://github.com/elarielcl/sdsl-lite.git
-  GIT_REPOSITORY https://github.com/simongog/sdsl-lite
+  GIT_REPOSITORY https://github.com/vikshiv/sdsl-lite.git
 )
 
 FetchContent_GetProperties(sdsl)
