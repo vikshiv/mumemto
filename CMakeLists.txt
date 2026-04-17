@@ -1,4 +1,6 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.13)
+# CMake 4+: allow FetchContent deps that still set cmake_minimum_required(2.x) (e.g. sdsl-lite).
+set(CMAKE_POLICY_VERSION_MINIMUM "3.5" CACHE STRING "")
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 # ------------------------------------------------------------------------------
