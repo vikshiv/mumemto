@@ -13,12 +13,13 @@ If you use Mumemto, please cite:
 
 If you use the partition-merging approach (for parallelization, etc.), please cite:
 
-> Shivakumar, V. S., & Langmead, B. (2025). Partitioned Multi-MUM finding for scalable pangenomics. bioRxiv, 2025-05.
+> Shivakumar, V. S., & Langmead, B. (2026). Partitioned multi-MUM finding for scalable pangenomics with MumemtoM. Genome Research, 36(2), 397-404.
 
 Paper available at [https://genomebiology.biomedcentral.com/articles/10.1186/s13059-025-03644-0](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-025-03644-0).
 
-Merging algorithm described in [https://www.biorxiv.org/lookup/doi/10.1101/2025.05.20.654611](https://www.biorxiv.org/lookup/doi/10.1101/2025.05.20.654611).
+Merging algorithm described in [https://genome.cshlp.org/content/36/2/397](https://genome.cshlp.org/content/36/2/397).
 
+*** (New 07/2026) See the companion tool Shredtools ([Github](https://github.com/vikshiv/shredtools)) ([preprint](https://www.biorxiv.org/content/biorxiv/early/2026/07/08/2026.07.03.736354.full.pdf)) ***
 
 ### For detailed usage, see the [Mumemto wiki](https://github.com/vikshiv/mumemto/wiki)
 
