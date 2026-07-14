@@ -103,6 +103,17 @@ def run_convert(args):
             print(f"Error: mumemto not installed. Please run mumemto/mum_to_bumbl.py directly.", file=sys.stderr)
             sys.exit(1)
         subprocess.run([sys.executable, script] + args)
+
+def run_view(args):
+    """View a bumbl file as text MUMs (alias for convert -b)."""
+    if not args or args[0] in ('-h', '--help'):
+        print("Usage: mumemto view BUMBL_FILE", file=sys.stderr)
+        print("\nView a .bumbl file as text MUMs (equivalent to: mumemto convert -b BUMBL_FILE).", file=sys.stderr)
+        sys.exit(0 if args and args[0] in ('-h', '--help') else 1)
+    if len(args) > 1:
+        print("Error: mumemto view takes a single bumbl file argument.", file=sys.stderr)
+        sys.exit(1)
+    run_convert(['-b', args[0]])
         
 def run_extract(args):
     """Extract MUMs to a FASTA file"""
@@ -176,6 +187,7 @@ def main():
               "\tcoverage\t\tcompute multi-MUM coverage\n" + 
               "\tcollinear\t\tfind collinear blocks of MUMs\n" +
               "\tconvert\t\t\tconvert MUMs to BUMs and vice versa\n" +
+              "\tview\t\t\tview a bumbl file as text MUMs\n" +
               "\textract\t\t\textract MUMs to a FASTA file\n" + 
               "\tlabel\t\t\tlabel MUMs with contig information\n" +
               "\tlengths\t\t\trecompute sequence lengths from a filelist\n" +
@@ -201,6 +213,8 @@ def main():
         run_collinear(args)
     elif command == 'convert':
         run_convert(args)
+    elif command == 'view':
+        run_view(args)
     elif command == 'extract':
         run_extract(args)
     elif command == 'label':
