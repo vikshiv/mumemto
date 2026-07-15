@@ -11,7 +11,7 @@ requires-python = ">=3.8"
 dependencies = ["numpy"]
 
 [tool.scikit-build]
-cmake.minimum-version = "3.18"
+cmake.version = ">=3.18"
 cmake.verbose = true
 build-dir = "build/{wheel_tag}"
 wheel.packages = ["python/mumemto"]
