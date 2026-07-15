@@ -12,6 +12,5 @@ dependencies = ["numpy"]
 
 [tool.scikit-build]
 cmake.version = ">=3.18"
-cmake.verbose = true
 build-dir = "build/{wheel_tag}"
 wheel.packages = ["python/mumemto"]
