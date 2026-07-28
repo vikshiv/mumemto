@@ -11,12 +11,15 @@ Schema (embedded in each output file; trailing text is descriptive comment)::
     O L 1 3 INT length: MUM match length
     D P 1 8 INT_LIST positions: abs start per genome (-1 = absent)
     D S 1 6 STRING strands: +/- per genome (same order as P)
-    D B 1 3 INT block: collinear block id (-1 if none)
-    D X 1 6 STRING extra: optional trailing fields from .mums
+    D B 1 3 INT block: collinear block id (optional; omitted if no blocks)
+    D X 1 6 STRING extra: optional trailing fields from .mums (omitted if none)
     D G 1 3 INT genome: total genome length (sum of contigs)
     D F 1 6 STRING fasta: path to genome FASTA
     D C 1 8 INT_LIST contigs: contig lengths within genome
     D N 1 11 STRING_LIST names: contig names within genome
+
+``B`` and ``X`` are optional: their schema lines and data lines are written only
+when the input has collinear blocks or extra fields, respectively.
 
 Note: ONEcode ``>`` / ``<`` header lines reference other ONEcode files (forward /
 backward object deps), not a list of fasta paths. Genome paths are stored as
@@ -174,8 +177,10 @@ def write_1mum(outfile, mums, paths, contig_lengths, contig_names, command, verb
         f.write("~ O L 1 3 INT length: MUM match length\n")
         f.write("~ D P 1 8 INT_LIST positions: abs start per genome (-1 = absent)\n")
         f.write("~ D S 1 6 STRING strands: +/- per genome (same order as P)\n")
-        f.write("~ D B 1 3 INT block: collinear block id (-1 if none)\n")
-        f.write("~ D X 1 6 STRING extra: optional trailing fields from .mums\n")
+        if has_blocks:
+            f.write("~ D B 1 3 INT block: collinear block id (optional; omitted if no blocks)\n")
+        if has_extras:
+            f.write("~ D X 1 6 STRING extra: optional trailing fields from .mums\n")
         f.write("~ D G 1 3 INT genome: total genome length (sum of contigs)\n")
         f.write("~ D F 1 6 STRING fasta: path to genome FASTA\n")
         f.write("~ D C 1 8 INT_LIST contigs: contig lengths within genome\n")
