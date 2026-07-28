@@ -5,18 +5,18 @@ Primary type is ``mum``. This script writes ASCII ONEcode content to a ``.1mum``
 file for convenience; ONEcode's usual ASCII/binary pair would be ``.mum`` /
 ``.1mum``, and binary form can later be produced with ONEview/ONElib.
 
-Schema (embedded in each output file)::
+Schema (embedded in each output file; trailing text is descriptive comment)::
 
     P 3 mum
-    O L 1 3 INT              # MUM match Length
-    D P 1 8 INT_LIST         # Positions (abs starts per genome; -1 = absent)
-    D S 1 6 STRING           # Strands as +/- string
-    D B 1 3 INT              # collinear Block id (-1 if none)
-    D X 1 6 STRING           # optional eXtra fields from .mums
-    D G 1 3 INT              # Genome total length
-    D F 1 6 STRING           # Fasta path
-    D C 1 8 INT_LIST         # Contig lengths
-    D N 1 11 STRING_LIST     # contig Names
+    O L 1 3 INT length: MUM match length
+    D P 1 8 INT_LIST positions: abs start per genome (-1 = absent)
+    D S 1 6 STRING strands: +/- per genome (same order as P)
+    D B 1 3 INT block: collinear block id (-1 if none)
+    D X 1 6 STRING extra: optional trailing fields from .mums
+    D G 1 3 INT genome: total genome length (sum of contigs)
+    D F 1 6 STRING fasta: path to genome FASTA
+    D C 1 8 INT_LIST contigs: contig lengths within genome
+    D N 1 11 STRING_LIST names: contig names within genome
 
 Note: ONEcode ``>`` / ``<`` header lines reference other ONEcode files (forward /
 backward object deps), not a list of fasta paths. Genome paths are stored as
@@ -171,15 +171,15 @@ def write_1mum(outfile, mums, paths, contig_lengths, contig_names, command, verb
         )
 
         f.write(f"~ P {one_string('mum')}\n")
-        f.write("~ O L 1 3 INT\n")
-        f.write("~ D P 1 8 INT_LIST\n")
-        f.write("~ D S 1 6 STRING\n")
-        f.write("~ D B 1 3 INT\n")
-        f.write("~ D X 1 6 STRING\n")
-        f.write("~ D G 1 3 INT\n")
-        f.write("~ D F 1 6 STRING\n")
-        f.write("~ D C 1 8 INT_LIST\n")
-        f.write("~ D N 1 11 STRING_LIST\n")
+        f.write("~ O L 1 3 INT length: MUM match length\n")
+        f.write("~ D P 1 8 INT_LIST positions: abs start per genome (-1 = absent)\n")
+        f.write("~ D S 1 6 STRING strands: +/- per genome (same order as P)\n")
+        f.write("~ D B 1 3 INT block: collinear block id (-1 if none)\n")
+        f.write("~ D X 1 6 STRING extra: optional trailing fields from .mums\n")
+        f.write("~ D G 1 3 INT genome: total genome length (sum of contigs)\n")
+        f.write("~ D F 1 6 STRING fasta: path to genome FASTA\n")
+        f.write("~ D C 1 8 INT_LIST contigs: contig lengths within genome\n")
+        f.write("~ D N 1 11 STRING_LIST names: contig names within genome\n")
 
         f.write(f"# G {n_genomes}\n")
         f.write(f"# F {n_genomes}\n")
