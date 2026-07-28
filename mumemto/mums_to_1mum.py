@@ -8,15 +8,19 @@ file for convenience; ONEcode's usual ASCII/binary pair would be ``.mum`` /
 Schema (embedded in each output file)::
 
     P 3 mum
-    O M 1 3 INT              # MUM match length
-    D A 1 8 INT_LIST         # abs starts per genome (-1 = absent)
-    D Z 1 6 STRING           # strands as +/- string
-    D B 1 3 INT              # collinear block id (-1 if none)
-    D X 1 6 STRING           # optional extra fields from .mums
-    D S 1 3 INT              # genome total length
-    D P 1 6 STRING           # genome fasta path
-    D C 1 8 INT_LIST         # contig lengths
-    D N 1 11 STRING_LIST     # contig names
+    O L 1 3 INT              # MUM match Length
+    D P 1 8 INT_LIST         # Positions (abs starts per genome; -1 = absent)
+    D S 1 6 STRING           # Strands as +/- string
+    D B 1 3 INT              # collinear Block id (-1 if none)
+    D X 1 6 STRING           # optional eXtra fields from .mums
+    D G 1 3 INT              # Genome total length
+    D F 1 6 STRING           # Fasta path
+    D C 1 8 INT_LIST         # Contig lengths
+    D N 1 11 STRING_LIST     # contig Names
+
+Note: ONEcode ``>`` / ``<`` header lines reference other ONEcode files (forward /
+backward object deps), not a list of fasta paths. Genome paths are stored as
+``F`` data lines instead.
 
 Requires a multilengths .lengths file; simple lengths format is rejected.
 """
@@ -167,50 +171,50 @@ def write_1mum(outfile, mums, paths, contig_lengths, contig_names, command, verb
         )
 
         f.write(f"~ P {one_string('mum')}\n")
-        f.write("~ O M 1 3 INT\n")
-        f.write("~ D A 1 8 INT_LIST\n")
-        f.write("~ D Z 1 6 STRING\n")
+        f.write("~ O L 1 3 INT\n")
+        f.write("~ D P 1 8 INT_LIST\n")
+        f.write("~ D S 1 6 STRING\n")
         f.write("~ D B 1 3 INT\n")
         f.write("~ D X 1 6 STRING\n")
-        f.write("~ D S 1 3 INT\n")
-        f.write("~ D P 1 6 STRING\n")
+        f.write("~ D G 1 3 INT\n")
+        f.write("~ D F 1 6 STRING\n")
         f.write("~ D C 1 8 INT_LIST\n")
         f.write("~ D N 1 11 STRING_LIST\n")
 
-        f.write(f"# S {n_genomes}\n")
-        f.write(f"# P {n_genomes}\n")
+        f.write(f"# G {n_genomes}\n")
+        f.write(f"# F {n_genomes}\n")
         f.write(f"# C {n_genomes}\n")
         f.write(f"# N {n_genomes}\n")
-        f.write(f"# M {n_mums}\n")
-        f.write(f"# A {n_mums}\n")
-        f.write(f"# Z {n_mums}\n")
+        f.write(f"# L {n_mums}\n")
+        f.write(f"# P {n_mums}\n")
+        f.write(f"# S {n_mums}\n")
         if has_blocks:
             f.write(f"# B {n_mums}\n")
         if has_extras:
             f.write(f"# X {n_mums}\n")
 
-        f.write(f"@ A {n_genomes}\n")
-        f.write(f"@ Z {n_genomes}\n")
+        f.write(f"@ P {n_genomes}\n")
+        f.write(f"@ S {n_genomes}\n")
         f.write(f"@ C {max_contigs}\n")
         if path_lens:
-            f.write(f"@ P {max(path_lens)}\n")
+            f.write(f"@ F {max(path_lens)}\n")
         if name_line_sums:
             f.write(f"@ N {max(name_line_sums)}\n")
         if extra_lens:
             f.write(f"@ X {max(extra_lens)}\n")
 
-        f.write(f"+ A {n_mums * n_genomes}\n")
-        f.write(f"+ Z {n_mums * n_genomes}\n")
+        f.write(f"+ P {n_mums * n_genomes}\n")
+        f.write(f"+ S {n_mums * n_genomes}\n")
         f.write(f"+ C {total_contigs}\n")
-        f.write(f"+ P {sum(path_lens)}\n")
+        f.write(f"+ F {sum(path_lens)}\n")
         f.write(f"+ N {sum(name_line_sums)}\n")
         if extra_lens:
             f.write(f"+ X {sum(extra_lens)}\n")
 
         # Data: genome catalog, then MUM objects
         for i in range(n_genomes):
-            f.write(f"S {genome_totals[i]}\n")
-            f.write(f"P {one_string(paths[i])}\n")
+            f.write(f"G {genome_totals[i]}\n")
+            f.write(f"F {one_string(paths[i])}\n")
             f.write(f"C {one_int_list(contig_lengths[i])}\n")
             f.write(f"N {one_string_list(contig_names[i])}\n")
 
@@ -221,9 +225,9 @@ def write_1mum(outfile, mums, paths, contig_lengths, contig_names, command, verb
                 ("+" if bool(strands[j]) else "-") if int(starts[j]) != -1 else "-"
                 for j in range(n_genomes)
             )
-            f.write(f"M {int(mums.lengths[i])}\n")
-            f.write(f"A {one_int_list(starts)}\n")
-            f.write(f"Z {one_string(strand_str)}\n")
+            f.write(f"L {int(mums.lengths[i])}\n")
+            f.write(f"P {one_int_list(starts)}\n")
+            f.write(f"S {one_string(strand_str)}\n")
             if has_blocks:
                 f.write(f"B {block_ids[i]}\n")
             if has_extras:
