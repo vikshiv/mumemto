@@ -5,9 +5,11 @@ Primary type is ``mum``. This script writes ASCII ONEcode content to a ``.1mum``
 file for convenience; ONEcode's usual ASCII/binary pair would be ``.mum`` /
 ``.1mum``, and binary form can later be produced with ONEview/ONElib.
 
+Output targets ONEcode major/minor **2.1** (header ``1 … 2 1``, provenance as a
+STRING_LIST of four strings, embedded schema without a ``~ P`` line).
+
 Schema (embedded in each output file; trailing text is descriptive comment)::
 
-    P 3 mum
     O L 1 3 INT length: MUM match length
     D P 1 8 INT_LIST positions: abs start per genome (-1 = absent)
     D S 1 6 STRING strands: +/- per genome (same order as P)
@@ -53,7 +55,9 @@ except ImportError:
     )
 
 SCRIPT_NAME = "mums_to_1mum"
-SCRIPT_VERSION = "0.1.0"
+SCRIPT_VERSION = "0.1.1"
+ONECODE_MAJOR = 2
+ONECODE_MINOR = 1
 
 
 def one_string(s: str) -> str:
@@ -165,15 +169,16 @@ def write_1mum(outfile, mums, paths, contig_lengths, contig_names, command, verb
         )
 
     with open(outfile, "w") as f:
-        # Header: primary type + provenance + schema + counts
-        f.write(f"1 {one_string('mum')} 1 0\n")
+        # Header: primary type + provenance + schema + counts (ONEcode 2.x)
+        f.write(f"1 {one_string('mum')} {ONECODE_MAJOR} {ONECODE_MINOR}\n")
         date = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+        # Provenance is a STRING_LIST of exactly 4 strings (prog, ver, cmd, date)
         f.write(
-            f"! {one_string(SCRIPT_NAME)} {one_string(SCRIPT_VERSION)} "
-            f"{one_string(command)} {one_string(date)}\n"
+            f"! {one_string_list([SCRIPT_NAME, SCRIPT_VERSION, command, date])}\n"
         )
+        f.write(".\n")
 
-        f.write(f"~ P {one_string('mum')}\n")
+        # Do not emit ~ P … — primary type is only on the 1-line; ~ lines are O/D/G only
         f.write("~ O L 1 3 INT length: MUM match length\n")
         f.write("~ D P 1 8 INT_LIST positions: abs start per genome (-1 = absent)\n")
         f.write("~ D S 1 6 STRING strands: +/- per genome (same order as P)\n")
@@ -185,6 +190,7 @@ def write_1mum(outfile, mums, paths, contig_lengths, contig_names, command, verb
         f.write("~ D F 1 6 STRING fasta: path to genome FASTA\n")
         f.write("~ D C 1 8 INT_LIST contigs: contig lengths within genome\n")
         f.write("~ D N 1 11 STRING_LIST names: contig names within genome\n")
+        f.write(".\n")
 
         f.write(f"# G {n_genomes}\n")
         f.write(f"# F {n_genomes}\n")
