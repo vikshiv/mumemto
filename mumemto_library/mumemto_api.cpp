@@ -150,10 +150,9 @@ class mem_finder_library{
                 bool curstrand = true; // '+' in the original output
                 if (revcomp && curpos >= doc_lens[curdoc]) {
                     curstrand = false; // '-' strand
-                    if (i == end)
-                        curpos = doc_lens[curdoc] + doc_lens[curdoc] - curpos - length;
-                    else
-                        curpos = doc_lens[curdoc] + doc_lens[curdoc] - curpos - length - 1;
+                    if (curpos + length >= (doc_lens[curdoc] + doc_lens[curdoc]))
+                        return 0;
+                    curpos = doc_lens[curdoc] + doc_lens[curdoc] - curpos - length - 1;
                 }
 
                 mem.offsets.push_back(static_cast<int64_t>(curpos));

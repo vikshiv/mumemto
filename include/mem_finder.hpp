@@ -220,12 +220,14 @@ protected:
         // size_t min_offset = -1;
         // char min_offset_strand;
 
-        for (size_t i = start; i < end; i++)
+        for (size_t i = start; i <= end; i++)
         {
             curdoc = da_buffer.at(i - buffer_start);
             curpos = sa_buffer.at(i - buffer_start) - doc_offsets[curdoc];
             if (revcomp && curpos >= doc_lens[curdoc]) {
                 curstrand = '-';
+                if (curpos + length >= (doc_lens[curdoc] + doc_lens[curdoc]))
+                    return 0;
                 curpos = doc_lens[curdoc] + doc_lens[curdoc] - curpos - length - 1;
             }
             else
@@ -236,22 +238,17 @@ protected:
             //     min_offset_strand = curstrand;
             // }
 
-            pos += std::to_string(curpos) + ",";
-            docs += std::to_string(curdoc) + ",";
-            strand += curstrand;
-            strand += ",";
+            if (i < end) {
+                pos += std::to_string(curpos) + ",";
+                docs += std::to_string(curdoc) + ",";
+                strand += curstrand;
+                strand += ",";
+            } else {
+                pos += std::to_string(curpos);
+                docs += std::to_string(curdoc);
+                strand += curstrand;
+            }
         }
-        curdoc = da_buffer.at(end - buffer_start);
-        curpos = sa_buffer.at(end - buffer_start) - doc_offsets[curdoc];
-        if (revcomp && curpos >= doc_lens[curdoc]) {
-            curstrand = '-';
-            curpos = doc_lens[curdoc] + doc_lens[curdoc] - curpos - length;
-        }
-        else
-            curstrand = '+';
-        pos += std::to_string(curpos);
-        docs += std::to_string(curdoc);
-        strand += curstrand;
 
         // if (revcomp && sa_buffer.at(end - buffer_start) < min_offset) {
         //     min_offset = sa_buffer.at(end - buffer_start);
