@@ -246,6 +246,54 @@ def get_contig_names(lengths_file):
     names.append(cur_name)
     return names
 
+
+def global_starts_to_contig(starts, multilengths):
+    """Convert concat-global MUM starts to contig-local starts + contig IDs.
+
+    Args:
+        starts: (n_mums, n_seqs) array of global starts (-1 = absent)
+        multilengths: list of per-genome contig length lists
+
+    Returns:
+        contig_ids: (n_mums, n_seqs) int32
+        local_starts: (n_mums, n_seqs) int64 (same as starts for absent MUMs)
+    """
+    n_mums, n_seqs = starts.shape
+    contig_ids = np.full((n_mums, n_seqs), -1, dtype=np.int32)
+    local_starts = starts.astype(np.int64, copy=True)
+    for g in range(n_seqs):
+        lens = np.asarray(multilengths[g], dtype=np.int64)
+        offsets = np.cumsum(lens)
+        left = np.hstack((np.array([0], dtype=np.int64), offsets[:-1]))
+        cid = np.searchsorted(offsets, starts[:, g], side='right')
+        # Clamp: global == total length would be past last contig
+        cid = np.clip(cid, 0, len(lens) - 1)
+        local = starts[:, g] - left[cid]
+        absent = starts[:, g] < 0
+        contig_ids[:, g] = cid
+        local_starts[:, g] = local
+        contig_ids[absent, g] = -1
+        local_starts[absent, g] = -1
+    return contig_ids, local_starts
+
+
+def ensure_contig_coords(mums, multilengths):
+    """Ensure MUMdata has contig-local starts and contig_ids.
+
+    If contig_ids already present, assume starts are already contig-local.
+    Otherwise convert from concat-global using multilengths.
+    Mutates mums in place; clears blocks (indices become invalid after coord change).
+    """
+    if mums.contig_ids is not None:
+        return mums
+    if multilengths is None:
+        raise ValueError("Contig coordinates require multilengths (.lengths with per-contig rows)")
+    contig_ids, local = global_starts_to_contig(mums.starts, multilengths)
+    mums.starts = local
+    mums.contig_ids = contig_ids
+    mums.blocks = None
+    return mums
+
 def unpack_flags(packed_value):
     """
     Unpack a uint16 value into individual flags.
@@ -299,6 +347,7 @@ class MUMdata:
         self.max_offset = np.iinfo(self.offset_dtype).max
         
         ### parse input file
+        self.contig_ids = None  # (n_mums x n_seqs) when contig-relative coords are present
         if mumfile.endswith('.bumbl'):
             self.lengths, self.starts, self.strands, self.blocks = self.parse_bums(
                 mumfile, 
@@ -309,7 +358,7 @@ class MUMdata:
             )
             self.extra_fields = None
         else:
-            self.lengths, self.starts, self.strands, self.blocks, self.extra_fields = self.parse_mums(
+            self.lengths, self.starts, self.strands, self.blocks, self.extra_fields, self.contig_ids = self.parse_mums(
                 mumfile, 
                 lenfilter, 
                 subsample,
@@ -357,6 +406,8 @@ class MUMdata:
             target.strands = target.strands[order]
             if target.extra_fields is not None:
                 target.extra_fields = [target.extra_fields[i] for i in order]
+            if target.contig_ids is not None:
+                target.contig_ids = target.contig_ids[order]
         
         return target
     
@@ -369,15 +420,21 @@ class MUMdata:
     def num_seqs(self):
         """Number of sequences in the dataset"""
         return self.starts.shape[1] if self.num_mums > 0 else 0
+
+    @property
+    def has_contig_coords(self):
+        """True if starts are contig-local and contig_ids are present."""
+        return self.contig_ids is not None
     
     @classmethod
-    def from_arrays(cls, lengths, starts, strands, blocks=None, extra_fields=None):
+    def from_arrays(cls, lengths, starts, strands, blocks=None, extra_fields=None, contig_ids=None):
         """Create a MUMdata object directly from arrays.
         
         Args:
             lengths: Array of MUM lengths
             starts: 2D array of start positions (num_mums x num_seqs)
             strands: 2D array of strand information (num_mums x num_seqs)
+            contig_ids: optional 2D array of contig indices (num_mums x num_seqs)
         """
         instance = cls.__new__(cls)
         instance.lengths = lengths
@@ -385,6 +442,7 @@ class MUMdata:
         instance.strands = strands
         instance.blocks = blocks
         instance.extra_fields = extra_fields
+        instance.contig_ids = contig_ids
         return instance
     
     def copy(self):
@@ -407,16 +465,38 @@ class MUMdata:
         new_blocks = None
         if self.blocks is not None:
             new_blocks = self.blocks.copy()
+
+        new_contig_ids = None
+        if self.contig_ids is not None:
+            new_contig_ids = self.contig_ids.copy()
         
         # Create new instance using from_arrays class method
         new_mumdata = MUMdata.from_arrays(new_lengths, new_starts, new_strands, 
-                                         blocks=new_blocks, extra_fields=new_extra_fields)
+                                         blocks=new_blocks, extra_fields=new_extra_fields,
+                                         contig_ids=new_contig_ids)
         return new_mumdata
+
+    @staticmethod
+    def _field_is_contig_ids(field):
+        """True if a 4th column looks like comma-separated contig IDs (mumento2 --contig-coords)."""
+        if field is None or field == '*' or ',' not in field:
+            return False
+        parts = field.split(',')
+        if len(parts) < 2:
+            return False
+        try:
+            for p in parts:
+                if p == '':
+                    continue
+                int(p)
+            return True
+        except ValueError:
+            return False
         
     @staticmethod
     def parse_mums(mumfile, lenfilter=0, subsample=1, verbose=False, length_dtype=np.uint32, offset_dtype=np.int64):
         count = 0
-        lengths, starts, strands, coll_blocks, extra_fields = [], [], [], [], []
+        lengths, starts, strands, coll_blocks, extra_fields, contig_ids = [], [], [], [], [], []
         with open(mumfile, 'r') as f:
             for line in tqdm(f, desc='parsing MUM file', disable=not verbose):
                 if subsample == 1 or count % subsample == 0:
@@ -429,10 +509,43 @@ class MUMdata:
                         starts.append(start)
                         strands.append(strand)
                         lengths.append(length)
-                        if len(line) > 3 and line[3] != '*':
-                            coll_blocks.append(line[3])
-                        if len(line) > 4:
-                            extra_fields.append('\t'.join(line[4:]))
+                        # Formats:
+                        #   3-col: length starts strands
+                        #   4-col contig: length starts strands contig_ids  (comma-separated)
+                        #   labeled: length starts strands [block|*] contig_ids [rel_offsets...]
+                        #   blocked: length starts strands block_id
+                        col3 = line[3] if len(line) > 3 else None
+                        if col3 is not None and MUMdata._field_is_contig_ids(col3):
+                            # mumento2 --contig-coords (starts already contig-local)
+                            cids = [int(x) if x != '' else -1 for x in col3.split(',')]
+                            contig_ids.append(cids)
+                            if len(line) > 4:
+                                extra_fields.append('\t'.join(line[4:]))
+                        elif col3 is not None and col3 != '*':
+                            coll_blocks.append(col3)
+                            # mumemto label: * or block, then contig_ids, then rel_offsets
+                            if len(line) > 4 and MUMdata._field_is_contig_ids(line[4]):
+                                cids = [int(x) if x != '' else -1 for x in line[4].split(',')]
+                                contig_ids.append(cids)
+                                # If rel_offsets present (labeled), prefer those as starts
+                                if len(line) > 5 and ',' in line[5]:
+                                    rel = [int(pos) if pos != '' else -1 for pos in line[5].split(',')]
+                                    starts[-1] = rel
+                                if len(line) > 6:
+                                    extra_fields.append('\t'.join(line[6:]))
+                            elif len(line) > 4:
+                                extra_fields.append('\t'.join(line[4:]))
+                        elif col3 == '*':
+                            if len(line) > 4 and MUMdata._field_is_contig_ids(line[4]):
+                                cids = [int(x) if x != '' else -1 for x in line[4].split(',')]
+                                contig_ids.append(cids)
+                                if len(line) > 5 and ',' in line[5]:
+                                    rel = [int(pos) if pos != '' else -1 for pos in line[5].split(',')]
+                                    starts[-1] = rel
+                                if len(line) > 6:
+                                    extra_fields.append('\t'.join(line[6:]))
+                            elif len(line) > 4:
+                                extra_fields.append('\t'.join(line[4:]))
                 count += 1
                 
         try:
@@ -452,8 +565,13 @@ class MUMdata:
         
         if len(extra_fields) == 0:
             extra_fields = None
+
+        if len(contig_ids) == len(lengths) and len(contig_ids) > 0:
+            contig_ids = np.array(contig_ids, dtype=np.int32)
+        else:
+            contig_ids = None
         
-        return lengths, starts, np.array(strands, dtype=bool), blocks, extra_fields
+        return lengths, starts, np.array(strands, dtype=bool), blocks, extra_fields, contig_ids
     
     @staticmethod
     def parse_bums(bumfile, lenfilter=0, subsample=1, length_dtype=np.uint32, offset_dtype=np.int64):
@@ -491,7 +609,11 @@ class MUMdata:
             self.starts = self.starts[valid_rows]
             self.strands = self.strands[valid_rows]
             if self.extra_fields is not None:
-                self.extra_fields = [self.extra_fields[i] for i in valid_rows]
+                self.extra_fields = [self.extra_fields[i] for i in np.where(valid_rows)[0]]
+            if self.contig_ids is not None:
+                self.contig_ids = self.contig_ids[valid_rows]
+            if self.blocks is not None:
+                self.blocks = None
         return self
 
     def slice(self, indices, copy=False):
@@ -534,9 +656,16 @@ class MUMdata:
         new_extra_fields = None
         if self.extra_fields is not None:
             new_extra_fields = [self.extra_fields[i] for i in np.arange(self.num_mums)[row_indices]]
+
+        new_contig_ids = None
+        if self.contig_ids is not None:
+            new_contig_ids = self.contig_ids[row_indices]
+            if not isinstance(col_indices, slice) or col_indices != slice(None):
+                new_contig_ids = new_contig_ids[:, col_indices]
         
         # Create new instance using from_arrays class method
-        new_mumdata = MUMdata.from_arrays(new_lengths, new_starts, new_strands, extra_fields=new_extra_fields)
+        new_mumdata = MUMdata.from_arrays(new_lengths, new_starts, new_strands,
+                                         extra_fields=new_extra_fields, contig_ids=new_contig_ids)
         if copy:
             new_mumdata = new_mumdata.copy()
             

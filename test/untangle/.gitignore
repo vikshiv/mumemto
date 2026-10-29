@@ -1,0 +1,13 @@
+runs/
+.venv/
+vendor/
+__pycache__/
+*.pyc
+*.png
+*.pdf
+*.mums
+*.tsv
+*.lengths
+*.json
+*.gif
+*.zst
