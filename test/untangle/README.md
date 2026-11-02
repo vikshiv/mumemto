@@ -22,3 +22,5 @@ Outputs under `runs/yeast4/`:
 - `untangle.png` — `--untangle` (ref-fixed greedy)
 
 Optional tighter/looser gaps: pass `--spacer 0.05` or `--spacer 0.2` (fraction of largest contig; default `0.1`).
+
+Trailing contigs with no MUM hits are dropped by default in spaced mode (`--show-empty-contigs` to keep them).

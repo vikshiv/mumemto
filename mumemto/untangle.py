@@ -119,6 +119,72 @@ def gapped_genome_length(contig_lengths: Sequence[int], spacer: int = 0) -> int:
     return int(sum(contig_lengths)) + int(spacer) * max(0, n - 1)
 
 
+def trim_trailing_empty_contigs(
+    mums: MUMdata,
+    multilengths: Sequence[Sequence[int]],
+    verbose: bool = False,
+    min_frac: float = 1e-4,
+) -> Tuple[MUMdata, List[List[int]]]:
+    """Drop trailing contigs with little/no MUM evidence per genome.
+
+    A trailing contig is removed while its total MUM bp is 0, or below
+    ``min_frac`` of that genome's total MUM bp (default 0.01%). Mid-genome
+    sparse contigs are kept. Contig ids for the kept prefix stay 0..keep_n-1.
+    If a genome has no MUM hits at all, its contig list is left unchanged.
+    """
+    assert mums.contig_ids is not None
+    new_mls: List[List[int]] = []
+    new_cids = mums.contig_ids.copy()
+    for g, ml in enumerate(multilengths):
+        n = len(ml)
+        if n == 0:
+            new_mls.append([])
+            continue
+        present = mums.contig_ids[:, g] >= 0
+        covered = np.zeros(n, dtype=np.int64)
+        if np.any(present):
+            c = mums.contig_ids[present, g]
+            # sum of MUM lengths per contig
+            covered = np.bincount(
+                c, weights=mums.lengths[present].astype(np.float64), minlength=n,
+            )[:n].astype(np.int64)
+        total = int(covered.sum())
+        thresh = int(min_frac * total) if total > 0 else 0
+        last = n - 1
+        # Drop trailing contigs that are empty/sparse in absolute MUM bp or
+        # cover <2% of their own length (typical unplaced junk at FASTA end).
+        while last > 0:
+            L = int(ml[last])
+            frac = (covered[last] / L) if L > 0 else 0.0
+            if covered[last] <= thresh or frac < 0.02:
+                last -= 1
+            else:
+                break
+        if last < 0:
+            keep_n = n
+        else:
+            keep_n = last + 1
+        dropped = n - keep_n
+        if verbose and dropped:
+            print(
+                f'trim genome {g}: drop {dropped} trailing empty/sparse contigs '
+                f'({n} → {keep_n}, thresh={thresh} bp)',
+                file=sys.stderr,
+            )
+        new_mls.append([int(x) for x in ml[:keep_n]])
+        bad = present & (mums.contig_ids[:, g] >= keep_n)
+        if np.any(bad):
+            new_cids[bad, g] = -1
+    out = MUMdata.from_arrays(
+        mums.lengths.copy(),
+        mums.starts.copy(),
+        mums.strands.copy(),
+        blocks=None,
+        contig_ids=new_cids,
+    )
+    return out, new_mls
+
+
 def contig_local_to_concat(
     mums: MUMdata,
     multilengths: Sequence[Sequence[int]],

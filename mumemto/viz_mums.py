@@ -3,6 +3,7 @@
 from matplotlib import pyplot as plt
 from matplotlib import cm
 from matplotlib.collections import PolyCollection
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import os, sys
 import numpy as np
 import argparse
@@ -13,7 +14,7 @@ try:
     )
     from untangle import (
         ContigLayout, untangle_layout, prepare_contig_plot,
-        gapped_genome_length,
+        gapped_genome_length, trim_trailing_empty_contigs,
     )
 except ImportError:
     from mumemto.utils import (
@@ -22,7 +23,7 @@ except ImportError:
     )
     from mumemto.untangle import (
         ContigLayout, untangle_layout, prepare_contig_plot,
-        gapped_genome_length,
+        gapped_genome_length, trim_trailing_empty_contigs,
     )
 
 def parse_arguments(args=None):    
@@ -73,6 +74,16 @@ def parse_arguments(args=None):
              'mapped position / majority strand). Implies --mode spaced. '
              'Requires contig coords or multilengths.',
     )
+    empty_ctg = parser.add_mutually_exclusive_group()
+    empty_ctg.add_argument(
+        '--hide-empty-contigs', dest='hide_empty_contigs', action='store_true',
+        default=None,
+        help='Drop trailing contigs with no MUM hits (default: on for --mode spaced).',
+    )
+    empty_ctg.add_argument(
+        '--show-empty-contigs', dest='hide_empty_contigs', action='store_false',
+        help='Keep trailing contigs even if they have no MUM hits.',
+    )
 
     if args is None:
         args = parser.parse_args()
@@ -115,7 +126,11 @@ def parse_arguments(args=None):
     # Untangle implies spaced display (not red contig ticks)
     if args.untangle and args.mode == 'normal':
         args.mode = 'spaced'
-        
+
+    # Trailing empty-contig trim defaults on for spaced mode
+    if args.hide_empty_contigs is None:
+        args.hide_empty_contigs = (args.mode == 'spaced')
+
     # if (args.mode == 'gapped' or args.mode == 'delineated') and args.multilengths is None:
     #     parser.error('multi-lengths file is required for gapped or delineated mode')
     return args
@@ -152,30 +167,45 @@ def _nice_scale_bp(visible_span_bp):
 
 
 def add_scale_bar(ax, color='black'):
-    """Draw a genomic scale bar below the axes (lower-right), sized to xlim.
+    """Draw a genomic scale bar in a dedicated strip under the plot.
 
-    Length is chosen from the current visible x-span (``ax.get_xlim()``), so
-    ``--region`` zooms step the label through bp / kb / Mb / Gb like a map scale.
+    Appends a thin axes below ``ax`` via ``make_axes_locatable`` so the bar:
+      - never overlaps ribbons,
+      - never sits in far-right empty data space,
+      - never expands the figure sideways,
+      - keeps a correct bp length for the current ``xlim`` (incl. ``--region``).
+
+    Bar is drawn at the left of the strip (under assembly starts). Call after
+    ``xlim`` is set; skip ``tight_layout`` afterward (it fights the divider).
     """
     x0, x1 = ax.get_xlim()
     span = abs(x1 - x0)
     if span <= 0:
         return
     length_bp, label = _nice_scale_bp(span)
-    bar_frac = length_bp / span
-    # Fully below the axes box (axes y=0 is the bottom spine / last genome)
-    right = 0.98
-    left = max(0.02, right - bar_frac)
-    y = -0.12
-    tick = 0.015
-    ax.plot([left, right], [y, y], transform=ax.transAxes,
-            color=color, linewidth=1.5, solid_capstyle='butt', clip_on=False)
-    ax.plot([left, left], [y - tick, y + tick], transform=ax.transAxes,
-            color=color, linewidth=1.2, clip_on=False)
-    ax.plot([right, right], [y - tick, y + tick], transform=ax.transAxes,
-            color=color, linewidth=1.2, clip_on=False)
-    ax.text((left + right) / 2, y - 0.02, label, transform=ax.transAxes,
-            ha='center', va='top', fontsize=8, color=color, clip_on=False)
+
+    divider = make_axes_locatable(ax)
+    sax = divider.append_axes('bottom', size='9%', pad=0.12)
+    sax.set_xlim(x0, x1)
+    sax.set_ylim(0, 1)
+    sax.set_xticks([])
+    sax.set_yticks([])
+    for spine in sax.spines.values():
+        spine.set_visible(False)
+    sax.patch.set_visible(False)
+
+    left = x0 + 0.01 * span
+    right = left + length_bp
+    y = 0.62
+    tick = 0.28
+    sax.plot([left, right], [y, y], color=color, linewidth=1.8,
+             solid_capstyle='butt', clip_on=False)
+    sax.plot([left, left], [y - tick, y + tick], color=color, linewidth=1.3,
+             clip_on=False)
+    sax.plot([right, right], [y - tick, y + tick], color=color, linewidth=1.3,
+             clip_on=False)
+    sax.text((left + right) / 2, 0.08, label, ha='center', va='bottom',
+             fontsize=8, color=color, clip_on=False)
 
 def points_to_poly(points):
     starts, ends = tuple(zip(*points))
@@ -257,10 +287,50 @@ def get_block_polygons(collinear_blocks, mums, centering, color='#00A2FF', inv_c
             colors.append(color)
     return polygons, colors
 
+def _polygons_xmax(polygons):
+    """Rightmost x among block/MUM polygons (display coords)."""
+    mx = 0.0
+    for poly in polygons:
+        for x, _y in poly:
+            if x > mx:
+                mx = float(x)
+    return mx
+
+
+def mum_dense_xmax(mums, quantile: float = 0.99):
+    """Rightmost display-x covering ``quantile`` of MUM midpoints.
+
+    Using the raw max lets a few sparse MUMs on junk contigs stretch xlim and
+    leave a blank right margin; a high quantile tracks the dense ribbon mass.
+    """
+    mids = []
+    for g in range(mums.num_seqs):
+        present = mums.starts[:, g] >= 0
+        if not np.any(present):
+            continue
+        s = mums.starts[present, g].astype(np.float64)
+        mids.append(s + 0.5 * mums.lengths[present])
+    if not mids:
+        return 0.0
+    mids = np.concatenate(mids)
+    return float(np.quantile(mids, quantile))
+
+
 def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, genomes=None, filename=None):
     fig, ax = plt.subplots()
+    if size:
+        fig.set_size_inches(*size)
     max_length = max(genome_lengths) if genome_lengths else 0
     spacer_bp = int(getattr(args, 'spacer_bp', 0) or 0)
+
+    # Spaced: crop right margin to dense MUM content (not full backbone / junk tails)
+    if args.mode == 'spaced' and args.region is None:
+        content_xmax = getattr(args, 'plot_xmax', None)
+        if content_xmax is None and polygons:
+            content_xmax = _polygons_xmax(polygons)
+        if content_xmax and content_xmax > 0:
+            pad = max(1.0, 0.005 * content_xmax)
+            max_length = min(max_length, float(content_xmax) + pad)
 
     # Plot genome lines based on mode
     if args.mode == 'normal' or args.mode == 'delineated':
@@ -270,14 +340,20 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
                     alpha=0.2, linewidth=0.75, c='black')
 
     elif args.mode == 'spaced':
-        # Per-genome contig segments with whitespace gaps (no red ticks)
+        # Per-genome contig segments with whitespace gaps (no red ticks).
+        # Clip segments to max_length so tails past MUM content are not drawn.
         for idx, ml in enumerate(args.multilengths):
             pos = centering[idx]
             for i, L in enumerate(ml):
                 L = int(L)
+                if pos >= max_length:
+                    break
                 if L > 0:
-                    ax.plot([pos, pos + L], [idx, idx],
-                            alpha=0.35, linewidth=1.0, c='black', solid_capstyle='butt')
+                    x1 = min(pos + L, max_length)
+                    if x1 > pos:
+                        ax.plot([pos, x1], [idx, idx],
+                                alpha=0.35, linewidth=1.0, c='black',
+                                solid_capstyle='butt')
                 pos += L
                 if i < len(ml) - 1:
                     pos += spacer_bp
@@ -333,7 +409,7 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
     else:
         ax.set_xlabel('genomic position')
     ax.set_ylabel('sequences')
-    ax.set_ylim(-0.25, len(genome_lengths)-1 + 0.25)
+    ax.set_ylim(-0.25, len(genome_lengths) - 1 + 0.25)
     if args.mode == 'gapped':
         ax.set_xlim(0, args.multilengths.max(axis=0).sum() + args.spacer * (args.multilengths.shape[1] - 1))
     elif args.region is not None:
@@ -342,14 +418,11 @@ def plot(args, genome_lengths, polygons, colors, centering, dpi=500, size=None, 
         ax.set_xlim(0, max_length)
     ax.invert_yaxis()
     if args.mode == 'spaced':
-        # Draw after xlim is final so bar length matches the visible window
+        # After xlim is final; divider strip must not be followed by tight_layout
         add_scale_bar(ax)
-        fig.subplots_adjust(bottom=0.18)
     else:
         fig.set_tight_layout(True)
 
-    if size:
-        fig.set_size_inches(*size)
     if filename:
         if os.path.splitext(filename)[1] not in ['.png', '.pdf', '.svg']:
             filename = filename + '.png'
@@ -449,7 +522,12 @@ def insert_spaced_spacers(mums, multilengths, spacer, blocks=None):
     return new_blocks
 
 def main(args):
-    if args.mode != 'normal' or args.untangle:
+    need_multi = (
+        args.mode != 'normal'
+        or args.untangle
+        or args.hide_empty_contigs
+    )
+    if need_multi:
         try:
             offset = get_sequence_lengths(args.lens, multilengths=True)
             seq_lengths = [sum(o) for o in offset]
@@ -457,13 +535,14 @@ def main(args):
                 print('Warning: gapped mode requires the same number of sequences per input FASTA file. Using spaced mode instead.', file=sys.stderr)
                 args.mode = 'spaced'
                 args.multilengths = offset
-            elif args.mode == 'gapped':   
+            elif args.mode == 'gapped':
                 args.multilengths = np.array(offset)
             else:
                 args.multilengths = offset
         except ValueError:
-            if args.untangle:
-                print('Error: --untangle requires multilengths in %s' % args.lens, file=sys.stderr)
+            if args.untangle or args.hide_empty_contigs:
+                print('Error: --untangle / --hide-empty-contigs require multilengths in %s'
+                      % args.lens, file=sys.stderr)
                 sys.exit(1)
             print('Warning: Multi-FASTA lengths not available in %s. Treating input FASTAs as a single sequence instead.' % args.lens, file=sys.stderr)
             args.mode = 'normal'
@@ -472,14 +551,14 @@ def main(args):
     else:
         seq_lengths = get_sequence_lengths(args.lens)
         args.multilengths = None
-    
+
     args.spacer_bp = 0
-    if args.mode == 'gapped':
+    if args.mode == 'gapped' and args.multilengths is not None:
         args.spacer = args.spacer * args.multilengths.max(axis=0).max()
         args.spacer_bp = int(args.spacer)
     elif args.mode == 'spaced' and args.multilengths is not None:
-        max_contig = max(max(ml) for ml in args.multilengths if len(ml))
-        args.spacer_bp = int(args.spacer * max_contig)
+        max_contig = max((max(ml) for ml in args.multilengths if len(ml)), default=0)
+        args.spacer_bp = int(args.spacer * max_contig) if max_contig else 0
     
     genome_order = None
     if args.filelist:
@@ -518,11 +597,19 @@ def main(args):
         if mums.contig_ids is not None:
             mums.contig_ids = mums.contig_ids[:, genome_order]
 
-    # ---- Contig layout untangle -------------------------------------------
-    contig_mode = args.untangle or mums.has_contig_coords
+    # ---- Contig layout / trailing-empty trim ------------------------------
+    # Spaced + hide-empty (default) needs contig-local coords to trim, then
+    # prepare_contig_plot applies the spacer. Also used for --untangle.
+    contig_mode = (
+        args.untangle
+        or mums.has_contig_coords
+        or args.hide_empty_contigs
+        or args.mode == 'spaced'
+    )
     if contig_mode:
         if args.multilengths is None:
-            print('Error: contig coordinates / --untangle require multilengths', file=sys.stderr)
+            print('Error: contig coordinates / --untangle / --mode spaced require multilengths',
+                  file=sys.stderr)
             sys.exit(1)
         ensure_contig_coords(mums, args.multilengths)
         # Drop partials before layout/blocks
@@ -530,6 +617,12 @@ def main(args):
         if len(mums) == 0:
             print('No strict MUMs found after filtering.', file=sys.stderr)
             return
+
+        if args.hide_empty_contigs:
+            mums, args.multilengths = trim_trailing_empty_contigs(
+                mums, args.multilengths, verbose=args.verbose,
+            )
+            seq_lengths = [sum(ml) for ml in args.multilengths]
 
         layout = ContigLayout.identity(args.multilengths)
         if args.untangle:
@@ -539,10 +632,10 @@ def main(args):
         if args.max_break is None:
             bp_per_inch = max(seq_lengths) / (args.dpi * args.size[0])
             args.max_break = int(min(bp_per_inch, 100000))
-        # Recompute spacer after any filelist reorder of multilengths
+        # Recompute spacer after trim / filelist reorder of multilengths
         if args.mode == 'spaced':
-            max_contig = max(max(ml) for ml in args.multilengths if len(ml))
-            args.spacer_bp = int(args.spacer * max_contig)
+            max_contig = max((max(ml) for ml in args.multilengths if len(ml)), default=0)
+            args.spacer_bp = int(args.spacer * max_contig) if max_contig else 0
         mums, blocks, args.multilengths = prepare_contig_plot(
             mums, args.multilengths, layout,
             max_break=args.max_break, verbose=args.verbose,
@@ -562,12 +655,6 @@ def main(args):
                   f'{mums.num_mums} MUMs, {len(blocks)} blocks'
                   + (f'; spacer={args.spacer_bp}bp' if args.mode == 'spaced' else ''),
                   file=sys.stderr)
-
-    # spaced without prepare_contig_plot: shift concat coords by contig spacers
-    if args.mode == 'spaced' and not contig_mode and args.multilengths is not None:
-        seq_lengths = [
-            gapped_genome_length(ml, args.spacer_bp) for ml in args.multilengths
-        ]
 
     max_length = max(seq_lengths)
     
@@ -607,7 +694,21 @@ def main(args):
             )
             
         polygons, colors = get_block_polygons(collinear_blocks, mums, centering, color=args.mum_color, inv_color=args.inv_color)
-    
+
+    # Spaced: xlim follows dense MUM mass, not a few outlier midpoints on junk tails
+    if args.mode == 'spaced' and args.region is None:
+        dense = mum_dense_xmax(mums, quantile=0.99)
+        poly_x = _polygons_xmax(polygons) if polygons else 0.0
+        # Prefer dense quantile; never exceed polygon max
+        cand = dense if dense > 0 else poly_x
+        if poly_x > 0:
+            cand = min(cand, poly_x) if cand > 0 else poly_x
+        if cand > 0:
+            args.plot_xmax = cand
+            if args.verbose:
+                print(f'spaced xlim from dense MUM content: {cand:.0f} bp '
+                      f'(backbone max {max(seq_lengths)})', file=sys.stderr)
+
     if args.verbose:
         print('Rendering plot...', file=sys.stderr)
     plot(args, seq_lengths, polygons, colors, centering, genomes=genome_names, filename=args.filename, dpi=args.dpi, size=args.size)
